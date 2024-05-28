@@ -99,15 +99,15 @@ func main() {
 		os.Exit(1)
 	}
 
-	ctrPlaneLogger := ctrl.Log.WithName("controllers").WithName("KThreesControlPlane")
-	if err = (&controllers.KThreesControlPlaneReconciler{
+	ctrPlaneLogger := ctrl.Log.WithName("controllers").WithName("CK8sControlPlane")
+	if err = (&controllers.CK8sControlPlaneReconciler{
 		Client:          mgr.GetClient(),
 		Log:             ctrPlaneLogger,
 		Scheme:          mgr.GetScheme(),
 		EtcdDialTimeout: etcdDialTimeout,
 		EtcdCallTimeout: etcdCallTimeout,
 	}).SetupWithManager(ctx, mgr, &ctrPlaneLogger); err != nil {
-		setupLog.Error(err, "unable to create controller", "controller", "KThreesControlPlane")
+		setupLog.Error(err, "unable to create controller", "controller", "CK8sControlPlane")
 		os.Exit(1)
 	}
 
@@ -124,8 +124,8 @@ func main() {
 	}
 
 	if os.Getenv("ENABLE_WEBHOOKS") != "false" {
-		if err = (&controlplanev1.KThreesControlPlane{}).SetupWebhookWithManager(mgr); err != nil {
-			setupLog.Error(err, "unable to create webhook", "webhook", "KThreesControlPlane")
+		if err = (&controlplanev1.CK8sControlPlane{}).SetupWebhookWithManager(mgr); err != nil {
+			setupLog.Error(err, "unable to create webhook", "webhook", "CK8sControlPlane")
 			os.Exit(1)
 		}
 	}

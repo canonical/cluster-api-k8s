@@ -16,8 +16,8 @@ limitations under the License.
 
 package v1beta2
 
-// Hub marks KThreesControlPlane as a conversion hub.
-func (*KThreesControlPlane) Hub() {}
+// Hub marks CK8sControlPlane as a conversion hub.
+func (*CK8sControlPlane) Hub() {}
 
-// Hub marks KThreesControlPlaneList as a conversion hub.
-func (*KThreesControlPlaneList) Hub() {}
+// Hub marks CK8sControlPlaneList as a conversion hub.
+func (*CK8sControlPlaneList) Hub() {}

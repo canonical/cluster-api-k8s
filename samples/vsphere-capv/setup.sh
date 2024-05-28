@@ -63,7 +63,7 @@ kubectl wait --for=condition=Available --timeout=5m -n capi-k3s-bootstrap-system
 # clusterctl generate cluster "${CLUSTER_NAME}" -f k3s | kubectl apply -f -
 clusterctl generate cluster "${CLUSTER_NAME}" --from samples/vsphere-capv/cluster-template-k3s.yaml | kubectl apply -f -
 
-echo "Once the cluster is up run clusterctl get kubeconfig $CLUSTER_NAME > k3s.yaml or kubectl scale kthreescontrolplane $CLUSTER_NAME-control-plane --replicas 3 for HA"
+echo "Once the cluster is up run clusterctl get kubeconfig $CLUSTER_NAME > k3s.yaml or kubectl scale ck8scontrolplane $CLUSTER_NAME-control-plane --replicas 3 for HA"
 echo "To use the single node cluster, you might need to also run the following commands:"
 echo "   kubectl taint nodes --all node-role.kubernetes.io/control-plane-"
 echo "   kubectl taint nodes --all node-role.kubernetes.io/master-"

@@ -4,14 +4,14 @@ kind: CustomResourceDefinition
 metadata:
   annotations:
     controller-gen.kubebuilder.io/version: v0.14.0
-  name: kthreescontrolplanes.controlplane.cluster.x-k8s.io
+  name: ck8scontrolplanes.controlplane.cluster.x-k8s.io
 spec:
   group: controlplane.cluster.x-k8s.io
   names:
-    kind: KThreesControlPlane
-    listKind: KThreesControlPlaneList
-    plural: kthreescontrolplanes
-    singular: kthreescontrolplane
+    kind: CK8sControlPlane
+    listKind: CK8sControlPlaneList
+    plural: ck8scontrolplanes
+    singular: ck8scontrolplane
   scope: Namespaced
   versions:
   - additionalPrinterColumns:
@@ -20,7 +20,7 @@ spec:
       jsonPath: .status.initialized
       name: Initialized
       type: boolean
-    - description: KThreesControlPlane API Server is ready to receive requests
+    - description: CK8sControlPlane API Server is ready to receive requests
       jsonPath: .status.ready
       name: API Server Available
       type: boolean
@@ -49,7 +49,7 @@ spec:
     name: v1beta1
     schema:
       openAPIV3Schema:
-        description: KThreesControlPlane is the Schema for the kthreescontrolplanes
+        description: CK8sControlPlane is the Schema for the ck8scontrolplanes
           API.
         properties:
           apiVersion:
@@ -70,14 +70,14 @@ spec:
           metadata:
             type: object
           spec:
-            description: KThreesControlPlaneSpec defines the desired state of KThreesControlPlane.
+            description: CK8sControlPlaneSpec defines the desired state of CK8sControlPlane.
             properties:
               infrastructureTemplate:
                 description: |-
                   InfrastructureTemplate is a required reference to a custom resource
                   offered by an infrastructure provider.
                   In the next API version we will move this into the
-                  `KThreesControlPlaneMachineTemplate` struct. See
+                  `CK8sControlPlaneMachineTemplate` struct. See
                   https://github.com/canonical/cluster-api-k8s/issues/62
                 properties:
                   apiVersion:
@@ -121,9 +121,9 @@ spec:
                     type: string
                 type: object
                 x-kubernetes-map-type: atomic
-              kthreesConfigSpec:
+              spec:
                 description: |-
-                  KThreesConfigSpec is a KThreesConfigSpec
+                  CK8sConfigSpec is a CK8sConfigSpec
                   to use for initializing and joining machines to the control plane.
                 properties:
                   agentConfig:
@@ -191,7 +191,7 @@ spec:
                                     map for this value.
                                   type: string
                                 name:
-                                  description: Name of the secret in the KThreesBootstrapConfig's
+                                  description: Name of the secret in the CK8sBootstrapConfig's
                                     namespace to use.
                                   type: string
                               required:
@@ -408,7 +408,7 @@ spec:
                 description: |-
                   UpgradeAfter is a field to indicate an upgrade should be performed
                   after the specified time even if no changes have been made to the
-                  KThreesControlPlane
+                  CK8sControlPlane
                 format: date-time
                 type: string
               version:
@@ -419,10 +419,10 @@ spec:
             - version
             type: object
           status:
-            description: KThreesControlPlaneStatus defines the observed state of KThreesControlPlane.
+            description: CK8sControlPlaneStatus defines the observed state of CK8sControlPlane.
             properties:
               conditions:
-                description: Conditions defines current service state of the KThreesControlPlane.
+                description: Conditions defines current service state of the CK8sControlPlane.
                 items:
                   description: Condition defines an observation of a Cluster API resource
                     operational state.
@@ -511,7 +511,7 @@ spec:
                 type: integer
               ready:
                 description: |-
-                  Ready denotes that the KThreesControlPlane API Server is ready to
+                  Ready denotes that the CK8sControlPlane API Server is ready to
                   receive requests.
                 type: boolean
               readyReplicas:
@@ -564,7 +564,7 @@ spec:
       jsonPath: .status.initialized
       name: Initialized
       type: boolean
-    - description: KThreesControlPlane API Server is ready to receive requests
+    - description: CK8sControlPlane API Server is ready to receive requests
       jsonPath: .status.ready
       name: API Server Available
       type: boolean
@@ -593,7 +593,7 @@ spec:
     name: v1beta2
     schema:
       openAPIV3Schema:
-        description: KThreesControlPlane is the Schema for the kthreescontrolplanes
+        description: CK8sControlPlane is the Schema for the ck8scontrolplanes
           API.
         properties:
           apiVersion:
@@ -614,11 +614,11 @@ spec:
           metadata:
             type: object
           spec:
-            description: KThreesControlPlaneSpec defines the desired state of KThreesControlPlane.
+            description: CK8sControlPlaneSpec defines the desired state of CK8sControlPlane.
             properties:
-              kthreesConfigSpec:
+              spec:
                 description: |-
-                  KThreesConfigSpec is a KThreesConfigSpec
+                  CK8sConfigSpec is a CK8sConfigSpec
                   to use for initializing and joining machines to the control plane.
                 properties:
                   agentConfig:
@@ -686,7 +686,7 @@ spec:
                                     map for this value.
                                   type: string
                                 name:
-                                  description: Name of the secret in the KThreesBootstrapConfig's
+                                  description: Name of the secret in the CK8sBootstrapConfig's
                                     namespace to use.
                                   type: string
                               required:
@@ -972,7 +972,7 @@ spec:
                 description: |-
                   RolloutAfter is a field to indicate a rollout should be performed
                   after the specified time even if no changes have been made to the
-                  KThreesControlPlane
+                  CK8sControlPlane
                 format: date-time
                 type: string
               version:
@@ -982,10 +982,10 @@ spec:
             - version
             type: object
           status:
-            description: KThreesControlPlaneStatus defines the observed state of KThreesControlPlane.
+            description: CK8sControlPlaneStatus defines the observed state of CK8sControlPlane.
             properties:
               conditions:
-                description: Conditions defines current service state of the KThreesControlPlane.
+                description: Conditions defines current service state of the CK8sControlPlane.
                 items:
                   description: Condition defines an observation of a Cluster API resource
                     operational state.
@@ -1074,7 +1074,7 @@ spec:
                 type: integer
               ready:
                 description: |-
-                  Ready denotes that the KThreesControlPlane API Server is ready to
+                  Ready denotes that the CK8sControlPlane API Server is ready to
                   receive requests.
                 type: boolean
               readyReplicas:

@@ -16,14 +16,14 @@ limitations under the License.
 
 package v1beta2
 
-// Hub marks KThreesConfig as a conversion hub.
-func (*KThreesConfig) Hub() {}
+// Hub marks CK8sConfig as a conversion hub.
+func (*CK8sConfig) Hub() {}
 
-// Hub marks KThreesConfigList as a conversion hub.
-func (*KThreesConfigList) Hub() {}
+// Hub marks CK8sConfigList as a conversion hub.
+func (*CK8sConfigList) Hub() {}
 
-// Hub marks KThreesConfigTemplate as a conversion hub.
-func (*KThreesConfigTemplate) Hub() {}
+// Hub marks CK8sConfigTemplate as a conversion hub.
+func (*CK8sConfigTemplate) Hub() {}
 
-// Hub marks KThreesConfigTemplateList as a conversion hub.
-func (*KThreesConfigTemplateList) Hub() {}
+// Hub marks CK8sConfigTemplateList as a conversion hub.
+func (*CK8sConfigTemplateList) Hub() {}

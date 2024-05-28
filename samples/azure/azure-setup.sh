@@ -56,4 +56,4 @@ kubectl apply -f samples/azure/k3s-cluster.yaml
 kubectl apply -f samples/azure/resource-set.yaml
 
 
-echo "once the cluster is up run clusterctl get kubeconfig $CLUSTER_NAME > k3s.yaml or kubectl scale kthreescontrolplane $CLUSTER_NAME-control-plane --replicas 3 for HA"
+echo "once the cluster is up run clusterctl get kubeconfig $CLUSTER_NAME > k3s.yaml or kubectl scale ck8scontrolplane $CLUSTER_NAME-control-plane --replicas 3 for HA"

@@ -4,20 +4,20 @@ kind: CustomResourceDefinition
 metadata:
   annotations:
     controller-gen.kubebuilder.io/version: v0.14.0
-  name: kthreesconfigtemplates.bootstrap.cluster.x-k8s.io
+  name: ck8sconfigtemplates.bootstrap.cluster.x-k8s.io
 spec:
   group: bootstrap.cluster.x-k8s.io
   names:
-    kind: KThreesConfigTemplate
-    listKind: KThreesConfigTemplateList
-    plural: kthreesconfigtemplates
-    singular: kthreesconfigtemplate
+    kind: CK8sConfigTemplate
+    listKind: CK8sConfigTemplateList
+    plural: ck8sconfigtemplates
+    singular: ck8sconfigtemplate
   scope: Namespaced
   versions:
   - name: v1beta1
     schema:
       openAPIV3Schema:
-        description: KThreesConfigTemplate is the Schema for the kthreesconfigtemplates
+        description: CK8sConfigTemplate is the Schema for the ck8sconfigtemplates
           API.
         properties:
           apiVersion:
@@ -38,13 +38,13 @@ spec:
           metadata:
             type: object
           spec:
-            description: KThreesConfigTemplateSpec defines the desired state of KThreesConfigTemplate.
+            description: CK8sConfigTemplateSpec defines the desired state of CK8sConfigTemplate.
             properties:
               template:
-                description: KThreesConfigTemplateResource defines the Template structure.
+                description: CK8sConfigTemplateResource defines the Template structure.
                 properties:
                   spec:
-                    description: KThreesConfigSpec defines the desired state of KThreesConfig.
+                    description: CK8sConfigSpec defines the desired state of CK8sConfig.
                     properties:
                       agentConfig:
                         description: AgentConfig specifies configuration for the agent
@@ -112,7 +112,7 @@ spec:
                                         data map for this value.
                                       type: string
                                     name:
-                                      description: Name of the secret in the KThreesBootstrapConfig's
+                                      description: Name of the secret in the CK8sBootstrapConfig's
                                         namespace to use.
                                       type: string
                                   required:
@@ -244,46 +244,34 @@ spec:
   - name: v1beta2
     schema:
       openAPIV3Schema:
-        description: KThreesConfigTemplate is the Schema for the kthreesconfigtemplates
+        description: CK8sConfigTemplate is the Schema for the ck8sconfigtemplates
           API.
         properties:
           apiVersion:
-            description: |-
-              APIVersion defines the versioned schema of this representation of an object.
-              Servers should convert recognized schemas to the latest internal value, and
-              may reject unrecognized values.
-              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
+            description: 'APIVersion defines the versioned schema of this representation
+              of an object. Servers should convert recognized schemas to the latest
+              internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
             type: string
           kind:
-            description: |-
-              Kind is a string value representing the REST resource this object represents.
-              Servers may infer this from the endpoint the client submits requests to.
-              Cannot be updated.
-              In CamelCase.
-              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
+            description: 'Kind is a string value representing the REST resource this
+              object represents. Servers may infer this from the endpoint the client
+              submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
             type: string
           metadata:
             type: object
           spec:
-            description: KThreesConfigTemplateSpec defines the desired state of KThreesConfigTemplate.
+            description: CK8sConfigTemplateSpec defines the desired state of CK8sConfigTemplate.
             properties:
               template:
-                description: KThreesConfigTemplateResource defines the Template structure.
+                description: CK8sConfigTemplateResource defines the Template structure.
                 properties:
                   spec:
-                    description: KThreesConfigSpec defines the desired state of KThreesConfig.
+                    description: CK8sConfigSpec defines the desired state of CK8sConfig.
                     properties:
                       agentConfig:
                         description: AgentConfig specifies configuration for the agent
                           nodes
                         properties:
-                          airGapped:
-                            description: |-
-                              AirGapped is a boolean value to define if the bootstrapping should be air-gapped,
-                              basically supposing that online container registries and k3s install scripts are not reachable.
-                              User should prepare docker image, k3s binary, and put the install script in `/opt/install.sh`
-                              on all nodes in the air-gap environment.
-                            type: boolean
                           kubeProxyArgs:
                             description: KubeProxyArgs Customized flag for kube-proxy
                               process
@@ -311,9 +299,9 @@ spec:
                               type: string
                             type: array
                           privateRegistry:
-                            description: |-
-                              TODO: take in a object or secret and write to file. this is not useful
-                              PrivateRegistry  registry configuration file (default: "/etc/rancher/k3s/registries.yaml")
+                            description: 'TODO: take in a object or secret and write
+                              to file. this is not useful PrivateRegistry  registry
+                              configuration file (default: "/etc/rancher/k3s/registries.yaml")'
                             type: string
                         type: object
                       files:
@@ -339,7 +327,7 @@ spec:
                                         data map for this value.
                                       type: string
                                     name:
-                                      description: Name of the secret in the KThreesBootstrapConfig's
+                                      description: Name of the secret in the CK8sBootstrapConfig's
                                         namespace to use.
                                       type: string
                                   required:
@@ -402,11 +390,6 @@ spec:
                           bindAddress:
                             description: 'BindAddress k3s bind address (default: 0.0.0.0)'
                             type: string
-                          cloudProviderName:
-                            default: external
-                            description: 'CloudProviderName defines the --cloud-provider=
-                              kubelet extra arg. (default: "external")'
-                            type: string
                           clusterCidr:
                             description: 'ClusterCidr  Network CIDR to use for pod
                               IPs (default: "10.42.0.0/16")'
@@ -418,11 +401,6 @@ spec:
                           clusterDomain:
                             description: 'ClusterDomain Cluster Domain (default: "cluster.local")'
                             type: string
-                          disableCloudController:
-                            default: true
-                            description: 'DisableCloudController disables k3s default
-                              cloud controller manager. (default: true)'
-                            type: boolean
                           disableComponents:
                             description: DisableComponents  specifies extra commands
                               to run before k3s setup runs
@@ -430,7 +408,7 @@ spec:
                               type: string
                             type: array
                           disableExternalCloudProvider:
-                            description: 'DeprecatedDisableExternalCloudProvider suppresses
+                            description: 'DisableExternalCloudProvider suppresses
                               the ''cloud-provider=external'' kubelet argument. (default:
                               false)'
                             type: boolean

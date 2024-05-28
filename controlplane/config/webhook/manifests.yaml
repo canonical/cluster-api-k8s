@@ -11,10 +11,10 @@ webhooks:
     service:
       name: webhook-service
       namespace: system
-      path: /mutate-controlplane-cluster-x-k8s-io-v1beta2-kthreescontrolplane
+      path: /mutate-controlplane-cluster-x-k8s-io-v1beta2-ck8scontrolplane
   failurePolicy: Fail
   matchPolicy: Equivalent
-  name: default.kthreescontrolplane.controlplane.cluster.x-k8s.io
+  name: default.ck8scontrolplane.controlplane.cluster.x-k8s.io
   rules:
   - apiGroups:
     - controlplane.cluster.x-k8s.io
@@ -24,7 +24,7 @@ webhooks:
     - CREATE
     - UPDATE
     resources:
-    - kthreescontrolplanes
+    - ck8scontrolplanes
   sideEffects: None
 ---
 apiVersion: admissionregistration.k8s.io/v1
@@ -39,10 +39,10 @@ webhooks:
     service:
       name: webhook-service
       namespace: system
-      path: /validate-controlplane-cluster-x-k8s-io-v1beta2-kthreescontrolplane
+      path: /validate-controlplane-cluster-x-k8s-io-v1beta2-ck8scontrolplane
   failurePolicy: Fail
   matchPolicy: Equivalent
-  name: validation.kthreescontrolplane.controlplane.cluster.x-k8s.io
+  name: validation.ck8scontrolplane.controlplane.cluster.x-k8s.io
   rules:
   - apiGroups:
     - controlplane.cluster.x-k8s.io
@@ -52,5 +52,5 @@ webhooks:
     - CREATE
     - UPDATE
     resources:
-    - kthreescontrolplanes
+    - ck8scontrolplanes
   sideEffects: None

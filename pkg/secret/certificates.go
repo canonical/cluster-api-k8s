@@ -65,7 +65,7 @@ var (
 type Certificates []*Certificate
 
 // NewCertificatesForInitialControlPlane returns a list of certificates configured for a control plane node.
-func NewCertificatesForInitialControlPlane(config *bootstrapv1.KThreesConfigSpec) Certificates {
+func NewCertificatesForInitialControlPlane(config *bootstrapv1.CK8sConfigSpec) Certificates {
 	certificatesDir := DefaultCertificatesDir
 
 	certificates := Certificates{

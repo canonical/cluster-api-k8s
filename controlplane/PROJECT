@@ -2,12 +2,9 @@ domain: cluster.x-k8s.io
 repo: github.com/canonical/cluster-api-k8s/controlplane
 resources:
 - group: controlplane
-  kind: KThreesControlPlane
-  version: v1beta1
-- group: controlplane
-  kind: KThreesControlPlane
+  kind: CK8sControlPlane
   version: v1beta2
 - group: controlplane
-  kind: KThreesControlPlaneTemplate
+  kind: CK8sControlPlaneTemplate
   version: v1beta2
 version: "2"

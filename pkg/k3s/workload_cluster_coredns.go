@@ -66,18 +66,18 @@ var ErrInvalidCoreDNSVersion = errors.New("invalid CoreDNS version given")
 
 // UpdateCoreDNS updates the coredns corefile and coredns
 // deployment.
-func (w *Workload) UpdateCoreDNS(ctx context.Context, kcp *controlplanev1.KThreesControlPlane) error {
+func (w *Workload) UpdateCoreDNS(ctx context.Context, kcp *controlplanev1.CK8sControlPlane) error {
 	// Return early if we've been asked to skip CoreDNS upgrades entirely.
 	if _, ok := kcp.Annotations[controlplanev1.SkipCoreDNSAnnotation]; ok {
 		return nil
 	}
 	/*
 		// Return early if the configuration is nil.
-		if kcp.Spec.KThreesConfigSpec.ServerConfig == KThreesServerConfig {
+		if kcp.Spec.CK8sConfigSpec.ServerConfig == CK8sServerConfig {
 			return nil
 		}
 
-		clusterConfig := kcp.Spec.KThreesConfigSpec.ServerConfig
+		clusterConfig := kcp.Spec.CK8sConfigSpec.ServerConfig
 
 		// Return early if the type is anything other than empty (default), or CoreDNS.
 		if clusterConfig.DNS.Type != "" && clusterConfig.DNS.Type != kubeadmv1.CoreDNS {

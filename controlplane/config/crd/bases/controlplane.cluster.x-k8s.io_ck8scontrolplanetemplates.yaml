@@ -4,20 +4,20 @@ kind: CustomResourceDefinition
 metadata:
   annotations:
     controller-gen.kubebuilder.io/version: v0.14.0
-  name: kthreescontrolplanetemplates.controlplane.cluster.x-k8s.io
+  name: ck8scontrolplanetemplates.controlplane.cluster.x-k8s.io
 spec:
   group: controlplane.cluster.x-k8s.io
   names:
-    kind: KThreesControlPlaneTemplate
-    listKind: KThreesControlPlaneTemplateList
-    plural: kthreescontrolplanetemplates
-    singular: kthreescontrolplanetemplate
+    kind: CK8sControlPlaneTemplate
+    listKind: CK8sControlPlaneTemplateList
+    plural: ck8scontrolplanetemplates
+    singular: ck8scontrolplanetemplate
   scope: Namespaced
   versions:
   - name: v1beta2
     schema:
       openAPIV3Schema:
-        description: KThreesControlPlaneTemplate is the Schema for the kthreescontrolplanetemplate
+        description: CK8sControlPlaneTemplate is the Schema for the ck8scontrolplanetemplate
           API.
         properties:
           apiVersion:
@@ -38,8 +38,8 @@ spec:
           metadata:
             type: object
           spec:
-            description: KThreesControlPlaneTemplateSpec defines the desired state
-              of KThreesControlPlaneTemplateSpec.
+            description: CK8sControlPlaneTemplateSpec defines the desired state
+              of CK8sControlPlaneTemplateSpec.
             properties:
               template:
                 properties:
@@ -50,9 +50,9 @@ spec:
                     type: object
                   spec:
                     properties:
-                      kthreesConfigSpec:
+                      spec:
                         description: |-
-                          KThreesConfigSpec is a KThreesConfigSpec
+                          CK8sConfigSpec is a CK8sConfigSpec
                           to use for initializing and joining machines to the control plane.
                         properties:
                           agentConfig:
@@ -123,7 +123,7 @@ spec:
                                             data map for this value.
                                           type: string
                                         name:
-                                          description: Name of the secret in the KThreesBootstrapConfig's
+                                          description: Name of the secret in the CK8sBootstrapConfig's
                                             namespace to use.
                                           type: string
                                       required:
@@ -408,7 +408,7 @@ spec:
                         description: |-
                           RolloutAfter is a field to indicate an rollout should be performed
                           after the specified time even if no changes have been made to the
-                          KThreesControlPlane
+                          CK8sControlPlane
                         format: date-time
                         type: string
                     type: object

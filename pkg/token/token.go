@@ -43,7 +43,7 @@ func Reconcile(ctx context.Context, ctrlclient client.Client, clusterKey client.
 	}
 
 	// Secret exists
-	// Ensure the secret has correct ownership; this is necessary because at one point, the secret was owned by KThreesConfig
+	// Ensure the secret has correct ownership; this is necessary because at one point, the secret was owned by CK8sConfig
 	if !metav1.IsControlledBy(s, owner) {
 		upsertControllerRef(s, owner)
 		if err := ctrlclient.Update(ctx, s); err != nil {

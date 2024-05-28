@@ -22,34 +22,34 @@ import (
 	bootstrapv1beta2 "github.com/canonical/cluster-api-k8s/bootstrap/api/v1beta2"
 )
 
-// KThreesControlPlaneTemplateSpec defines the desired state of KThreesControlPlaneTemplateSpec.
-type KThreesControlPlaneTemplateSpec struct {
-	Template KThreesControlPlaneTemplateResource `json:"template"`
+// CK8sControlPlaneTemplateSpec defines the desired state of CK8sControlPlaneTemplateSpec.
+type CK8sControlPlaneTemplateSpec struct {
+	Template CK8sControlPlaneTemplateResource `json:"template"`
 }
 
-type KThreesControlPlaneTemplateResource struct {
+type CK8sControlPlaneTemplateResource struct {
 	// Standard object's metadata.
 	// More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#metadata
 	// +optional
-	ObjectMeta metav1.ObjectMeta                       `json:"metadata,omitempty"`
-	Spec       KThreesControlPlaneTemplateResourceSpec `json:"spec"`
+	ObjectMeta metav1.ObjectMeta                    `json:"metadata,omitempty"`
+	Spec       CK8sControlPlaneTemplateResourceSpec `json:"spec"`
 }
 
-type KThreesControlPlaneTemplateResourceSpec struct {
-	// KThreesConfigSpec is a KThreesConfigSpec
+type CK8sControlPlaneTemplateResourceSpec struct {
+	// CK8sConfigSpec is a CK8sConfigSpec
 	// to use for initializing and joining machines to the control plane.
 	// +optional
-	KThreesConfigSpec bootstrapv1beta2.KThreesConfigSpec `json:"kthreesConfigSpec,omitempty"`
+	CK8sConfigSpec bootstrapv1beta2.CK8sConfigSpec `json:"spec,omitempty"`
 
 	// RolloutAfter is a field to indicate an rollout should be performed
 	// after the specified time even if no changes have been made to the
-	// KThreesControlPlane
+	// CK8sControlPlane
 	// +optional
 	RolloutAfter *metav1.Time `json:"rolloutAfter,omitempty"`
 
 	// MachineTemplate contains information about how machines should be shaped
 	// when creating or updating a control plane.
-	MachineTemplate KThreesControlPlaneMachineTemplate `json:"machineTemplate,omitempty"`
+	MachineTemplate CK8sControlPlaneMachineTemplate `json:"machineTemplate,omitempty"`
 
 	// The RemediationStrategy that controls how control plane machine remediation happens.
 	// +optional
@@ -60,23 +60,23 @@ type KThreesControlPlaneTemplateResourceSpec struct {
 // +kubebuilder:subresource:status
 // +kubebuilder:storageversion
 
-// KThreesControlPlaneTemplate is the Schema for the kthreescontrolplanetemplate API.
-type KThreesControlPlaneTemplate struct {
+// CK8sControlPlaneTemplate is the Schema for the ck8scontrolplanetemplate API.
+type CK8sControlPlaneTemplate struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	Spec KThreesControlPlaneTemplateSpec `json:"spec,omitempty"`
+	Spec CK8sControlPlaneTemplateSpec `json:"spec,omitempty"`
 }
 
 // +kubebuilder:object:root=true
 
-// KThreesControlPlaneTemplateList contains a list of KThreesControlPlaneTemplate.
-type KThreesControlPlaneTemplateList struct {
+// CK8sControlPlaneTemplateList contains a list of CK8sControlPlaneTemplate.
+type CK8sControlPlaneTemplateList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
-	Items           []KThreesControlPlaneTemplate `json:"items"`
+	Items           []CK8sControlPlaneTemplate `json:"items"`
 }
 
 func init() {
-	SchemeBuilder.Register(&KThreesControlPlaneTemplate{}, &KThreesControlPlaneTemplateList{})
+	SchemeBuilder.Register(&CK8sControlPlaneTemplate{}, &CK8sControlPlaneTemplateList{})
 }

@@ -12,7 +12,7 @@ spec:
       - 192.168.0.0/16
   controlPlaneRef:
     apiVersion: controlplane.cluster.x-k8s.io/v1beta1
-    kind: KThreesControlPlane
+    kind: CK8sControlPlane
     name: ${CLUSTER_NAME}-control-plane
     namespace: default
   infrastructureRef:
@@ -34,7 +34,7 @@ spec:
   subscriptionID: ${AZURE_SUBSCRIPTION_ID}
 ---
 apiVersion: controlplane.cluster.x-k8s.io/v1beta1
-kind: KThreesControlPlane
+kind: CK8sControlPlane
 metadata:
   name: ${CLUSTER_NAME}-control-plane
   namespace: default
@@ -43,7 +43,7 @@ spec:
     apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
     kind: AzureMachineTemplate
     name: ${CLUSTER_NAME}-control-plane
-  kthreesConfigSpec:
+  spec:
     files:
     - contentFrom:
         secret:
@@ -100,7 +100,7 @@ spec:
           version: latest
 ---
 apiVersion: bootstrap.cluster.x-k8s.io/v1beta1
-kind: KThreesConfigTemplate
+kind: CK8sConfigTemplate
 metadata:
   name: ${CLUSTER_NAME}-md-0
   namespace: default
@@ -134,7 +134,7 @@ spec:
       bootstrap:
         configRef:
           apiVersion: bootstrap.cluster.x-k8s.io/v1beta1
-          kind: KThreesConfigTemplate
+          kind: CK8sConfigTemplate
           name: ${CLUSTER_NAME}-md-0
       clusterName: ${CLUSTER_NAME}
       infrastructureRef:

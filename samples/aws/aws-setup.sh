@@ -56,4 +56,4 @@ echo "Waiting on Cluster $CLUSTER_NAME to be provisioned, then applying elb heal
 until kubectl get awsclusters/$CLUSTER_NAME --output=jsonpath='{.status.ready}' | grep "true"; do : ; done
 aws elb configure-health-check --load-balancer-name $CLUSTER_NAME-apiserver --health-check Target=TCP:6443,Interval=30,UnhealthyThreshold=2,HealthyThreshold=2,Timeout=3 > /dev/null
 echo ""
-echo "Once the cluster is up run clusterctl get kubeconfig $CLUSTER_NAME > k3s.yaml or kubectl scale kthreescontrolplane $CLUSTER_NAME-control-plane --replicas 3 for HA"
+echo "Once the cluster is up run clusterctl get kubeconfig $CLUSTER_NAME > k3s.yaml or kubectl scale ck8scontrolplane $CLUSTER_NAME-control-plane --replicas 3 for HA"

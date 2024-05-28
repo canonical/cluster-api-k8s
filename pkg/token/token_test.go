@@ -47,7 +47,7 @@ func TestLookup(t *testing.T) {
 
 func TestReconcile(t *testing.T) {
 	// Create a Pod as the controllingOwner. By using a Pod, we avoid having to deal with schemes.
-	// This could just as easily be a KThreesControlPlane or any other object
+	// This could just as easily be a CK8sControlPlane or any other object
 	controllingOwner := &corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "controlling-owner",

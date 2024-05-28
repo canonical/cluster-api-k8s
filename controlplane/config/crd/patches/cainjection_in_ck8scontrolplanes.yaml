@@ -4,4 +4,4 @@ kind: CustomResourceDefinition
 metadata:
   annotations:
     cert-manager.io/inject-ca-from: $(CERTIFICATE_NAMESPACE)/$(CERTIFICATE_NAME)
-  name: kthreescontrolplanes.controlplane.cluster.x-k8s.io
+  name: ck8scontrolplanes.controlplane.cluster.x-k8s.io

@@ -39,10 +39,10 @@ import (
 	k3s "github.com/canonical/cluster-api-k8s/pkg/k3s"
 )
 
-// reconcileUnhealthyMachines tries to remediate KThreesControlPlane unhealthy machines
+// reconcileUnhealthyMachines tries to remediate CK8sControlPlane unhealthy machines
 // based on the process described in https://github.com/kubernetes-sigs/cluster-api/blob/main/docs/proposals/20191017-kubeadm-based-control-plane.md#remediation-using-delete-and-recreate
 // taken from the kubeadm codebase and adapted for the k3s provider.
-func (r *KThreesControlPlaneReconciler) reconcileUnhealthyMachines(ctx context.Context, controlPlane *k3s.ControlPlane) (ret ctrl.Result, retErr error) { //nolint:gocyclo
+func (r *CK8sControlPlaneReconciler) reconcileUnhealthyMachines(ctx context.Context, controlPlane *k3s.ControlPlane) (ret ctrl.Result, retErr error) { //nolint:gocyclo
 	log := ctrl.LoggerFrom(ctx)
 	reconciliationTime := time.Now().UTC()
 
@@ -260,7 +260,7 @@ func getMachineToBeRemediated(unhealthyMachines collections.Machines) *clusterv1
 // - KCP already reached the maximum number of retries for a machine.
 // NOTE: Counting the number of retries is required In order to prevent infinite remediation e.g. in case the
 // first Control Plane machine is failing due to quota issue.
-func (r *KThreesControlPlaneReconciler) checkRetryLimits(log logr.Logger, machineToBeRemediated *clusterv1.Machine, controlPlane *k3s.ControlPlane, reconciliationTime time.Time) (*RemediationData, bool, error) {
+func (r *CK8sControlPlaneReconciler) checkRetryLimits(log logr.Logger, machineToBeRemediated *clusterv1.Machine, controlPlane *k3s.ControlPlane, reconciliationTime time.Time) (*RemediationData, bool, error) {
 	// Get last remediation info from the machine.
 	var lastRemediationData *RemediationData
 	if value, ok := machineToBeRemediated.Annotations[controlplanev1.RemediationForAnnotation]; ok {
@@ -369,7 +369,7 @@ func max(x, y time.Duration) time.Duration {
 // as well as reconcileControlPlaneConditions before this.
 //
 // adapted from kubeadm controller and makes the assumption that the set of controplane nodes equals the set of etcd nodes.
-func (r *KThreesControlPlaneReconciler) canSafelyRemoveEtcdMember(ctx context.Context, controlPlane *k3s.ControlPlane, machineToBeRemediated *clusterv1.Machine) (bool, error) {
+func (r *CK8sControlPlaneReconciler) canSafelyRemoveEtcdMember(ctx context.Context, controlPlane *k3s.ControlPlane, machineToBeRemediated *clusterv1.Machine) (bool, error) {
 	log := ctrl.LoggerFrom(ctx)
 
 	workloadCluster, err := r.managementCluster.GetWorkloadCluster(ctx, util.ObjectKey(controlPlane.Cluster))

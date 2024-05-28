@@ -18,19 +18,19 @@ package v1beta2
 
 import clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
 
-// Conditions and condition Reasons for the KThreesControlPlane object.
+// Conditions and condition Reasons for the CK8sControlPlane object.
 
 const (
-	// MachinesReady reports an aggregate of current status of the machines controlled by the KThreesControlPlane.
+	// MachinesReady reports an aggregate of current status of the machines controlled by the CK8sControlPlane.
 	MachinesReadyCondition clusterv1.ConditionType = "MachinesReady"
 )
 
 const (
 	// CertificatesAvailableCondition documents that cluster certificates were generated as part of the
-	// processing of a KThreesControlPlane object.
+	// processing of a CK8sControlPlane object.
 	CertificatesAvailableCondition clusterv1.ConditionType = "CertificatesAvailable"
 
-	// CertificatesGenerationFailedReason (Severity=Warning) documents a KThreesControlPlane controller detecting
+	// CertificatesGenerationFailedReason (Severity=Warning) documents a CK8sControlPlane controller detecting
 	// an error while generating certificates; those kind of errors are usually temporary and the controller
 	// automatically recover from them.
 	CertificatesGenerationFailedReason = "CertificatesGenerationFailed"
@@ -41,29 +41,29 @@ const (
 	// and so the control plane is available and an API server instance is ready for processing requests.
 	AvailableCondition clusterv1.ConditionType = "Available"
 
-	// WaitingForKthreesServerReason (Severity=Info) documents a KThreesControlPlane object waiting for the first
+	// WaitingForCK8sServerReason (Severity=Info) documents a CK8sControlPlane object waiting for the first
 	// control plane instance to complete the k3s server operation.
-	WaitingForKthreesServerReason = "WaitingForKthreesServer"
+	WaitingForCK8sServerReason = "WaitingForCK8sServer"
 )
 
 const (
-	// MachinesSpecUpToDateCondition documents that the spec of the machines controlled by the KThreesControlPlane
-	// is up to date. Whe this condition is false, the KThreesControlPlane is executing a rolling upgrade.
+	// MachinesSpecUpToDateCondition documents that the spec of the machines controlled by the CK8sControlPlane
+	// is up to date. Whe this condition is false, the CK8sControlPlane is executing a rolling upgrade.
 	MachinesSpecUpToDateCondition clusterv1.ConditionType = "MachinesSpecUpToDate"
 
-	// RollingUpdateInProgressReason (Severity=Warning) documents a KThreesControlPlane object executing a
+	// RollingUpdateInProgressReason (Severity=Warning) documents a CK8sControlPlane object executing a
 	// rolling upgrade for aligning the machines spec to the desired state.
 	RollingUpdateInProgressReason = "RollingUpdateInProgress"
 )
 
 const (
-	// ResizedCondition documents a KThreesControlPlane that is resizing the set of controlled machines.
+	// ResizedCondition documents a CK8sControlPlane that is resizing the set of controlled machines.
 	ResizedCondition clusterv1.ConditionType = "Resized"
 
-	// ScalingUpReason (Severity=Info) documents a KThreesControlPlane that is increasing the number of replicas.
+	// ScalingUpReason (Severity=Info) documents a CK8sControlPlane that is increasing the number of replicas.
 	ScalingUpReason = "ScalingUp"
 
-	// ScalingDownReason (Severity=Info) documents a KThreesControlPlane that is decreasing the number of replicas.
+	// ScalingDownReason (Severity=Info) documents a CK8sControlPlane that is decreasing the number of replicas.
 	ScalingDownReason = "ScalingDown"
 )
 

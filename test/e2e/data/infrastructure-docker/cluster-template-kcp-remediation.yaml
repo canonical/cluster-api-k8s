@@ -1,5 +1,5 @@
 apiVersion: cluster.x-k8s.io/v1beta1
-kind: Cluster 
+kind: Cluster
 metadata:
   name: ${CLUSTER_NAME}
   namespace: ${NAMESPACE}
@@ -14,7 +14,7 @@ spec:
     serviceDomain: cluster.local
   controlPlaneRef:
     apiVersion: controlplane.cluster.x-k8s.io/v1beta1
-    kind: KThreesControlPlane
+    kind: CK8sControlPlane
     name: ${CLUSTER_NAME}-control-plane
   infrastructureRef:
     apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
@@ -28,7 +28,7 @@ metadata:
 spec: {}
 ---
 apiVersion: controlplane.cluster.x-k8s.io/v1beta1
-kind: KThreesControlPlane
+kind: CK8sControlPlane
 metadata:
   name: ${CLUSTER_NAME}-control-plane
   namespace: ${NAMESPACE}
@@ -39,28 +39,28 @@ spec:
     name: ${CLUSTER_NAME}-control-plane
   replicas: ${CONTROL_PLANE_MACHINE_COUNT}
   version: ${KUBERNETES_VERSION}
-  kthreesConfigSpec:
+  spec:
     files:
     - path: /wait-signal.sh
       content: |
         #!/bin/bash
-  
+
         set -o errexit
         set -o pipefail
-        
+
         echo "Waiting for signal..."
-        
+
         TOKEN=$1
         SERVER=$2
         NAMESPACE=$3
-        
+
         while true;
         do
           sleep 1s
-  
+
           signal=$(curl -k -s --header "Authorization: Bearer $TOKEN" $SERVER/api/v1/namespaces/$NAMESPACE/configmaps/mhc-test | jq -r .data.signal?)
           echo "signal $signal"
-  
+
           if [ "$signal" == "pass" ]; then
              curl -k -s --header "Authorization: Bearer $TOKEN" -XPATCH -H "Content-Type: application/strategic-merge-patch+json" --data '{"data": {"signal": "ack-pass"}}' $SERVER/api/v1/namespaces/$NAMESPACE/configmaps/mhc-test
              exit 0
@@ -112,7 +112,7 @@ spec:
       bootstrap:
         configRef:
           apiVersion: bootstrap.cluster.x-k8s.io/v1beta1
-          kind: KThreesConfigTemplate
+          kind: CK8sConfigTemplate
           name: ${CLUSTER_NAME}-md-0
       infrastructureRef:
         apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
@@ -130,7 +130,7 @@ spec:
       customImage: kindest/node:${KIND_IMAGE_VERSION}
 ---
 apiVersion: bootstrap.cluster.x-k8s.io/v1beta1
-kind: KThreesConfigTemplate
+kind: CK8sConfigTemplate
 metadata:
   name: ${CLUSTER_NAME}-md-0
   namespace: ${NAMESPACE}

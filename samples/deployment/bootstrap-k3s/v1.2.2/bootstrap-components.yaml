@@ -13,20 +13,20 @@ metadata:
   creationTimestamp: null
   labels:
     cluster.x-k8s.io/v1beta1: v1beta1
-  name: kthreesconfigs.bootstrap.cluster.x-k8s.io
+  name: ck8sconfigs.bootstrap.cluster.x-k8s.io
 spec:
   group: bootstrap.cluster.x-k8s.io
   names:
-    kind: KThreesConfig
-    listKind: KThreesConfigList
-    plural: kthreesconfigs
-    singular: kthreesconfig
+    kind: CK8sConfig
+    listKind: CK8sConfigList
+    plural: ck8sconfigs
+    singular: ck8sconfig
   scope: Namespaced
   versions:
   - name: v1beta1
     schema:
       openAPIV3Schema:
-        description: KThreesConfig is the Schema for the kthreesconfigs API
+        description: CK8sConfig is the Schema for the ck8sconfigs API
         properties:
           apiVersion:
             description: 'APIVersion defines the versioned schema of this representation
@@ -41,7 +41,7 @@ spec:
           metadata:
             type: object
           spec:
-            description: KThreesConfigSpec defines the desired state of KThreesConfig
+            description: CK8sConfigSpec defines the desired state of CK8sConfig
             properties:
               agentConfig:
                 description: AgentConfig specifies configuration for the agent nodes
@@ -99,7 +99,7 @@ spec:
                                 for this value.
                               type: string
                             name:
-                              description: Name of the secret in the KThreesBootstrapConfig's
+                              description: Name of the secret in the CK8sBootstrapConfig's
                                 namespace to use.
                               type: string
                           required:
@@ -206,13 +206,13 @@ spec:
                 type: string
             type: object
           status:
-            description: KThreesConfigStatus defines the observed state of KThreesConfig
+            description: CK8sConfigStatus defines the observed state of CK8sConfig
             properties:
               bootstrapData:
                 format: byte
                 type: string
               conditions:
-                description: Conditions defines current service state of the KThreesConfig.
+                description: Conditions defines current service state of the CK8sConfig.
                 items:
                   description: Condition defines an observation of a Cluster API resource
                     operational state.
@@ -296,20 +296,20 @@ metadata:
   creationTimestamp: null
   labels:
     cluster.x-k8s.io/v1beta1: v1beta1
-  name: kthreesconfigtemplates.bootstrap.cluster.x-k8s.io
+  name: ck8sconfigtemplates.bootstrap.cluster.x-k8s.io
 spec:
   group: bootstrap.cluster.x-k8s.io
   names:
-    kind: KThreesConfigTemplate
-    listKind: KThreesConfigTemplateList
-    plural: kthreesconfigtemplates
-    singular: kthreesconfigtemplate
+    kind: CK8sConfigTemplate
+    listKind: CK8sConfigTemplateList
+    plural: ck8sconfigtemplates
+    singular: ck8sconfigtemplate
   scope: Namespaced
   versions:
   - name: v1beta1
     schema:
       openAPIV3Schema:
-        description: KThreesConfigTemplate is the Schema for the kthreesconfigtemplates
+        description: CK8sConfigTemplate is the Schema for the ck8sconfigtemplates
           API
         properties:
           apiVersion:
@@ -325,13 +325,13 @@ spec:
           metadata:
             type: object
           spec:
-            description: KThreesConfigTemplateSpec defines the desired state of KThreesConfigTemplate
+            description: CK8sConfigTemplateSpec defines the desired state of CK8sConfigTemplate
             properties:
               template:
-                description: KThreesConfigTemplateResource defines the Template structure
+                description: CK8sConfigTemplateResource defines the Template structure
                 properties:
                   spec:
-                    description: KThreesConfigSpec defines the desired state of KThreesConfig
+                    description: CK8sConfigSpec defines the desired state of CK8sConfig
                     properties:
                       agentConfig:
                         description: AgentConfig specifies configuration for the agent
@@ -392,7 +392,7 @@ spec:
                                         data map for this value.
                                       type: string
                                     name:
-                                      description: Name of the secret in the KThreesBootstrapConfig's
+                                      description: Name of the secret in the CK8sBootstrapConfig's
                                         namespace to use.
                                       type: string
                                   required:
@@ -585,7 +585,7 @@ rules:
 - apiGroups:
   - bootstrap.cluster.x-k8s.io
   resources:
-  - kthreesconfigs
+  - ck8sconfigs
   verbs:
   - create
   - delete
@@ -597,7 +597,7 @@ rules:
 - apiGroups:
   - bootstrap.cluster.x-k8s.io
   resources:
-  - kthreesconfigs/status
+  - ck8sconfigs/status
   verbs:
   - create
   - delete

@@ -43,8 +43,8 @@ import (
 
 // NOTE: the code in this file is largely copied from the cluster-api test framework.
 // For many functions in the original framework, they assume the underlying
-// controlplane is a KubeadmControlPlane, which does not fit KThreesControlPlane.
-// Therefore, we need to copy the functions and modify them to fit KThreesControlPlane.
+// controlplane is a KubeadmControlPlane, which does not fit CK8sControlPlane.
+// Therefore, we need to copy the functions and modify them to fit CK8sControlPlane.
 // Source: sigs.k8s.io/cluster-api/test/framework/*
 
 const (
@@ -80,7 +80,7 @@ type ControlPlaneWaiters struct {
 type ApplyClusterTemplateAndWaitResult struct {
 	ClusterClass       *clusterv1.ClusterClass
 	Cluster            *clusterv1.Cluster
-	ControlPlane       *controlplanev1.KThreesControlPlane
+	ControlPlane       *controlplanev1.CK8sControlPlane
 	MachineDeployments []*clusterv1.MachineDeployment
 	MachinePools       []*expv1.MachinePool
 }
@@ -117,7 +117,7 @@ func (r *ApplyClusterTemplateAndWaitResult) ExpectedTotalNodes() int32 {
 }
 
 // ApplyClusterTemplateAndWait gets a cluster template using clusterctl, and waits for the cluster to be ready.
-// Important! this method assumes the cluster uses a KThreesControlPlane and MachineDeployments.
+// Important! this method assumes the cluster uses a CK8sControlPlane and MachineDeployments.
 func ApplyClusterTemplateAndWait(ctx context.Context, input ApplyClusterTemplateAndWaitInput, result *ApplyClusterTemplateAndWaitResult) {
 	Expect(ctx).NotTo(BeNil(), "ctx is required for ApplyClusterTemplateAndWait")
 	Expect(input.ClusterProxy).ToNot(BeNil(), "Invalid argument. input.ClusterProxy can't be nil when calling ApplyClusterTemplateAndWait")
@@ -197,7 +197,7 @@ type ApplyCustomClusterTemplateAndWaitInput struct {
 type ApplyCustomClusterTemplateAndWaitResult struct {
 	ClusterClass       *clusterv1.ClusterClass
 	Cluster            *clusterv1.Cluster
-	ControlPlane       *controlplanev1.KThreesControlPlane
+	ControlPlane       *controlplanev1.CK8sControlPlane
 	MachineDeployments []*clusterv1.MachineDeployment
 	MachinePools       []*expv1.MachinePool
 }
@@ -285,7 +285,7 @@ func ApplyCustomClusterTemplateAndWait(ctx context.Context, input ApplyCustomClu
 }
 
 // setDefaults sets the default values for ApplyCustomClusterTemplateAndWaitInput if not set.
-// Currently, we set the default ControlPlaneWaiters here, which are implemented for KThreesControlPlane.
+// Currently, we set the default ControlPlaneWaiters here, which are implemented for CK8sControlPlane.
 func setDefaults(input *ApplyCustomClusterTemplateAndWaitInput) {
 	if input.WaitForControlPlaneInitialized == nil {
 		input.WaitForControlPlaneInitialized = func(ctx context.Context, input ApplyCustomClusterTemplateAndWaitInput, result *ApplyCustomClusterTemplateAndWaitResult) {
@@ -307,37 +307,37 @@ func setDefaults(input *ApplyCustomClusterTemplateAndWaitInput) {
 	}
 }
 
-// GetKThreesControlPlaneByClusterInput is the input for GetKThreesControlPlaneByCluster.
-type GetKThreesControlPlaneByClusterInput struct {
+// GetCK8sControlPlaneByClusterInput is the input for GetCK8sControlPlaneByCluster.
+type GetCK8sControlPlaneByClusterInput struct {
 	Lister      framework.Lister
 	ClusterName string
 	Namespace   string
 }
 
-// GetKThreesControlPlaneByCluster returns the KThreesControlPlane objects for a cluster.
+// GetCK8sControlPlaneByCluster returns the CK8sControlPlane objects for a cluster.
 // Important! this method relies on labels that are created by the CAPI controllers during the first reconciliation, so
 // it is necessary to ensure this is already happened before calling it.
-func GetKThreesControlPlaneByCluster(ctx context.Context, input GetKThreesControlPlaneByClusterInput) *controlplanev1.KThreesControlPlane {
-	controlPlaneList := &controlplanev1.KThreesControlPlaneList{}
+func GetCK8sControlPlaneByCluster(ctx context.Context, input GetCK8sControlPlaneByClusterInput) *controlplanev1.CK8sControlPlane {
+	controlPlaneList := &controlplanev1.CK8sControlPlaneList{}
 	Eventually(func() error {
 		return input.Lister.List(ctx, controlPlaneList, byClusterOptions(input.ClusterName, input.Namespace)...)
-	}, retryableOperationTimeout, retryableOperationInterval).Should(Succeed(), "Failed to list KThreesControlPlane object for Cluster %s", klog.KRef(input.Namespace, input.ClusterName))
-	Expect(len(controlPlaneList.Items)).ToNot(BeNumerically(">", 1), "Cluster %s should not have more than 1 KThreesControlPlane object", klog.KRef(input.Namespace, input.ClusterName))
+	}, retryableOperationTimeout, retryableOperationInterval).Should(Succeed(), "Failed to list CK8sControlPlane object for Cluster %s", klog.KRef(input.Namespace, input.ClusterName))
+	Expect(len(controlPlaneList.Items)).ToNot(BeNumerically(">", 1), "Cluster %s should not have more than 1 CK8sControlPlane object", klog.KRef(input.Namespace, input.ClusterName))
 	if len(controlPlaneList.Items) == 1 {
 		return &controlPlaneList.Items[0]
 	}
 	return nil
 }
 
-// WaitForKThreesControlPlaneMachinesToExistInput is the input for WaitForKThreesControlPlaneMachinesToExist.
-type WaitForKThreesControlPlaneMachinesToExistInput struct {
+// WaitForCK8sControlPlaneMachinesToExistInput is the input for WaitForCK8sControlPlaneMachinesToExist.
+type WaitForCK8sControlPlaneMachinesToExistInput struct {
 	Lister       framework.Lister
 	Cluster      *clusterv1.Cluster
-	ControlPlane *controlplanev1.KThreesControlPlane
+	ControlPlane *controlplanev1.CK8sControlPlane
 }
 
-// WaitForKThreesControlPlaneMachinesToExist will wait until all control plane machines have node refs.
-func WaitForKThreesControlPlaneMachinesToExist(ctx context.Context, input WaitForKThreesControlPlaneMachinesToExistInput, intervals ...interface{}) {
+// WaitForCK8sControlPlaneMachinesToExist will wait until all control plane machines have node refs.
+func WaitForCK8sControlPlaneMachinesToExist(ctx context.Context, input WaitForCK8sControlPlaneMachinesToExistInput, intervals ...interface{}) {
 	By("Waiting for all control plane nodes to exist")
 	inClustersNamespaceListOption := client.InNamespace(input.Cluster.Namespace)
 	// ControlPlane labels
@@ -362,18 +362,18 @@ func WaitForKThreesControlPlaneMachinesToExist(ctx context.Context, input WaitFo
 	}, intervals...).Should(Equal(int(*input.ControlPlane.Spec.Replicas)), "Timed out waiting for %d control plane machines to exist", int(*input.ControlPlane.Spec.Replicas))
 }
 
-// WaitForOneKThreesControlPlaneMachineToExistInput is the input for WaitForKThreesControlPlaneMachinesToExist.
-type WaitForOneKThreesControlPlaneMachineToExistInput struct {
+// WaitForOneCK8sControlPlaneMachineToExistInput is the input for WaitForCK8sControlPlaneMachinesToExist.
+type WaitForOneCK8sControlPlaneMachineToExistInput struct {
 	Lister       framework.Lister
 	Cluster      *clusterv1.Cluster
-	ControlPlane *controlplanev1.KThreesControlPlane
+	ControlPlane *controlplanev1.CK8sControlPlane
 }
 
-// WaitForOneKThreesControlPlaneMachineToExist will wait until all control plane machines have node refs.
-func WaitForOneKThreesControlPlaneMachineToExist(ctx context.Context, input WaitForOneKThreesControlPlaneMachineToExistInput, intervals ...interface{}) {
-	Expect(ctx).NotTo(BeNil(), "ctx is required for WaitForOneKThreesControlPlaneMachineToExist")
-	Expect(input.Lister).ToNot(BeNil(), "Invalid argument. input.Getter can't be nil when calling WaitForOneKThreesControlPlaneMachineToExist")
-	Expect(input.ControlPlane).ToNot(BeNil(), "Invalid argument. input.ControlPlane can't be nil when calling WaitForOneKThreesControlPlaneMachineToExist")
+// WaitForOneCK8sControlPlaneMachineToExist will wait until all control plane machines have node refs.
+func WaitForOneCK8sControlPlaneMachineToExist(ctx context.Context, input WaitForOneCK8sControlPlaneMachineToExistInput, intervals ...interface{}) {
+	Expect(ctx).NotTo(BeNil(), "ctx is required for WaitForOneCK8sControlPlaneMachineToExist")
+	Expect(input.Lister).ToNot(BeNil(), "Invalid argument. input.Getter can't be nil when calling WaitForOneCK8sControlPlaneMachineToExist")
+	Expect(input.ControlPlane).ToNot(BeNil(), "Invalid argument. input.ControlPlane can't be nil when calling WaitForOneCK8sControlPlaneMachineToExist")
 
 	By("Waiting for one control plane node to exist")
 	inClustersNamespaceListOption := client.InNamespace(input.Cluster.Namespace)
@@ -402,13 +402,13 @@ func WaitForOneKThreesControlPlaneMachineToExist(ctx context.Context, input Wait
 // WaitForControlPlaneToBeReadyInput is the input for WaitForControlPlaneToBeReady.
 type WaitForControlPlaneToBeReadyInput struct {
 	Getter       framework.Getter
-	ControlPlane *controlplanev1.KThreesControlPlane
+	ControlPlane *controlplanev1.CK8sControlPlane
 }
 
 // WaitForControlPlaneToBeReady will wait for a control plane to be ready.
 func WaitForControlPlaneToBeReady(ctx context.Context, input WaitForControlPlaneToBeReadyInput, intervals ...interface{}) {
 	By("Waiting for the control plane to be ready")
-	controlplane := &controlplanev1.KThreesControlPlane{}
+	controlplane := &controlplanev1.CK8sControlPlane{}
 	Eventually(func() (bool, error) {
 		key := client.ObjectKey{
 			Namespace: input.ControlPlane.GetNamespace(),
@@ -488,15 +488,15 @@ type DiscoveryAndWaitForK3SControlPlaneInitializedInput struct {
 	Cluster *clusterv1.Cluster
 }
 
-// DiscoveryAndWaitForK3SControlPlaneInitialized discovers the KThreesControlPlane object attached to a cluster and waits for it to be initialized.
-func DiscoveryAndWaitForK3SControlPlaneInitialized(ctx context.Context, input DiscoveryAndWaitForK3SControlPlaneInitializedInput, intervals ...interface{}) *controlplanev1.KThreesControlPlane {
+// DiscoveryAndWaitForK3SControlPlaneInitialized discovers the CK8sControlPlane object attached to a cluster and waits for it to be initialized.
+func DiscoveryAndWaitForK3SControlPlaneInitialized(ctx context.Context, input DiscoveryAndWaitForK3SControlPlaneInitializedInput, intervals ...interface{}) *controlplanev1.CK8sControlPlane {
 	Expect(ctx).NotTo(BeNil(), "ctx is required for DiscoveryAndWaitForControlPlaneInitialized")
 	Expect(input.Lister).ToNot(BeNil(), "Invalid argument. input.Lister can't be nil when calling DiscoveryAndWaitForControlPlaneInitialized")
 	Expect(input.Cluster).ToNot(BeNil(), "Invalid argument. input.Cluster can't be nil when calling DiscoveryAndWaitForControlPlaneInitialized")
 
-	var controlPlane *controlplanev1.KThreesControlPlane
+	var controlPlane *controlplanev1.CK8sControlPlane
 	Eventually(func(g Gomega) {
-		controlPlane = GetKThreesControlPlaneByCluster(ctx, GetKThreesControlPlaneByClusterInput{
+		controlPlane = GetCK8sControlPlaneByCluster(ctx, GetCK8sControlPlaneByClusterInput{
 			Lister:      input.Lister,
 			ClusterName: input.Cluster.Name,
 			Namespace:   input.Cluster.Namespace,
@@ -505,7 +505,7 @@ func DiscoveryAndWaitForK3SControlPlaneInitialized(ctx context.Context, input Di
 	}, "10s", "1s").Should(Succeed(), "Couldn't get the control plane for the cluster %s", klog.KObj(input.Cluster))
 
 	Byf("Waiting for the first control plane machine managed by %s to be provisioned", klog.KObj(controlPlane))
-	WaitForOneKThreesControlPlaneMachineToExist(ctx, WaitForOneKThreesControlPlaneMachineToExistInput{
+	WaitForOneCK8sControlPlaneMachineToExist(ctx, WaitForOneCK8sControlPlaneMachineToExistInput{
 		Lister:       input.Lister,
 		Cluster:      input.Cluster,
 		ControlPlane: controlPlane,
@@ -518,7 +518,7 @@ func DiscoveryAndWaitForK3SControlPlaneInitialized(ctx context.Context, input Di
 type WaitForControlPlaneAndMachinesReadyInput struct {
 	GetLister    framework.GetLister
 	Cluster      *clusterv1.Cluster
-	ControlPlane *controlplanev1.KThreesControlPlane
+	ControlPlane *controlplanev1.CK8sControlPlane
 }
 
 // WaitForControlPlaneAndMachinesReady waits for a KThreeControlPlane object to be ready (all the machine provisioned and one node ready).
@@ -530,7 +530,7 @@ func WaitForControlPlaneAndMachinesReady(ctx context.Context, input WaitForContr
 
 	if input.ControlPlane.Spec.Replicas != nil && int(*input.ControlPlane.Spec.Replicas) > 1 {
 		Byf("Waiting for the remaining control plane machines managed by %s to be provisioned", klog.KObj(input.ControlPlane))
-		WaitForKThreesControlPlaneMachinesToExist(ctx, WaitForKThreesControlPlaneMachinesToExistInput{
+		WaitForCK8sControlPlaneMachinesToExist(ctx, WaitForCK8sControlPlaneMachinesToExistInput{
 			Lister:       input.GetLister,
 			Cluster:      input.Cluster,
 			ControlPlane: input.ControlPlane,
@@ -554,7 +554,7 @@ func WaitForControlPlaneAndMachinesReady(ctx context.Context, input WaitForContr
 type UpgradeControlPlaneAndWaitForUpgradeInput struct {
 	ClusterProxy                framework.ClusterProxy
 	Cluster                     *clusterv1.Cluster
-	ControlPlane                *controlplanev1.KThreesControlPlane
+	ControlPlane                *controlplanev1.CK8sControlPlane
 	KubernetesUpgradeVersion    string
 	WaitForMachinesToBeUpgraded []interface{}
 }

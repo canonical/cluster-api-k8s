@@ -39,7 +39,7 @@ type K3sAgentConfig struct {
 	NodeName        string   `json:"node-name,omitempty"`
 }
 
-func GenerateInitControlPlaneConfig(controlPlaneEndpoint string, token string, serverConfig bootstrapv1.KThreesServerConfig, agentConfig bootstrapv1.KThreesAgentConfig) K3sServerConfig {
+func GenerateInitControlPlaneConfig(controlPlaneEndpoint string, token string, serverConfig bootstrapv1.CK8sServerConfig, agentConfig bootstrapv1.CK8sAgentConfig) K3sServerConfig {
 	kubeletExtraArgs := getKubeletExtraArgs(serverConfig)
 	k3sServerConfig := K3sServerConfig{
 		DisableCloudController:    serverConfig.DisableCloudController,
@@ -72,7 +72,7 @@ func GenerateInitControlPlaneConfig(controlPlaneEndpoint string, token string, s
 	return k3sServerConfig
 }
 
-func GenerateJoinControlPlaneConfig(serverURL string, token string, controlplaneendpoint string, serverConfig bootstrapv1.KThreesServerConfig, agentConfig bootstrapv1.KThreesAgentConfig) K3sServerConfig {
+func GenerateJoinControlPlaneConfig(serverURL string, token string, controlplaneendpoint string, serverConfig bootstrapv1.CK8sServerConfig, agentConfig bootstrapv1.CK8sAgentConfig) K3sServerConfig {
 	kubeletExtraArgs := getKubeletExtraArgs(serverConfig)
 	k3sServerConfig := K3sServerConfig{
 		DisableCloudController:    serverConfig.DisableCloudController,
@@ -105,7 +105,7 @@ func GenerateJoinControlPlaneConfig(serverURL string, token string, controlplane
 	return k3sServerConfig
 }
 
-func GenerateWorkerConfig(serverURL string, token string, serverConfig bootstrapv1.KThreesServerConfig, agentConfig bootstrapv1.KThreesAgentConfig) K3sAgentConfig {
+func GenerateWorkerConfig(serverURL string, token string, serverConfig bootstrapv1.CK8sServerConfig, agentConfig bootstrapv1.CK8sAgentConfig) K3sAgentConfig {
 	kubeletExtraArgs := getKubeletExtraArgs(serverConfig)
 	return K3sAgentConfig{
 		Server:          serverURL,
@@ -156,7 +156,7 @@ func getTLSCipherSuiteArg() string {
 	return fmt.Sprintf("tls-cipher-suites=%s", ciphersList)
 }
 
-func getKubeletExtraArgs(serverConfig bootstrapv1.KThreesServerConfig) []string {
+func getKubeletExtraArgs(serverConfig bootstrapv1.CK8sServerConfig) []string {
 	kubeletExtraArgs := []string{}
 	if len(serverConfig.CloudProviderName) > 0 {
 		cloudProviderArg := fmt.Sprintf("cloud-provider=%s", serverConfig.CloudProviderName)

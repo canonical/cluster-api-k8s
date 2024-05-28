@@ -1,7 +1,7 @@
 apiVersion: bootstrap.cluster.x-k8s.io/v1beta1
-kind: KThreesConfig
+kind: CK8sConfig
 metadata:
-  name: kthreesconfig-sample
+  name: ck8sconfig-sample
 spec:
   # Add fields here
   foo: bar

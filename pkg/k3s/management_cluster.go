@@ -71,14 +71,14 @@ func (m *Management) GetMachinesForCluster(ctx context.Context, cluster client.O
 }
 
 const (
-	// KThreesControlPlaneControllerName defines the controller used when creating clients.
-	KThreesControlPlaneControllerName = "kthrees-controlplane-controller"
+	// CK8sControlPlaneControllerName defines the controller used when creating clients.
+	CK8sControlPlaneControllerName = "ck8s-controlplane-controller"
 )
 
 // GetWorkloadCluster builds a cluster object.
 // The cluster comes with an etcd client generator to connect to any etcd pod living on a managed machine.
 func (m *Management) GetWorkloadCluster(ctx context.Context, clusterKey client.ObjectKey) (*Workload, error) {
-	restConfig, err := remote.RESTConfig(ctx, KThreesControlPlaneControllerName, m.Client, clusterKey)
+	restConfig, err := remote.RESTConfig(ctx, CK8sControlPlaneControllerName, m.Client, clusterKey)
 	if err != nil {
 		return nil, err
 	}

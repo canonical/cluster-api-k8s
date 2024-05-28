@@ -11,10 +11,10 @@ webhooks:
     service:
       name: webhook-service
       namespace: system
-      path: /mutate-bootstrap-cluster-x-k8s-io-v1beta2-kthreesconfig
+      path: /mutate-bootstrap-cluster-x-k8s-io-v1beta2-ck8sconfig
   failurePolicy: Fail
   matchPolicy: Equivalent
-  name: default.kthreesconfig.bootstrap.cluster.x-k8s.io
+  name: default.ck8sconfig.bootstrap.cluster.x-k8s.io
   rules:
   - apiGroups:
     - bootstrap.cluster.x-k8s.io
@@ -24,7 +24,7 @@ webhooks:
     - CREATE
     - UPDATE
     resources:
-    - kthreesconfigs
+    - ck8sconfigs
   sideEffects: None
 - admissionReviewVersions:
   - v1
@@ -33,10 +33,10 @@ webhooks:
     service:
       name: webhook-service
       namespace: system
-      path: /mutate-bootstrap-cluster-x-k8s-io-v1beta2-kthreesconfigtemplate
+      path: /mutate-bootstrap-cluster-x-k8s-io-v1beta2-ck8sconfigtemplate
   failurePolicy: Fail
   matchPolicy: Equivalent
-  name: default.kthreesconfigtemplate.bootstrap.cluster.x-k8s.io
+  name: default.ck8sconfigtemplate.bootstrap.cluster.x-k8s.io
   rules:
   - apiGroups:
     - bootstrap.cluster.x-k8s.io
@@ -46,7 +46,7 @@ webhooks:
     - CREATE
     - UPDATE
     resources:
-    - kthreesconfigtemplates
+    - ck8sconfigtemplates
   sideEffects: None
 ---
 apiVersion: admissionregistration.k8s.io/v1
@@ -61,10 +61,10 @@ webhooks:
     service:
       name: webhook-service
       namespace: system
-      path: /validate-bootstrap-cluster-x-k8s-io-v1beta2-kthreesconfig
+      path: /validate-bootstrap-cluster-x-k8s-io-v1beta2-ck8sconfig
   failurePolicy: Fail
   matchPolicy: Equivalent
-  name: validation.kthreesconfig.bootstrap.cluster.x-k8s.io
+  name: validation.ck8sconfig.bootstrap.cluster.x-k8s.io
   rules:
   - apiGroups:
     - bootstrap.cluster.x-k8s.io
@@ -74,7 +74,7 @@ webhooks:
     - CREATE
     - UPDATE
     resources:
-    - kthreesconfigs
+    - ck8sconfigs
   sideEffects: None
 - admissionReviewVersions:
   - v1
@@ -83,10 +83,10 @@ webhooks:
     service:
       name: webhook-service
       namespace: system
-      path: /validate-bootstrap-cluster-x-k8s-io-v1beta2-kthreesconfigtemplate
+      path: /validate-bootstrap-cluster-x-k8s-io-v1beta2-ck8sconfigtemplate
   failurePolicy: Fail
   matchPolicy: Equivalent
-  name: validation.kthreesconfigtemplate.bootstrap.cluster.x-k8s.io
+  name: validation.ck8sconfigtemplate.bootstrap.cluster.x-k8s.io
   rules:
   - apiGroups:
     - bootstrap.cluster.x-k8s.io
@@ -96,5 +96,5 @@ webhooks:
     - CREATE
     - UPDATE
     resources:
-    - kthreesconfigtemplates
+    - ck8sconfigtemplates
   sideEffects: None

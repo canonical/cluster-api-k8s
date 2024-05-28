@@ -41,4 +41,4 @@ kubectl wait --for=condition=Available --timeout=5m -n capi-k3s-bootstrap-system
 
 clusterctl generate cluster ${CLUSTER_NAME} -f k3s | kubectl apply -f -
 
-echo "Once the cluster is up run clusterctl get kubeconfig $CLUSTER_NAME > k3s.yaml or kubectl scale kthreescontrolplane $CLUSTER_NAME-control-plane --replicas 3 for HA"
+echo "Once the cluster is up run clusterctl get kubeconfig $CLUSTER_NAME > k3s.yaml or kubectl scale ck8scontrolplane $CLUSTER_NAME-control-plane --replicas 3 for HA"

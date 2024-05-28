@@ -2,15 +2,9 @@ domain: cluster.x-k8s.io
 repo: github.com/canonical/cluster-api-k8s/bootstrap
 resources:
 - group: bootstrap
-  kind: KThreesConfig
-  version: v1beta1
-- group: bootstrap
-  kind: KThreesConfig
+  kind: CK8sConfig
   version: v1beta2
 - group: bootstrap
-  kind: KThreesConfigTemplate
-  version: v1beta1
-- group: bootstrap
-  kind: KThreesConfigTemplate
+  kind: CK8sConfigTemplate
   version: v1beta2
 version: "2"

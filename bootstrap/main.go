@@ -85,22 +85,22 @@ func main() {
 		os.Exit(1)
 	}
 
-	if err = (&controllers.KThreesConfigReconciler{
+	if err = (&controllers.CK8sConfigReconciler{
 		Client: mgr.GetClient(),
-		Log:    ctrl.Log.WithName("controllers").WithName("KThreesConfig"),
+		Log:    ctrl.Log.WithName("controllers").WithName("CK8sConfig"),
 		Scheme: mgr.GetScheme(),
 	}).SetupWithManager(mgr); err != nil {
-		setupLog.Error(err, "unable to create controller", "controller", "KThreesConfig")
+		setupLog.Error(err, "unable to create controller", "controller", "CK8sConfig")
 		os.Exit(1)
 	}
 
 	if os.Getenv("ENABLE_WEBHOOKS") != "false" {
-		if err = (&bootstrapv1.KThreesConfig{}).SetupWebhookWithManager(mgr); err != nil {
-			setupLog.Error(err, "unable to create webhook", "webhook", "KThreesConfig")
+		if err = (&bootstrapv1.CK8sConfig{}).SetupWebhookWithManager(mgr); err != nil {
+			setupLog.Error(err, "unable to create webhook", "webhook", "CK8sConfig")
 			os.Exit(1)
 		}
-		if err = (&bootstrapv1.KThreesConfigTemplate{}).SetupWebhookWithManager(mgr); err != nil {
-			setupLog.Error(err, "unable to create webhook", "webhook", "KThreesConfigTemplate")
+		if err = (&bootstrapv1.CK8sConfigTemplate{}).SetupWebhookWithManager(mgr); err != nil {
+			setupLog.Error(err, "unable to create webhook", "webhook", "CK8sConfigTemplate")
 			os.Exit(1)
 		}
 	}

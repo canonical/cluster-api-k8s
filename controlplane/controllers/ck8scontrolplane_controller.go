@@ -53,8 +53,8 @@ import (
 	"github.com/canonical/cluster-api-k8s/pkg/token"
 )
 
-// KThreesControlPlaneReconciler reconciles a KThreesControlPlane object.
-type KThreesControlPlaneReconciler struct {
+// CK8sControlPlaneReconciler reconciles a CK8sControlPlane object.
+type CK8sControlPlaneReconciler struct {
 	client.Client
 	Log        logr.Logger
 	Scheme     *runtime.Scheme
@@ -75,11 +75,11 @@ type KThreesControlPlaneReconciler struct {
 // +kubebuilder:rbac:groups=cluster.x-k8s.io,resources=machines;machines/status,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=apiextensions.k8s.io,resources=customresourcedefinitions,verbs=get;list;watch
 
-func (r *KThreesControlPlaneReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	logger := r.Log.WithValues("namespace", req.Namespace, "kthreesControlPlane", req.Name)
+func (r *CK8sControlPlaneReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
+	logger := r.Log.WithValues("namespace", req.Namespace, "ck8sControlPlane", req.Name)
 
-	// Fetch the KThreesControlPlane instance.
-	kcp := &controlplanev1.KThreesControlPlane{}
+	// Fetch the CK8sControlPlane instance.
+	kcp := &controlplanev1.CK8sControlPlane{}
 	if err := r.Client.Get(ctx, req.NamespacedName, kcp); err != nil {
 		if apierrors.IsNotFound(err) {
 			return reconcile.Result{}, nil
@@ -117,8 +117,8 @@ func (r *KThreesControlPlaneReconciler) Reconcile(ctx context.Context, req ctrl.
 	}
 
 	// Add finalizer first if not exist to avoid the race condition between init and delete
-	if !controllerutil.ContainsFinalizer(kcp, controlplanev1.KThreesControlPlaneFinalizer) {
-		controllerutil.AddFinalizer(kcp, controlplanev1.KThreesControlPlaneFinalizer)
+	if !controllerutil.ContainsFinalizer(kcp, controlplanev1.CK8sControlPlaneFinalizer) {
+		controllerutil.AddFinalizer(kcp, controlplanev1.CK8sControlPlaneFinalizer)
 
 		// patch and return right away instead of reusing the main defer,
 		// because the main defer may take too much time to get cluster status
@@ -126,7 +126,7 @@ func (r *KThreesControlPlaneReconciler) Reconcile(ctx context.Context, req ctrl.
 		patchOpts := []patch.Option{}
 		patchOpts = append(patchOpts, patch.WithStatusObservedGeneration{})
 		if err := patchHelper.Patch(ctx, kcp, patchOpts...); err != nil {
-			logger.Error(err, "Failed to patch KThreesControlPlane to add finalizer")
+			logger.Error(err, "Failed to patch CK8sControlPlane to add finalizer")
 			return reconcile.Result{}, err
 		}
 
@@ -148,14 +148,14 @@ func (r *KThreesControlPlaneReconciler) Reconcile(ctx context.Context, req ctrl.
 		if errors.As(err, &connFailure) {
 			logger.Info("Could not connect to workload cluster to fetch status", "err", updateErr.Error())
 		} else {
-			logger.Error(err, "Failed to update KThreesControlPlane Status")
+			logger.Error(err, "Failed to update CK8sControlPlane Status")
 			err = kerrors.NewAggregate([]error{err, updateErr})
 		}
 	}
 
-	// Always attempt to Patch the KThreesControlPlane object and status after each reconciliation.
-	if patchErr := patchKThreesControlPlane(ctx, patchHelper, kcp); patchErr != nil {
-		logger.Error(err, "Failed to patch KThreesControlPlane")
+	// Always attempt to Patch the CK8sControlPlane object and status after each reconciliation.
+	if patchErr := patchCK8sControlPlane(ctx, patchHelper, kcp); patchErr != nil {
+		logger.Error(err, "Failed to patch CK8sControlPlane")
 		err = kerrors.NewAggregate([]error{err, patchErr})
 	}
 
@@ -171,12 +171,12 @@ func (r *KThreesControlPlaneReconciler) Reconcile(ctx context.Context, req ctrl.
 	return res, err
 }
 
-// reconcileDelete handles KThreesControlPlane deletion.
+// reconcileDelete handles CK8sControlPlane deletion.
 // The implementation does not take non-control plane workloads into consideration. This may or may not change in the future.
 // Please see https://github.com/kubernetes-sigs/cluster-api/issues/2064.
-func (r *KThreesControlPlaneReconciler) reconcileDelete(ctx context.Context, cluster *clusterv1.Cluster, kcp *controlplanev1.KThreesControlPlane) (ctrl.Result, error) {
-	logger := r.Log.WithValues("namespace", kcp.Namespace, "KThreesControlPlane", kcp.Name, "cluster", cluster.Name)
-	logger.Info("Reconcile KThreesControlPlane deletion")
+func (r *CK8sControlPlaneReconciler) reconcileDelete(ctx context.Context, cluster *clusterv1.Cluster, kcp *controlplanev1.CK8sControlPlane) (ctrl.Result, error) {
+	logger := r.Log.WithValues("namespace", kcp.Namespace, "CK8sControlPlane", kcp.Name, "cluster", cluster.Name)
+	logger.Info("Reconcile CK8sControlPlane deletion")
 
 	// Gets all machines, not just control plane machines.
 	allMachines, err := r.managementCluster.GetMachinesForCluster(ctx, util.ObjectKey(cluster))
@@ -187,7 +187,7 @@ func (r *KThreesControlPlaneReconciler) reconcileDelete(ctx context.Context, clu
 
 	// If no control plane machines remain, remove the finalizer
 	if len(ownedMachines) == 0 {
-		controllerutil.RemoveFinalizer(kcp, controlplanev1.KThreesControlPlaneFinalizer)
+		controllerutil.RemoveFinalizer(kcp, controlplanev1.CK8sControlPlaneFinalizer)
 		return reconcile.Result{}, nil
 	}
 
@@ -237,7 +237,7 @@ func (r *KThreesControlPlaneReconciler) reconcileDelete(ctx context.Context, clu
 	return ctrl.Result{RequeueAfter: deleteRequeueAfter}, nil
 }
 
-func patchKThreesControlPlane(ctx context.Context, patchHelper *patch.Helper, kcp *controlplanev1.KThreesControlPlane) error {
+func patchCK8sControlPlane(ctx context.Context, patchHelper *patch.Helper, kcp *controlplanev1.CK8sControlPlane) error {
 	// Always update the readyCondition by summarizing the state of other conditions.
 	conditions.SetSummary(kcp,
 		conditions.WithConditions(
@@ -267,9 +267,9 @@ func patchKThreesControlPlane(ctx context.Context, patchHelper *patch.Helper, kc
 	)
 }
 
-func (r *KThreesControlPlaneReconciler) SetupWithManager(ctx context.Context, mgr ctrl.Manager, log *logr.Logger) error {
+func (r *CK8sControlPlaneReconciler) SetupWithManager(ctx context.Context, mgr ctrl.Manager, log *logr.Logger) error {
 	c, err := ctrl.NewControllerManagedBy(mgr).
-		For(&controlplanev1.KThreesControlPlane{}).
+		For(&controlplanev1.CK8sControlPlane{}).
 		Owns(&clusterv1.Machine{}).
 		//	WithOptions(options).
 		//	WithEventFilter(predicates.ResourceNotPaused(r.Log)).
@@ -280,7 +280,7 @@ func (r *KThreesControlPlaneReconciler) SetupWithManager(ctx context.Context, mg
 
 	err = c.Watch(
 		source.Kind(mgr.GetCache(), &clusterv1.Cluster{}),
-		handler.EnqueueRequestsFromMapFunc(r.ClusterToKThreesControlPlane(ctx, log)),
+		handler.EnqueueRequestsFromMapFunc(r.ClusterToCK8sControlPlane(ctx, log)),
 		predicates.ClusterUnpausedAndInfrastructureReady(r.Log),
 	)
 	if err != nil {
@@ -310,9 +310,9 @@ func (r *KThreesControlPlaneReconciler) SetupWithManager(ctx context.Context, mg
 	return nil
 }
 
-// ClusterToKThreesControlPlane is a handler.ToRequestsFunc to be used to enqueue requests for reconciliation
-// for KThreesControlPlane based on updates to a Cluster.
-func (r *KThreesControlPlaneReconciler) ClusterToKThreesControlPlane(ctx context.Context, log *logr.Logger) handler.MapFunc {
+// ClusterToCK8sControlPlane is a handler.ToRequestsFunc to be used to enqueue requests for reconciliation
+// for CK8sControlPlane based on updates to a Cluster.
+func (r *CK8sControlPlaneReconciler) ClusterToCK8sControlPlane(ctx context.Context, log *logr.Logger) handler.MapFunc {
 	return func(ctx context.Context, o client.Object) []ctrl.Request {
 		c, ok := o.(*clusterv1.Cluster)
 		if !ok {
@@ -321,7 +321,7 @@ func (r *KThreesControlPlaneReconciler) ClusterToKThreesControlPlane(ctx context
 		}
 
 		controlPlaneRef := c.Spec.ControlPlaneRef
-		if controlPlaneRef != nil && controlPlaneRef.Kind == "KThreesControlPlane" {
+		if controlPlaneRef != nil && controlPlaneRef.Kind == "CK8sControlPlane" {
 			return []ctrl.Request{{NamespacedName: client.ObjectKey{Namespace: controlPlaneRef.Namespace, Name: controlPlaneRef.Name}}}
 		}
 
@@ -331,7 +331,7 @@ func (r *KThreesControlPlaneReconciler) ClusterToKThreesControlPlane(ctx context
 
 // updateStatus is called after every reconcilitation loop in a defer statement to always make sure we have the
 // resource status subresourcs up-to-date.
-func (r *KThreesControlPlaneReconciler) updateStatus(ctx context.Context, kcp *controlplanev1.KThreesControlPlane, cluster *clusterv1.Cluster) error {
+func (r *CK8sControlPlaneReconciler) updateStatus(ctx context.Context, kcp *controlplanev1.CK8sControlPlane, cluster *clusterv1.Cluster) error {
 	selector := collections.ControlPlaneSelectorForCluster(cluster.Name)
 	// Copy label selector to its status counterpart in string format.
 	// This is necessary for CRDs including scale subresources.
@@ -342,7 +342,7 @@ func (r *KThreesControlPlaneReconciler) updateStatus(ctx context.Context, kcp *c
 		return fmt.Errorf("failed to get list of owned machines: %w", err)
 	}
 
-	logger := r.Log.WithValues("namespace", kcp.Namespace, "KThreesControlPlane", kcp.Name, "cluster", cluster.Name)
+	logger := r.Log.WithValues("namespace", kcp.Namespace, "CK8sControlPlane", kcp.Name, "cluster", cluster.Name)
 	controlPlane, err := k3s.NewControlPlane(ctx, r.Client, cluster, kcp, ownedMachines)
 	if err != nil {
 		logger.Error(err, "failed to initialize control plane")
@@ -436,18 +436,18 @@ func (r *KThreesControlPlaneReconciler) updateStatus(ctx context.Context, kcp *c
 	return nil
 }
 
-// reconcile handles KThreesControlPlane reconciliation.
-func (r *KThreesControlPlaneReconciler) reconcile(ctx context.Context, cluster *clusterv1.Cluster, kcp *controlplanev1.KThreesControlPlane) (ctrl.Result, error) {
-	logger := r.Log.WithValues("namespace", kcp.Namespace, "KThreesControlPlane", kcp.Name, "cluster", cluster.Name)
-	logger.Info("Reconcile KThreesControlPlane")
+// reconcile handles CK8sControlPlane reconciliation.
+func (r *CK8sControlPlaneReconciler) reconcile(ctx context.Context, cluster *clusterv1.Cluster, kcp *controlplanev1.CK8sControlPlane) (ctrl.Result, error) {
+	logger := r.Log.WithValues("namespace", kcp.Namespace, "CK8sControlPlane", kcp.Name, "cluster", cluster.Name)
+	logger.Info("Reconcile CK8sControlPlane")
 
 	// Make sure to reconcile the external infrastructure reference.
 	if err := r.reconcileExternalReference(ctx, cluster, kcp.Spec.MachineTemplate.InfrastructureRef); err != nil {
 		return reconcile.Result{}, err
 	}
 
-	certificates := secret.NewCertificatesForInitialControlPlane(&kcp.Spec.KThreesConfigSpec)
-	controllerRef := metav1.NewControllerRef(kcp, controlplanev1.GroupVersion.WithKind("KThreesControlPlane"))
+	certificates := secret.NewCertificatesForInitialControlPlane(&kcp.Spec.CK8sConfigSpec)
+	controllerRef := metav1.NewControllerRef(kcp, controlplanev1.GroupVersion.WithKind("CK8sControlPlane"))
 	if err := certificates.LookupOrGenerate(ctx, r.Client, util.ObjectKey(cluster), *controllerRef); err != nil {
 		logger.Error(err, "unable to lookup or create cluster certificates")
 		conditions.MarkFalse(kcp, controlplanev1.CertificatesAvailableCondition, controlplanev1.CertificatesGenerationFailedReason, clusterv1.ConditionSeverityWarning, err.Error())
@@ -488,7 +488,7 @@ func (r *KThreesControlPlaneReconciler) reconcile(ctx context.Context, cluster *
 
 	ownedMachines := controlPlaneMachines.Filter(collections.OwnedMachines(kcp))
 	if len(ownedMachines) != len(controlPlaneMachines) {
-		logger.Info("Not all control plane machines are owned by this KThreesControlPlane, refusing to operate in mixed management mode")
+		logger.Info("Not all control plane machines are owned by this CK8sControlPlane, refusing to operate in mixed management mode")
 		return reconcile.Result{}, nil
 	}
 
@@ -545,7 +545,7 @@ func (r *KThreesControlPlaneReconciler) reconcile(ctx context.Context, cluster *
 	case numMachines < desiredReplicas && numMachines == 0:
 		// Create new Machine w/ init
 		logger.Info("Initializing control plane", "Desired", desiredReplicas, "Existing", numMachines)
-		conditions.MarkFalse(controlPlane.KCP, controlplanev1.AvailableCondition, controlplanev1.WaitingForKthreesServerReason, clusterv1.ConditionSeverityInfo, "")
+		conditions.MarkFalse(controlPlane.KCP, controlplanev1.AvailableCondition, controlplanev1.WaitingForCK8sServerReason, clusterv1.ConditionSeverityInfo, "")
 		return r.initializeControlPlane(ctx, cluster, kcp, controlPlane)
 	// We are scaling up
 	case numMachines < desiredReplicas && numMachines > 0:
@@ -582,7 +582,7 @@ func (r *KThreesControlPlaneReconciler) reconcile(ctx context.Context, cluster *
 	return reconcile.Result{}, nil
 }
 
-func (r *KThreesControlPlaneReconciler) reconcileExternalReference(ctx context.Context, cluster *clusterv1.Cluster, ref corev1.ObjectReference) error {
+func (r *CK8sControlPlaneReconciler) reconcileExternalReference(ctx context.Context, cluster *clusterv1.Cluster, ref corev1.ObjectReference) error {
 	if !strings.HasSuffix(ref.Kind, clusterv1.TemplateSuffix) {
 		return nil
 	}
@@ -609,12 +609,12 @@ func (r *KThreesControlPlaneReconciler) reconcileExternalReference(ctx context.C
 	return patchHelper.Patch(ctx, obj)
 }
 
-func (r *KThreesControlPlaneReconciler) reconcileKubeconfig(ctx context.Context, clusterName client.ObjectKey, endpoint clusterv1.APIEndpoint, kcp *controlplanev1.KThreesControlPlane) (ctrl.Result, error) {
+func (r *CK8sControlPlaneReconciler) reconcileKubeconfig(ctx context.Context, clusterName client.ObjectKey, endpoint clusterv1.APIEndpoint, kcp *controlplanev1.CK8sControlPlane) (ctrl.Result, error) {
 	if endpoint.IsZero() {
 		return reconcile.Result{}, nil
 	}
 
-	controllerOwnerRef := *metav1.NewControllerRef(kcp, controlplanev1.GroupVersion.WithKind("KThreesControlPlane"))
+	controllerOwnerRef := *metav1.NewControllerRef(kcp, controlplanev1.GroupVersion.WithKind("CK8sControlPlane"))
 	configSecret, err := secret.GetFromNamespacedName(ctx, r.Client, clusterName, secret.Kubeconfig)
 	switch {
 	case apierrors.IsNotFound(err):
@@ -660,7 +660,7 @@ func (r *KThreesControlPlaneReconciler) reconcileKubeconfig(ctx context.Context,
 
 // reconcileControlPlaneConditions is responsible of reconciling conditions reporting the status of static pods and
 // the status of the etcd cluster.
-func (r *KThreesControlPlaneReconciler) reconcileControlPlaneConditions(ctx context.Context, controlPlane *k3s.ControlPlane) error {
+func (r *CK8sControlPlaneReconciler) reconcileControlPlaneConditions(ctx context.Context, controlPlane *k3s.ControlPlane) error {
 	// If the cluster is not yet initialized, there is no way to connect to the workload cluster and fetch information
 	// for updating conditions. Return early.
 	if !controlPlane.KCP.Status.Initialized {
@@ -689,7 +689,7 @@ func (r *KThreesControlPlaneReconciler) reconcileControlPlaneConditions(ctx cont
 // This is usually required after a machine deletion.
 //
 // NOTE: this func uses KCP conditions, it is required to call reconcileControlPlaneConditions before this.
-func (r *KThreesControlPlaneReconciler) reconcileEtcdMembers(ctx context.Context, controlPlane *k3s.ControlPlane) error {
+func (r *CK8sControlPlaneReconciler) reconcileEtcdMembers(ctx context.Context, controlPlane *k3s.ControlPlane) error {
 	log := ctrl.LoggerFrom(ctx)
 
 	// If etcd is not managed by KCP this is a no-op.
@@ -736,10 +736,10 @@ func (r *KThreesControlPlaneReconciler) reconcileEtcdMembers(ctx context.Context
 	return nil
 }
 
-func (r *KThreesControlPlaneReconciler) upgradeControlPlane(
+func (r *CK8sControlPlaneReconciler) upgradeControlPlane(
 	ctx context.Context,
 	cluster *clusterv1.Cluster,
-	kcp *controlplanev1.KThreesControlPlane,
+	kcp *controlplanev1.CK8sControlPlane,
 	controlPlane *k3s.ControlPlane,
 	machinesRequireUpgrade collections.Machines,
 ) (ctrl.Result, error) {
@@ -760,15 +760,15 @@ func (r *KThreesControlPlaneReconciler) upgradeControlPlane(
 	}
 
 
-	if kcp.Spec.KThreesConfigSpec.ClusterConfiguration != nil {
-		imageRepository := kcp.Spec.KThreesConfigSpec.ClusterConfiguration.ImageRepository
+	if kcp.Spec.CK8sConfigSpec.ClusterConfiguration != nil {
+		imageRepository := kcp.Spec.CK8sConfigSpec.ClusterConfiguration.ImageRepository
 		if err := workloadCluster.UpdateImageRepositoryInKubeadmConfigMap(ctx, imageRepository); err != nil {
 			return reconcile.Result{}, fmt.Errorf("failed to update the image repository in the kubeadm config map")
 		}
 	}
 
-	if kcp.Spec.KThreesConfigSpec.ClusterConfiguration != nil && kcp.Spec.KThreesConfigSpec.ClusterConfiguration.Etcd.Local != nil {
-		meta := kcp.Spec.KThreesConfigSpec.ClusterConfiguration.Etcd.Local.ImageMeta
+	if kcp.Spec.CK8sConfigSpec.ClusterConfiguration != nil && kcp.Spec.CK8sConfigSpec.ClusterConfiguration.Etcd.Local != nil {
+		meta := kcp.Spec.CK8sConfigSpec.ClusterConfiguration.Etcd.Local.ImageMeta
 		if err := workloadCluster.UpdateEtcdVersionInKubeadmConfigMap(ctx, meta.ImageRepository, meta.ImageTag); err != nil {
 			return reconcile.Result{}, fmt.Errorf("failed to update the etcd version in the kubeadm config map")
 		}

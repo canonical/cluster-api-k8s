@@ -30,17 +30,17 @@ import (
 type Func = collections.Func
 
 // MatchesKCPConfiguration returns a filter to find all machines that matches with KCP config and do not require any rollout.
-// Kubernetes version, infrastructure template, and KThreesConfig field need to be equivalent.
-func MatchesKCPConfiguration(infraConfigs map[string]*unstructured.Unstructured, machineConfigs map[string]*bootstrapv1.KThreesConfig, kcp *controlplanev1.KThreesControlPlane) func(machine *clusterv1.Machine) bool {
+// Kubernetes version, infrastructure template, and CK8sConfig field need to be equivalent.
+func MatchesKCPConfiguration(infraConfigs map[string]*unstructured.Unstructured, machineConfigs map[string]*bootstrapv1.CK8sConfig, kcp *controlplanev1.CK8sControlPlane) func(machine *clusterv1.Machine) bool {
 	return collections.And(
 		MatchesKubernetesVersion(kcp.Spec.Version),
-		MatchesKThreesBootstrapConfig(machineConfigs, kcp),
+		MatchesCK8sBootstrapConfig(machineConfigs, kcp),
 		MatchesTemplateClonedFrom(infraConfigs, kcp),
 	)
 }
 
 // MatchesTemplateClonedFrom returns a filter to find all machines that match a given KCP infra template.
-func MatchesTemplateClonedFrom(infraConfigs map[string]*unstructured.Unstructured, kcp *controlplanev1.KThreesControlPlane) Func {
+func MatchesTemplateClonedFrom(infraConfigs map[string]*unstructured.Unstructured, kcp *controlplanev1.CK8sControlPlane) Func {
 	return func(machine *clusterv1.Machine) bool {
 		if machine == nil {
 			return false
@@ -82,8 +82,8 @@ func MatchesKubernetesVersion(kubernetesVersion string) Func {
 	}
 }
 
-// MatchesKThreesBootstrapConfig checks if machine's KThreesConfigSpec is equivalent with KCP's KThreesConfigSpec.
-func MatchesKThreesBootstrapConfig(machineConfigs map[string]*bootstrapv1.KThreesConfig, kcp *controlplanev1.KThreesControlPlane) Func {
+// MatchesCK8sBootstrapConfig checks if machine's CK8sConfigSpec is equivalent with KCP's CK8sConfigSpec.
+func MatchesCK8sBootstrapConfig(machineConfigs map[string]*bootstrapv1.CK8sConfig, kcp *controlplanev1.CK8sControlPlane) Func {
 	return func(machine *clusterv1.Machine) bool {
 		if machine == nil {
 			return false
@@ -98,12 +98,12 @@ func MatchesKThreesBootstrapConfig(machineConfigs map[string]*bootstrapv1.KThree
 
 		machineConfig, found := machineConfigs[machine.Name]
 		if !found {
-			// Return true here because failing to get KThreesConfig should not be considered as unmatching.
+			// Return true here because failing to get CK8sConfig should not be considered as unmatching.
 			// This is a safety precaution to avoid rolling out machines if the client or the api-server is misbehaving.
 			return true
 		}
 
-		kcpConfig := kcp.Spec.KThreesConfigSpec.DeepCopy()
+		kcpConfig := kcp.Spec.CK8sConfigSpec.DeepCopy()
 
 		// KCP version check is handled elsewhere
 		kcpConfig.Version = ""

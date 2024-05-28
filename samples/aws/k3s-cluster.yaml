@@ -13,7 +13,7 @@ spec:
       - 192.168.0.0/16
   controlPlaneRef:
     apiVersion: controlplane.cluster.x-k8s.io/v1beta1
-    kind: KThreesControlPlane
+    kind: CK8sControlPlane
     name: testclusteraws6-control-plane
   infrastructureRef:
     apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
@@ -34,7 +34,7 @@ spec:
   sshKeyName: default
 ---
 apiVersion: controlplane.cluster.x-k8s.io/v1beta1
-kind: KThreesControlPlane
+kind: CK8sControlPlane
 metadata:
   name: testclusteraws6-control-plane
   namespace: default
@@ -43,7 +43,7 @@ spec:
     apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
     kind: AWSMachineTemplate
     name: testclusteraws6-control-plane
-  kthreesConfigSpec:
+  spec:
     agentConfig:
       nodeName: "{{ ds.meta_data.local_hostname }}"
   replicas: 1
@@ -70,7 +70,7 @@ metadata:
   name: testclusteraws6-md-0
 spec:
   clusterName: testclusteraws6
-  replicas: 
+  replicas:
   selector:
     matchLabels: null
   template:
@@ -78,7 +78,7 @@ spec:
       bootstrap:
         configRef:
           apiVersion: bootstrap.cluster.x-k8s.io/v1beta1
-          kind: KThreesConfigTemplate
+          kind: CK8sConfigTemplate
           name: testclusteraws6-md-0
       clusterName: testclusteraws6
       infrastructureRef:
@@ -103,7 +103,7 @@ spec:
       sshKeyName: default
 ---
 apiVersion: bootstrap.cluster.x-k8s.io/v1beta1
-kind: KThreesConfigTemplate
+kind: CK8sConfigTemplate
 metadata:
   name: testclusteraws6-md-0
   namespace: default

@@ -49,7 +49,7 @@ var (
 // It should never need to connect to a service, that responsibility lies outside of this struct.
 // Going forward we should be trying to add more logic to here and reduce the amount of logic in the reconciler.
 type ControlPlane struct {
-	KCP                  *controlplanev1.KThreesControlPlane
+	KCP                  *controlplanev1.CK8sControlPlane
 	Cluster              *clusterv1.Cluster
 	Machines             collections.Machines
 	machinesPatchHelpers map[string]*patch.Helper
@@ -64,17 +64,17 @@ type ControlPlane struct {
 
 	// TODO: we should see if we can combine these with the Machine objects so we don't have all these separate lookups
 	// See discussion on https://github.com/kubernetes-sigs/cluster-api/pull/3405
-	kthreesConfigs map[string]*bootstrapv1.KThreesConfig
+	ck8sConfigs    map[string]*bootstrapv1.CK8sConfig
 	infraResources map[string]*unstructured.Unstructured
 }
 
 // NewControlPlane returns an instantiated ControlPlane.
-func NewControlPlane(ctx context.Context, client client.Client, cluster *clusterv1.Cluster, kcp *controlplanev1.KThreesControlPlane, ownedMachines collections.Machines) (*ControlPlane, error) {
+func NewControlPlane(ctx context.Context, client client.Client, cluster *clusterv1.Cluster, kcp *controlplanev1.CK8sControlPlane, ownedMachines collections.Machines) (*ControlPlane, error) {
 	infraObjects, err := getInfraResources(ctx, client, ownedMachines)
 	if err != nil {
 		return nil, err
 	}
-	kthreesConfigs, err := getKThreesConfigs(ctx, client, ownedMachines)
+	ck8sConfigs, err := getCK8sConfigs(ctx, client, ownedMachines)
 	if err != nil {
 		return nil, err
 	}
@@ -106,7 +106,7 @@ func NewControlPlane(ctx context.Context, client client.Client, cluster *cluster
 		Machines:             ownedMachines,
 		machinesPatchHelpers: patchHelpers,
 		hasEtcdCA:            hasEtcdCA,
-		kthreesConfigs:       kthreesConfigs,
+		ck8sConfigs:          ck8sConfigs,
 		infraResources:       infraObjects,
 		reconciliationTime:   metav1.Now(),
 	}, nil
@@ -120,21 +120,21 @@ func (c *ControlPlane) FailureDomains() clusterv1.FailureDomains {
 	return c.Cluster.Status.FailureDomains
 }
 
-// Version returns the KThreesControlPlane's version.
+// Version returns the CK8sControlPlane's version.
 func (c *ControlPlane) Version() *string {
 	return &c.KCP.Spec.Version
 }
 
-// InfrastructureTemplate returns the KThreesControlPlane's infrastructure template.
+// InfrastructureTemplate returns the CK8sControlPlane's infrastructure template.
 func (c *ControlPlane) InfrastructureTemplate() *corev1.ObjectReference {
 	return &c.KCP.Spec.MachineTemplate.InfrastructureRef
 }
 
-// AsOwnerReference returns an owner reference to the KThreesControlPlane.
+// AsOwnerReference returns an owner reference to the CK8sControlPlane.
 func (c *ControlPlane) AsOwnerReference() *metav1.OwnerReference {
 	return &metav1.OwnerReference{
 		APIVersion: controlplanev1.GroupVersion.String(),
-		Kind:       "KThreesControlPlane",
+		Kind:       "CK8sControlPlane",
 		Name:       c.KCP.Name,
 		UID:        c.KCP.UID,
 	}
@@ -188,29 +188,29 @@ func (c *ControlPlane) NextFailureDomainForScaleUp(ctx context.Context) *string 
 	return failuredomains.PickFewest(ctx, c.FailureDomains().FilterControlPlane(), c.UpToDateMachines())
 }
 
-// InitialControlPlaneConfig returns a new KThreesConfigSpec that is to be used for an initializing control plane.
-func (c *ControlPlane) InitialControlPlaneConfig() *bootstrapv1.KThreesConfigSpec {
-	bootstrapSpec := c.KCP.Spec.KThreesConfigSpec.DeepCopy()
+// InitialControlPlaneConfig returns a new CK8sConfigSpec that is to be used for an initializing control plane.
+func (c *ControlPlane) InitialControlPlaneConfig() *bootstrapv1.CK8sConfigSpec {
+	bootstrapSpec := c.KCP.Spec.CK8sConfigSpec.DeepCopy()
 	return bootstrapSpec
 }
 
-// JoinControlPlaneConfig returns a new KThreesConfigSpec that is to be used for joining control planes.
-func (c *ControlPlane) JoinControlPlaneConfig() *bootstrapv1.KThreesConfigSpec {
-	bootstrapSpec := c.KCP.Spec.KThreesConfigSpec.DeepCopy()
+// JoinControlPlaneConfig returns a new CK8sConfigSpec that is to be used for joining control planes.
+func (c *ControlPlane) JoinControlPlaneConfig() *bootstrapv1.CK8sConfigSpec {
+	bootstrapSpec := c.KCP.Spec.CK8sConfigSpec.DeepCopy()
 	return bootstrapSpec
 }
 
-// GenerateKThreesConfig generates a new KThreesConfig config for creating new control plane nodes.
-func (c *ControlPlane) GenerateKThreesConfig(spec *bootstrapv1.KThreesConfigSpec) *bootstrapv1.KThreesConfig {
+// GenerateCK8sConfig generates a new CK8sConfig config for creating new control plane nodes.
+func (c *ControlPlane) GenerateCK8sConfig(spec *bootstrapv1.CK8sConfigSpec) *bootstrapv1.CK8sConfig {
 	// Create an owner reference without a controller reference because the owning controller is the machine controller
 	owner := metav1.OwnerReference{
 		APIVersion: controlplanev1.GroupVersion.String(),
-		Kind:       "KThreesControlPlane",
+		Kind:       "CK8sControlPlane",
 		Name:       c.KCP.Name,
 		UID:        c.KCP.UID,
 	}
 
-	bootstrapConfig := &bootstrapv1.KThreesConfig{
+	bootstrapConfig := &bootstrapv1.CK8sConfig{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            names.SimpleNameGenerator.GenerateName(c.KCP.Name + "-"),
 			Namespace:       c.KCP.Namespace,
@@ -223,7 +223,7 @@ func (c *ControlPlane) GenerateKThreesConfig(spec *bootstrapv1.KThreesConfigSpec
 }
 
 // ControlPlaneLabelsForCluster returns a set of labels to add to a control plane machine for this specific cluster.
-func ControlPlaneLabelsForCluster(clusterName string, machineTemplate controlplanev1.KThreesControlPlaneMachineTemplate) map[string]string {
+func ControlPlaneLabelsForCluster(clusterName string, machineTemplate controlplanev1.CK8sControlPlaneMachineTemplate) map[string]string {
 	labels := make(map[string]string)
 	for key, value := range machineTemplate.ObjectMeta.Labels {
 		labels[key] = value
@@ -242,7 +242,7 @@ func (c *ControlPlane) NewMachine(infraRef, bootstrapRef *corev1.ObjectReference
 			Namespace: c.KCP.Namespace,
 			Labels:    ControlPlaneLabelsForCluster(c.Cluster.Name, c.KCP.Spec.MachineTemplate),
 			OwnerReferences: []metav1.OwnerReference{
-				*metav1.NewControllerRef(c.KCP, controlplanev1.GroupVersion.WithKind("KThreesControlPlane")),
+				*metav1.NewControllerRef(c.KCP, controlplanev1.GroupVersion.WithKind("CK8sControlPlane")),
 			},
 		},
 		Spec: clusterv1.MachineSpec{
@@ -287,7 +287,7 @@ func (c *ControlPlane) MachinesNeedingRollout() collections.Machines {
 		// Machines that are scheduled for rollout (KCP.Spec.RolloutAfter set, the RolloutAfter deadline is expired, and the machine was created before the deadline).
 		collections.ShouldRolloutAfter(&c.reconciliationTime, c.KCP.Spec.RolloutAfter),
 		// Machines that do not match with KCP config.
-		collections.Not(machinefilters.MatchesKCPConfiguration(c.infraResources, c.kthreesConfigs, c.KCP)),
+		collections.Not(machinefilters.MatchesKCPConfiguration(c.infraResources, c.ck8sConfigs, c.KCP)),
 	)
 }
 
@@ -313,15 +313,15 @@ func getInfraResources(ctx context.Context, cl client.Client, machines collectio
 	return result, nil
 }
 
-// getKThreesConfigs fetches the k3s config for each machine in the collection and returns a map of machine.Name -> KThreesConfig.
-func getKThreesConfigs(ctx context.Context, cl client.Client, machines collections.Machines) (map[string]*bootstrapv1.KThreesConfig, error) {
-	result := map[string]*bootstrapv1.KThreesConfig{}
+// getCK8sConfigs fetches the k3s config for each machine in the collection and returns a map of machine.Name -> CK8sConfig.
+func getCK8sConfigs(ctx context.Context, cl client.Client, machines collections.Machines) (map[string]*bootstrapv1.CK8sConfig, error) {
+	result := map[string]*bootstrapv1.CK8sConfig{}
 	for _, m := range machines {
 		bootstrapRef := m.Spec.Bootstrap.ConfigRef
 		if bootstrapRef == nil {
 			continue
 		}
-		machineConfig := &bootstrapv1.KThreesConfig{}
+		machineConfig := &bootstrapv1.CK8sConfig{}
 		if err := cl.Get(ctx, client.ObjectKey{Name: bootstrapRef.Name, Namespace: m.Namespace}, machineConfig); err != nil {
 			if apierrors.IsNotFound(err) {
 				continue
@@ -335,7 +335,7 @@ func getKThreesConfigs(ctx context.Context, cl client.Client, machines collectio
 
 // IsEtcdManaged returns true if the control plane relies on a managed etcd.
 func (c *ControlPlane) IsEtcdManaged() bool {
-	return c.KCP.Spec.KThreesConfigSpec.IsEtcdEmbedded() && c.hasEtcdCA
+	return c.KCP.Spec.CK8sConfigSpec.IsEtcdEmbedded() && c.hasEtcdCA
 }
 
 // UnhealthyMachines returns the list of control plane machines marked as unhealthy by MHC.

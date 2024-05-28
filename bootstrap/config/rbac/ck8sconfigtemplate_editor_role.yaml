@@ -1,20 +1,24 @@
-# permissions for end users to view kthreesconfigtemplates.
+# permissions for end users to edit ck8sconfigtemplates.
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
-  name: kthreesconfigtemplate-viewer-role
+  name: ck8sconfigtemplate-editor-role
 rules:
 - apiGroups:
   - bootstrap.cluster.x-k8s.io
   resources:
-  - kthreesconfigtemplates
+  - ck8sconfigtemplates
   verbs:
+  - create
+  - delete
   - get
   - list
+  - patch
+  - update
   - watch
 - apiGroups:
   - bootstrap.cluster.x-k8s.io
   resources:
-  - kthreesconfigtemplates/status
+  - ck8sconfigtemplates/status
   verbs:
   - get

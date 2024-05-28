@@ -20,38 +20,38 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-// KThreesConfigTemplateSpec defines the desired state of KThreesConfigTemplate.
-type KThreesConfigTemplateSpec struct {
+// CK8sConfigTemplateSpec defines the desired state of CK8sConfigTemplate.
+type CK8sConfigTemplateSpec struct {
 	// Important: Run "make" to regenerate code after modifying this file
 
-	Template KThreesConfigTemplateResource `json:"template"`
+	Template CK8sConfigTemplateResource `json:"template"`
 }
 
-// KThreesConfigTemplateResource defines the Template structure.
-type KThreesConfigTemplateResource struct {
-	Spec KThreesConfigSpec `json:"spec,omitempty"`
+// CK8sConfigTemplateResource defines the Template structure.
+type CK8sConfigTemplateResource struct {
+	Spec CK8sConfigSpec `json:"spec,omitempty"`
 }
 
 // +kubebuilder:object:root=true
 // +kubebuilder:storageversion
 
-// KThreesConfigTemplate is the Schema for the kthreesconfigtemplates API.
-type KThreesConfigTemplate struct {
+// CK8sConfigTemplate is the Schema for the ck8sconfigtemplates API.
+type CK8sConfigTemplate struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	Spec KThreesConfigTemplateSpec `json:"spec,omitempty"`
+	Spec CK8sConfigTemplateSpec `json:"spec,omitempty"`
 }
 
 // +kubebuilder:object:root=true
 
-// KThreesConfigTemplateList contains a list of KThreesConfigTemplate.
-type KThreesConfigTemplateList struct {
+// CK8sConfigTemplateList contains a list of CK8sConfigTemplate.
+type CK8sConfigTemplateList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
-	Items           []KThreesConfigTemplate `json:"items"`
+	Items           []CK8sConfigTemplate `json:"items"`
 }
 
 func init() {
-	SchemeBuilder.Register(&KThreesConfigTemplate{}, &KThreesConfigTemplateList{})
+	SchemeBuilder.Register(&CK8sConfigTemplate{}, &CK8sConfigTemplateList{})
 }

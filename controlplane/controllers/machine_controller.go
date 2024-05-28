@@ -19,7 +19,7 @@ import (
 	k3s "github.com/canonical/cluster-api-k8s/pkg/k3s"
 )
 
-// KThreesControlPlaneReconciler reconciles a KThreesControlPlane object.
+// CK8sControlPlaneReconciler reconciles a CK8sControlPlane object.
 type MachineReconciler struct {
 	client.Client
 	Log    logr.Logger

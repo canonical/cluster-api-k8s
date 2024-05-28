@@ -28,11 +28,11 @@ import (
 )
 
 const (
-	KThreesControlPlaneFinalizer = "kthrees.controlplane.cluster.x-k8s.io"
+	CK8sControlPlaneFinalizer = "ck8s.controlplane.cluster.x-k8s.io"
 
-	// KThreesServerConfigurationAnnotation is a machine annotation that stores the json-marshalled string of KCP ClusterConfiguration.
+	// CK8sServerConfigurationAnnotation is a machine annotation that stores the json-marshalled string of KCP ClusterConfiguration.
 	// This annotation is used to detect any changes in ClusterConfiguration and trigger machine rollout in KCP.
-	KThreesServerConfigurationAnnotation = "controlplane.cluster.x-k8s.io/kthrees-server-configuration"
+	CK8sServerConfigurationAnnotation = "controlplane.cluster.x-k8s.io/ck8s-server-configuration"
 
 	// SkipCoreDNSAnnotation annotation explicitly skips reconciling CoreDNS if set.
 	SkipCoreDNSAnnotation = "controlplane.cluster.x-k8s.io/skip-coredns"
@@ -55,8 +55,8 @@ const (
 	DefaultMinHealthyPeriod = 1 * time.Hour
 )
 
-// KThreesControlPlaneSpec defines the desired state of KThreesControlPlane.
-type KThreesControlPlaneSpec struct {
+// CK8sControlPlaneSpec defines the desired state of CK8sControlPlane.
+type CK8sControlPlaneSpec struct {
 	// Number of desired machines. Defaults to 1. When stacked etcd is used only
 	// odd numbers are permitted, as per [etcd best practice](https://etcd.io/docs/v3.3.12/faq/#why-an-odd-number-of-cluster-members).
 	// This is a pointer to distinguish between explicit zero and not specified.
@@ -66,20 +66,20 @@ type KThreesControlPlaneSpec struct {
 	// Version defines the desired Kubernetes version.
 	Version string `json:"version"`
 
-	// KThreesConfigSpec is a KThreesConfigSpec
+	// CK8sConfigSpec is a CK8sConfigSpec
 	// to use for initializing and joining machines to the control plane.
 	// +optional
-	KThreesConfigSpec bootstrapv1.KThreesConfigSpec `json:"kthreesConfigSpec,omitempty"`
+	CK8sConfigSpec bootstrapv1.CK8sConfigSpec `json:"spec,omitempty"`
 
 	// RolloutAfter is a field to indicate a rollout should be performed
 	// after the specified time even if no changes have been made to the
-	// KThreesControlPlane
+	// CK8sControlPlane
 	// +optional
 	RolloutAfter *metav1.Time `json:"rolloutAfter,omitempty"`
 
 	// MachineTemplate contains information about how machines should be shaped
 	// when creating or updating a control plane.
-	MachineTemplate KThreesControlPlaneMachineTemplate `json:"machineTemplate,omitempty"`
+	MachineTemplate CK8sControlPlaneMachineTemplate `json:"machineTemplate,omitempty"`
 
 	// The RemediationStrategy that controls how control plane machine remediation happens.
 	// +optional
@@ -88,7 +88,7 @@ type KThreesControlPlaneSpec struct {
 
 // MachineTemplate contains information about how machines should be shaped
 // when creating or updating a control plane.
-type KThreesControlPlaneMachineTemplate struct {
+type CK8sControlPlaneMachineTemplate struct {
 	// Standard object's metadata.
 	// More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#metadata
 	// +optional
@@ -156,8 +156,8 @@ type RemediationStrategy struct {
 	MinHealthyPeriod *metav1.Duration `json:"minHealthyPeriod,omitempty"`
 }
 
-// KThreesControlPlaneStatus defines the observed state of KThreesControlPlane.
-type KThreesControlPlaneStatus struct {
+// CK8sControlPlaneStatus defines the observed state of CK8sControlPlane.
+type CK8sControlPlaneStatus struct {
 	// Selector is the label selector in string format to avoid introspection
 	// by clients, and is used to provide the CRD-based integration for the
 	// scale subresource and additional integrations for things like kubectl
@@ -192,7 +192,7 @@ type KThreesControlPlaneStatus struct {
 	// +optional
 	Initialized bool `json:"initialized"`
 
-	// Ready denotes that the KThreesControlPlane API Server is ready to
+	// Ready denotes that the CK8sControlPlane API Server is ready to
 	// receive requests.
 	// +optional
 	Ready bool `json:"ready"`
@@ -201,7 +201,7 @@ type KThreesControlPlaneStatus struct {
 	// state, and will be set to a token value suitable for
 	// programmatic interpretation.
 	// +optional
-	FailureReason errors.KThreesControlPlaneStatusError `json:"failureReason,omitempty"`
+	FailureReason errors.CK8sControlPlaneStatusError `json:"failureReason,omitempty"`
 
 	// ErrorMessage indicates that there is a terminal problem reconciling the
 	// state, and will be set to a descriptive error message.
@@ -212,7 +212,7 @@ type KThreesControlPlaneStatus struct {
 	// +optional
 	ObservedGeneration int64 `json:"observedGeneration,omitempty"`
 
-	// Conditions defines current service state of the KThreesControlPlane.
+	// Conditions defines current service state of the CK8sControlPlane.
 	// +optional
 	Conditions clusterv1.Conditions `json:"conditions,omitempty"`
 
@@ -241,39 +241,39 @@ type LastRemediationStatus struct {
 // +kubebuilder:subresource:status
 // +kubebuilder:subresource:scale:specpath=.spec.replicas,statuspath=.status.replicas,selectorpath=.status.selector
 // +kubebuilder:printcolumn:name="Initialized",type=boolean,JSONPath=".status.initialized",description="This denotes whether or not the control plane has completed the k3s server initialization"
-// +kubebuilder:printcolumn:name="API Server Available",type=boolean,JSONPath=".status.ready",description="KThreesControlPlane API Server is ready to receive requests"
+// +kubebuilder:printcolumn:name="API Server Available",type=boolean,JSONPath=".status.ready",description="CK8sControlPlane API Server is ready to receive requests"
 // +kubebuilder:printcolumn:name="Version",type=string,JSONPath=".spec.version",description="Kubernetes version associated with this control plane"
 // +kubebuilder:printcolumn:name="Replicas",type=integer,JSONPath=".status.replicas",description="Total number of non-terminated machines targeted by this control plane"
 // +kubebuilder:printcolumn:name="Ready",type=integer,JSONPath=".status.readyReplicas",description="Total number of fully running and ready control plane machines"
 // +kubebuilder:printcolumn:name="Updated",type=integer,JSONPath=".status.updatedReplicas",description="Total number of non-terminated machines targeted by this control plane that have the desired template spec"
 // +kubebuilder:printcolumn:name="Unavailable",type=integer,JSONPath=".status.unavailableReplicas",description="Total number of unavailable machines targeted by this control plane"
 
-// KThreesControlPlane is the Schema for the kthreescontrolplanes API.
-type KThreesControlPlane struct {
+// CK8sControlPlane is the Schema for the ck8scontrolplanes API.
+type CK8sControlPlane struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	Spec   KThreesControlPlaneSpec   `json:"spec,omitempty"`
-	Status KThreesControlPlaneStatus `json:"status,omitempty"`
+	Spec   CK8sControlPlaneSpec   `json:"spec,omitempty"`
+	Status CK8sControlPlaneStatus `json:"status,omitempty"`
 }
 
-func (in *KThreesControlPlane) GetConditions() clusterv1.Conditions {
+func (in *CK8sControlPlane) GetConditions() clusterv1.Conditions {
 	return in.Status.Conditions
 }
 
-func (in *KThreesControlPlane) SetConditions(conditions clusterv1.Conditions) {
+func (in *CK8sControlPlane) SetConditions(conditions clusterv1.Conditions) {
 	in.Status.Conditions = conditions
 }
 
 // +kubebuilder:object:root=true
 
-// KThreesControlPlaneList contains a list of KThreesControlPlane.
-type KThreesControlPlaneList struct {
+// CK8sControlPlaneList contains a list of CK8sControlPlane.
+type CK8sControlPlaneList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
-	Items           []KThreesControlPlane `json:"items"`
+	Items           []CK8sControlPlane `json:"items"`
 }
 
 func init() {
-	SchemeBuilder.Register(&KThreesControlPlane{}, &KThreesControlPlaneList{})
+	SchemeBuilder.Register(&CK8sControlPlane{}, &CK8sControlPlaneList{})
 }

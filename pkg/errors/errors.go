@@ -1,26 +1,26 @@
 package errors
 
-type KThreesControlPlaneStatusError string
+type CK8sControlPlaneStatusError string
 
 const (
-	// InvalidConfigurationKThreesControlPlaneError indicates that the KThrees control plane
+	// InvalidConfigurationCK8sControlPlaneError indicates that the CK8s control plane
 	// configuration is invalid.
-	InvalidConfigurationKThreesControlPlaneError KThreesControlPlaneStatusError = "InvalidConfiguration"
+	InvalidConfigurationCK8sControlPlaneError CK8sControlPlaneStatusError = "InvalidConfiguration"
 
-	// UnsupportedChangeKThreesControlPlaneError indicates that the KThrees control plane
+	// UnsupportedChangeCK8sControlPlaneError indicates that the CK8s control plane
 	// spec has been updated in an unsupported way that cannot be
 	// reconciled.
-	UnsupportedChangeKThreesControlPlaneError KThreesControlPlaneStatusError = "UnsupportedChange"
+	UnsupportedChangeCK8sControlPlaneError CK8sControlPlaneStatusError = "UnsupportedChange"
 
-	// CreateKThreesControlPlaneError indicates that an error was encountered
-	// when trying to create the KThrees control plane.
-	CreateKThreesControlPlaneError KThreesControlPlaneStatusError = "CreateError"
+	// CreateCK8sControlPlaneError indicates that an error was encountered
+	// when trying to create the CK8s control plane.
+	CreateCK8sControlPlaneError CK8sControlPlaneStatusError = "CreateError"
 
-	// UpdateKThreesControlPlaneError indicates that an error was encountered
-	// when trying to update the KThrees control plane.
-	UpdateKThreesControlPlaneError KThreesControlPlaneStatusError = "UpdateError"
+	// UpdateCK8sControlPlaneError indicates that an error was encountered
+	// when trying to update the CK8s control plane.
+	UpdateCK8sControlPlaneError CK8sControlPlaneStatusError = "UpdateError"
 
-	// DeleteKThreesControlPlaneError indicates that an error was encountered
-	// when trying to delete the KThrees control plane.
-	DeleteKThreesControlPlaneError KThreesControlPlaneStatusError = "DeleteError"
+	// DeleteCK8sControlPlaneError indicates that an error was encountered
+	// when trying to delete the CK8s control plane.
+	DeleteCK8sControlPlaneError CK8sControlPlaneStatusError = "DeleteError"
 )

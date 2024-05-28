@@ -23,8 +23,8 @@ import (
 
 // NOTE: json tags are required.  Any new fields you add must have json tags for the fields to be serialized.
 
-// KThreesConfigSpec defines the desired state of KThreesConfig.
-type KThreesConfigSpec struct {
+// CK8sConfigSpec defines the desired state of CK8sConfig.
+type CK8sConfigSpec struct {
 	// Files specifies extra files to be passed to user_data upon creation.
 	// +optional
 	Files []File `json:"files,omitempty"`
@@ -39,11 +39,11 @@ type KThreesConfigSpec struct {
 
 	// AgentConfig specifies configuration for the agent nodes
 	// +optional
-	AgentConfig KThreesAgentConfig `json:"agentConfig,omitempty"`
+	AgentConfig CK8sAgentConfig `json:"agentConfig,omitempty"`
 
 	// ServerConfig specifies configuration for the agent nodes
 	// +optional
-	ServerConfig KThreesServerConfig `json:"serverConfig,omitempty"`
+	ServerConfig CK8sServerConfig `json:"serverConfig,omitempty"`
 
 	// Version specifies the k3s version
 	// +optional
@@ -52,11 +52,11 @@ type KThreesConfigSpec struct {
 
 // TODO
 // Will need extend this func when implementing other k3s database options.
-func (c *KThreesConfigSpec) IsEtcdEmbedded() bool {
+func (c *CK8sConfigSpec) IsEtcdEmbedded() bool {
 	return true
 }
 
-type KThreesServerConfig struct {
+type CK8sServerConfig struct {
 	// KubeAPIServerArgs is a customized flag for kube-apiserver process
 	// +optional
 	KubeAPIServerArgs []string `json:"kubeAPIServerArg,omitempty"`
@@ -124,7 +124,7 @@ type KThreesServerConfig struct {
 	CloudProviderName string `json:"cloudProviderName,omitempty"`
 }
 
-type KThreesAgentConfig struct {
+type CK8sAgentConfig struct {
 	// NodeLabels  Registering and starting kubelet with set of labels
 	// +optional
 	NodeLabels []string `json:"nodeLabels,omitempty"`
@@ -158,8 +158,8 @@ type KThreesAgentConfig struct {
 	AirGapped bool `json:"airGapped,omitempty"`
 }
 
-// KThreesConfigStatus defines the observed state of KThreesConfig.
-type KThreesConfigStatus struct {
+// CK8sConfigStatus defines the observed state of CK8sConfig.
+type CK8sConfigStatus struct {
 	// Ready indicates the BootstrapData field is ready to be consumed
 	Ready bool `json:"ready,omitempty"`
 
@@ -181,7 +181,7 @@ type KThreesConfigStatus struct {
 	// +optional
 	ObservedGeneration int64 `json:"observedGeneration,omitempty"`
 
-	// Conditions defines current service state of the KThreesConfig.
+	// Conditions defines current service state of the CK8sConfig.
 	// +optional
 	Conditions clusterv1.Conditions `json:"conditions,omitempty"`
 }
@@ -190,30 +190,30 @@ type KThreesConfigStatus struct {
 // +kubebuilder:subresource:status
 // +kubebuilder:storageversion
 
-// KThreesConfig is the Schema for the kthreesconfigs API.
-type KThreesConfig struct {
+// CK8sConfig is the Schema for the ck8sconfigs API.
+type CK8sConfig struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	Spec   KThreesConfigSpec   `json:"spec,omitempty"`
-	Status KThreesConfigStatus `json:"status,omitempty"`
+	Spec   CK8sConfigSpec   `json:"spec,omitempty"`
+	Status CK8sConfigStatus `json:"status,omitempty"`
 }
 
-func (c *KThreesConfig) GetConditions() clusterv1.Conditions {
+func (c *CK8sConfig) GetConditions() clusterv1.Conditions {
 	return c.Status.Conditions
 }
 
-func (c *KThreesConfig) SetConditions(conditions clusterv1.Conditions) {
+func (c *CK8sConfig) SetConditions(conditions clusterv1.Conditions) {
 	c.Status.Conditions = conditions
 }
 
 // +kubebuilder:object:root=true
 
-// KThreesConfigList contains a list of KThreesConfig.
-type KThreesConfigList struct {
+// CK8sConfigList contains a list of CK8sConfig.
+type CK8sConfigList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
-	Items           []KThreesConfig `json:"items"`
+	Items           []CK8sConfig `json:"items"`
 }
 
 // Encoding specifies the cloud-init file encoding.
@@ -268,7 +268,7 @@ type FileSource struct {
 // The contents of the target Secret's Data field will be presented
 // as files using the keys in the Data field as the file names.
 type SecretFileSource struct {
-	// Name of the secret in the KThreesBootstrapConfig's namespace to use.
+	// Name of the secret in the CK8sBootstrapConfig's namespace to use.
 	Name string `json:"name"`
 
 	// Key is the key in the secret's data map for this value.
@@ -276,5 +276,5 @@ type SecretFileSource struct {
 }
 
 func init() {
-	SchemeBuilder.Register(&KThreesConfig{}, &KThreesConfigList{})
+	SchemeBuilder.Register(&CK8sConfig{}, &CK8sConfigList{})
 }

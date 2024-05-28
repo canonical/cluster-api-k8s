@@ -44,7 +44,7 @@ import (
 
 var ErrPreConditionFailed = errors.New("precondition check failed")
 
-func (r *KThreesControlPlaneReconciler) initializeControlPlane(ctx context.Context, cluster *clusterv1.Cluster, kcp *controlplanev1.KThreesControlPlane, controlPlane *k3s.ControlPlane) (ctrl.Result, error) {
+func (r *CK8sControlPlaneReconciler) initializeControlPlane(ctx context.Context, cluster *clusterv1.Cluster, kcp *controlplanev1.CK8sControlPlane, controlPlane *k3s.ControlPlane) (ctrl.Result, error) {
 	logger := ctrl.LoggerFrom(ctx)
 
 	// Perform an uncached read of all the owned machines. This check is in place to make sure
@@ -73,7 +73,7 @@ func (r *KThreesControlPlaneReconciler) initializeControlPlane(ctx context.Conte
 	return ctrl.Result{Requeue: true}, nil
 }
 
-func (r *KThreesControlPlaneReconciler) scaleUpControlPlane(ctx context.Context, cluster *clusterv1.Cluster, kcp *controlplanev1.KThreesControlPlane, controlPlane *k3s.ControlPlane) (ctrl.Result, error) {
+func (r *CK8sControlPlaneReconciler) scaleUpControlPlane(ctx context.Context, cluster *clusterv1.Cluster, kcp *controlplanev1.CK8sControlPlane, controlPlane *k3s.ControlPlane) (ctrl.Result, error) {
 	logger := ctrl.LoggerFrom(ctx)
 
 	// Run preflight checks to ensure that the control plane is stable before proceeding with a scale up/scale down operation; if not, wait.
@@ -94,10 +94,10 @@ func (r *KThreesControlPlaneReconciler) scaleUpControlPlane(ctx context.Context,
 	return ctrl.Result{Requeue: true}, nil
 }
 
-func (r *KThreesControlPlaneReconciler) scaleDownControlPlane(
+func (r *CK8sControlPlaneReconciler) scaleDownControlPlane(
 	ctx context.Context,
 	cluster *clusterv1.Cluster,
-	kcp *controlplanev1.KThreesControlPlane,
+	kcp *controlplanev1.CK8sControlPlane,
 	controlPlane *k3s.ControlPlane,
 	outdatedMachines collections.Machines,
 ) (ctrl.Result, error) {
@@ -168,8 +168,8 @@ func (r *KThreesControlPlaneReconciler) scaleDownControlPlane(
 // If the control plane is not passing preflight checks, it requeue.
 //
 // NOTE: this func uses KCP conditions, it is required to call reconcileControlPlaneConditions before this.
-func (r *KThreesControlPlaneReconciler) preflightChecks(_ context.Context, controlPlane *k3s.ControlPlane, excludeFor ...*clusterv1.Machine) (ctrl.Result, error) { //nolint:unparam
-	logger := r.Log.WithValues("namespace", controlPlane.KCP.Namespace, "KThreesControlPlane", controlPlane.KCP.Name, "cluster", controlPlane.Cluster.Name)
+func (r *CK8sControlPlaneReconciler) preflightChecks(_ context.Context, controlPlane *k3s.ControlPlane, excludeFor ...*clusterv1.Machine) (ctrl.Result, error) { //nolint:unparam
+	logger := r.Log.WithValues("namespace", controlPlane.KCP.Namespace, "CK8sControlPlane", controlPlane.KCP.Name, "cluster", controlPlane.Cluster.Name)
 
 	// If there is no KCP-owned control-plane machines, then control-plane has not been initialized yet,
 	// so it is considered ok to proceed.
@@ -250,14 +250,14 @@ func selectMachineForScaleDown(ctx context.Context, controlPlane *k3s.ControlPla
 	return controlPlane.MachineInFailureDomainWithMostMachines(ctx, machines)
 }
 
-func (r *KThreesControlPlaneReconciler) cloneConfigsAndGenerateMachine(ctx context.Context, cluster *clusterv1.Cluster, kcp *controlplanev1.KThreesControlPlane, bootstrapSpec *bootstrapv1.KThreesConfigSpec, failureDomain *string) error {
+func (r *CK8sControlPlaneReconciler) cloneConfigsAndGenerateMachine(ctx context.Context, cluster *clusterv1.Cluster, kcp *controlplanev1.CK8sControlPlane, bootstrapSpec *bootstrapv1.CK8sConfigSpec, failureDomain *string) error {
 	var errs []error
 
 	// Since the cloned resource should eventually have a controller ref for the Machine, we create an
 	// OwnerReference here without the Controller field set
 	infraCloneOwner := &metav1.OwnerReference{
 		APIVersion: controlplanev1.GroupVersion.String(),
-		Kind:       "KThreesControlPlane",
+		Kind:       "CK8sControlPlane",
 		Name:       kcp.Name,
 		UID:        kcp.UID,
 	}
@@ -277,7 +277,7 @@ func (r *KThreesControlPlaneReconciler) cloneConfigsAndGenerateMachine(ctx conte
 	}
 
 	// Clone the bootstrap configuration
-	bootstrapRef, err := r.generateKThreesConfig(ctx, kcp, cluster, bootstrapSpec)
+	bootstrapRef, err := r.generateCK8sConfig(ctx, kcp, cluster, bootstrapSpec)
 	if err != nil {
 		errs = append(errs, fmt.Errorf("failed to generate bootstrap config: %w", err))
 	}
@@ -301,7 +301,7 @@ func (r *KThreesControlPlaneReconciler) cloneConfigsAndGenerateMachine(ctx conte
 	return nil
 }
 
-func (r *KThreesControlPlaneReconciler) cleanupFromGeneration(ctx context.Context, remoteRefs ...*corev1.ObjectReference) error {
+func (r *CK8sControlPlaneReconciler) cleanupFromGeneration(ctx context.Context, remoteRefs ...*corev1.ObjectReference) error {
 	var errs []error
 
 	for _, ref := range remoteRefs {
@@ -321,16 +321,16 @@ func (r *KThreesControlPlaneReconciler) cleanupFromGeneration(ctx context.Contex
 	return kerrors.NewAggregate(errs)
 }
 
-func (r *KThreesControlPlaneReconciler) generateKThreesConfig(ctx context.Context, kcp *controlplanev1.KThreesControlPlane, cluster *clusterv1.Cluster, spec *bootstrapv1.KThreesConfigSpec) (*corev1.ObjectReference, error) {
+func (r *CK8sControlPlaneReconciler) generateCK8sConfig(ctx context.Context, kcp *controlplanev1.CK8sControlPlane, cluster *clusterv1.Cluster, spec *bootstrapv1.CK8sConfigSpec) (*corev1.ObjectReference, error) {
 	// Create an owner reference without a controller reference because the owning controller is the machine controller
 	owner := metav1.OwnerReference{
 		APIVersion: controlplanev1.GroupVersion.String(),
-		Kind:       "KThreesControlPlane",
+		Kind:       "CK8sControlPlane",
 		Name:       kcp.Name,
 		UID:        kcp.UID,
 	}
 
-	bootstrapConfig := &bootstrapv1.KThreesConfig{
+	bootstrapConfig := &bootstrapv1.CK8sConfig{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            names.SimpleNameGenerator.GenerateName(kcp.Name + "-"),
 			Namespace:       kcp.Namespace,
@@ -346,7 +346,7 @@ func (r *KThreesControlPlaneReconciler) generateKThreesConfig(ctx context.Contex
 
 	bootstrapRef := &corev1.ObjectReference{
 		APIVersion: bootstrapv1.GroupVersion.String(),
-		Kind:       "KThreesConfig",
+		Kind:       "CK8sConfig",
 		Name:       bootstrapConfig.GetName(),
 		Namespace:  bootstrapConfig.GetNamespace(),
 		UID:        bootstrapConfig.GetUID(),
@@ -355,14 +355,14 @@ func (r *KThreesControlPlaneReconciler) generateKThreesConfig(ctx context.Contex
 	return bootstrapRef, nil
 }
 
-func (r *KThreesControlPlaneReconciler) generateMachine(ctx context.Context, kcp *controlplanev1.KThreesControlPlane, cluster *clusterv1.Cluster, infraRef, bootstrapRef *corev1.ObjectReference, failureDomain *string) error {
+func (r *CK8sControlPlaneReconciler) generateMachine(ctx context.Context, kcp *controlplanev1.CK8sControlPlane, cluster *clusterv1.Cluster, infraRef, bootstrapRef *corev1.ObjectReference, failureDomain *string) error {
 	machine := &clusterv1.Machine{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      names.SimpleNameGenerator.GenerateName(kcp.Name + "-"),
 			Namespace: kcp.Namespace,
 			Labels:    k3s.ControlPlaneLabelsForCluster(cluster.Name, kcp.Spec.MachineTemplate),
 			OwnerReferences: []metav1.OwnerReference{
-				*metav1.NewControllerRef(kcp, controlplanev1.GroupVersion.WithKind("KThreesControlPlane")),
+				*metav1.NewControllerRef(kcp, controlplanev1.GroupVersion.WithKind("CK8sControlPlane")),
 			},
 		},
 		Spec: clusterv1.MachineSpec{
@@ -383,11 +383,11 @@ func (r *KThreesControlPlaneReconciler) generateMachine(ctx context.Context, kcp
 
 	// Machine's bootstrap config may be missing ClusterConfiguration if it is not the first machine in the control plane.
 	// We store ClusterConfiguration as annotation here to detect any changes in KCP ClusterConfiguration and rollout the machine if any.
-	serverConfig, err := json.Marshal(kcp.Spec.KThreesConfigSpec.ServerConfig)
+	serverConfig, err := json.Marshal(kcp.Spec.CK8sConfigSpec.ServerConfig)
 	if err != nil {
 		return fmt.Errorf("failed to marshal cluster configuration: %w", err)
 	}
-	annotations[controlplanev1.KThreesServerConfigurationAnnotation] = string(serverConfig)
+	annotations[controlplanev1.CK8sServerConfigurationAnnotation] = string(serverConfig)
 
 	// In case this machine is being created as a consequence of a remediation, then add an annotation
 	// tracking remediating data.
