@@ -1,0 +1,13 @@
+domain: cluster.x-k8s.io
+repo: github.com/k3s-io/cluster-api-k3s/controlplane
+resources:
+- group: controlplane
+  kind: KThreesControlPlane
+  version: v1beta1
+- group: controlplane
+  kind: KThreesControlPlane
+  version: v1beta2
+- group: controlplane
+  kind: KThreesControlPlaneTemplate
+  version: v1beta2
+version: "2"
