@@ -1,0 +1,174 @@
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  annotations:
+    controller-gen.kubebuilder.io/version: v0.14.0
+  name: ck8sconfigtemplates.bootstrap.cluster.x-k8s.io
+spec:
+  group: bootstrap.cluster.x-k8s.io
+  names:
+    kind: CK8sConfigTemplate
+    listKind: CK8sConfigTemplateList
+    plural: ck8sconfigtemplates
+    singular: ck8sconfigtemplate
+  scope: Namespaced
+  versions:
+  - name: v1beta2
+    schema:
+      openAPIV3Schema:
+        description: CK8sConfigTemplate is the Schema for the ck8sconfigtemplates
+          API.
+        properties:
+          apiVersion:
+            description: |-
+              APIVersion defines the versioned schema of this representation of an object.
+              Servers should convert recognized schemas to the latest internal value, and
+              may reject unrecognized values.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
+            type: string
+          kind:
+            description: |-
+              Kind is a string value representing the REST resource this object represents.
+              Servers may infer this from the endpoint the client submits requests to.
+              Cannot be updated.
+              In CamelCase.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
+            type: string
+          metadata:
+            type: object
+          spec:
+            description: CK8sConfigTemplateSpec defines the desired state of CK8sConfigTemplate.
+            properties:
+              template:
+                description: CK8sConfigTemplateResource defines the Template structure.
+                properties:
+                  spec:
+                    description: CK8sConfigSpec defines the desired state of CK8sConfig.
+                    properties:
+                      airGapped:
+                        description: |-
+                          AirGapped is a boolean option to signal that we are deploying to an airgap environment.
+                          In this case, the provider assumes that it cannot download and install binaries, and the user
+                          should ensure that all nodes have a `/opt/capi/install.sh` script that installs k8s-snap.
+                        type: boolean
+                      bootCommands:
+                        description: BootCommands specifies extra commands to run
+                          in cloud-init early in the boot process.
+                        items:
+                          type: string
+                        type: array
+                      controlPlane:
+                        description: CK8sControlPlaneConfig is configuration for the
+                          control plane node.
+                        properties:
+                          cloudProvider:
+                            description: CloudProvider is the cloud-provider configuration
+                              option to set.
+                            type: string
+                          extraSANs:
+                            description: ExtraSANs is a list of SANs to include in
+                              the server certificates.
+                            items:
+                              type: string
+                            type: array
+                          k8sDqlitePort:
+                            description: K8sDqlitePort is the port to use for k8s-dqlite.
+                              If unset, 2379 (etcd) will be used.
+                            type: integer
+                          microclusterAddress:
+                            description: MicroclusterAddress is the address (or CIDR)
+                              to use for microcluster. If unset, the default node
+                              interface is chosen.
+                            type: string
+                          microclusterPort:
+                            description: MicroclusterPort is the port to use for microcluster.
+                              If unset, ":2380" (etcd peer) will be used.
+                            type: integer
+                          nodeTaints:
+                            description: NodeTaints is taints to add to the control
+                              plane kubelet nodes.
+                            items:
+                              type: string
+                            type: array
+                        type: object
+                      files:
+                        description: Files specifies extra files to be passed to user_data
+                          upon creation.
+                        items:
+                          description: File defines the input for generating write_files
+                            in cloud-init.
+                          properties:
+                            content:
+                              description: Content is the actual content of the file.
+                              type: string
+                            contentFrom:
+                              description: ContentFrom is a referenced source of content
+                                to populate the file.
+                              properties:
+                                secret:
+                                  description: Secret represents a secret that should
+                                    populate this file.
+                                  properties:
+                                    key:
+                                      description: Key is the key in the secret's
+                                        data map for this value.
+                                      type: string
+                                    name:
+                                      description: Name of the secret in the CK8sBootstrapConfig's
+                                        namespace to use.
+                                      type: string
+                                  required:
+                                  - key
+                                  - name
+                                  type: object
+                              required:
+                              - secret
+                              type: object
+                            encoding:
+                              description: Encoding specifies the encoding of the
+                                file contents.
+                              enum:
+                              - base64
+                              - gzip
+                              - gzip+base64
+                              type: string
+                            owner:
+                              description: Owner specifies the ownership of the file,
+                                e.g. "root:root".
+                              type: string
+                            path:
+                              description: Path specifies the full path on disk where
+                                to store the file.
+                              type: string
+                            permissions:
+                              description: Permissions specifies the permissions to
+                                assign to the file, e.g. "0640".
+                              type: string
+                          required:
+                          - path
+                          type: object
+                        type: array
+                      postRunCommands:
+                        description: PostRunCommands specifies extra commands to run
+                          in cloud-init after k8s-snap setup runs.
+                        items:
+                          type: string
+                        type: array
+                      preRunCommands:
+                        description: PreRunCommands specifies extra commands to run
+                          in cloud-init before k8s-snap setup runs.
+                        items:
+                          type: string
+                        type: array
+                      version:
+                        description: Version specifies the Kubernetes version.
+                        type: string
+                    type: object
+                type: object
+            required:
+            - template
+            type: object
+        type: object
+    served: true
+    storage: true

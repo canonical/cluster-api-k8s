@@ -1,0 +1,24 @@
+# permissions for end users to edit ck8sconfigs.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: ck8sconfig-editor-role
+rules:
+- apiGroups:
+  - bootstrap.cluster.x-k8s.io
+  resources:
+  - ck8sconfigs
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - bootstrap.cluster.x-k8s.io
+  resources:
+  - ck8sconfigs/status
+  verbs:
+  - get
