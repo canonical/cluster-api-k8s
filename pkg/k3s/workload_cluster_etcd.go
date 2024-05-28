@@ -26,8 +26,8 @@ import (
 	"sigs.k8s.io/cluster-api/util/patch"
 	ctrl "sigs.k8s.io/controller-runtime"
 
-	"github.com/k3s-io/cluster-api-k3s/pkg/etcd"
-	etcdutil "github.com/k3s-io/cluster-api-k3s/pkg/etcd/util"
+	"github.com/canonical/cluster-api-k8s/pkg/etcd"
+	etcdutil "github.com/canonical/cluster-api-k8s/pkg/etcd/util"
 )
 
 const (

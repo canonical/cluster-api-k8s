@@ -17,7 +17,7 @@ import (
 	"sigs.k8s.io/cluster-api/util/certs"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	"github.com/k3s-io/cluster-api-k3s/pkg/secret"
+	"github.com/canonical/cluster-api-k8s/pkg/secret"
 )
 
 var (

@@ -76,7 +76,7 @@ version::ldflags() {
         local key=${1}
         local val=${2}
         ldflags+=(
-            "-X 'github.com/k3s-io/cluster-api-k3s/version.${key}=${val}'"
+            "-X 'github.com/canonical/cluster-api-k8s/version.${key}=${val}'"
         )
     }
 

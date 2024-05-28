@@ -9,8 +9,8 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
 
-	bootstrapv1 "github.com/k3s-io/cluster-api-k3s/bootstrap/api/v1beta2"
-	controlplanev1 "github.com/k3s-io/cluster-api-k3s/controlplane/api/v1beta2"
+	bootstrapv1 "github.com/canonical/cluster-api-k8s/bootstrap/api/v1beta2"
+	controlplanev1 "github.com/canonical/cluster-api-k8s/controlplane/api/v1beta2"
 )
 
 func TestMatchesKThreesBootstrapConfig(t *testing.T) {

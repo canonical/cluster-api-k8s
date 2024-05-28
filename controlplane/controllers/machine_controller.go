@@ -16,7 +16,7 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	k3s "github.com/k3s-io/cluster-api-k3s/pkg/k3s"
+	k3s "github.com/canonical/cluster-api-k8s/pkg/k3s"
 )
 
 // KThreesControlPlaneReconciler reconciles a KThreesControlPlane object.

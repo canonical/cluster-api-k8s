@@ -23,8 +23,8 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
 
-	bootstrapv1beta2 "github.com/k3s-io/cluster-api-k3s/bootstrap/api/v1beta2"
-	"github.com/k3s-io/cluster-api-k3s/pkg/errors"
+	bootstrapv1 "github.com/canonical/cluster-api-k8s/bootstrap/api/v1beta2"
+	"github.com/canonical/cluster-api-k8s/pkg/errors"
 )
 
 const (
@@ -69,7 +69,7 @@ type KThreesControlPlaneSpec struct {
 	// KThreesConfigSpec is a KThreesConfigSpec
 	// to use for initializing and joining machines to the control plane.
 	// +optional
-	KThreesConfigSpec bootstrapv1beta2.KThreesConfigSpec `json:"kthreesConfigSpec,omitempty"`
+	KThreesConfigSpec bootstrapv1.KThreesConfigSpec `json:"kthreesConfigSpec,omitempty"`
 
 	// RolloutAfter is a field to indicate a rollout should be performed
 	// after the specified time even if no changes have been made to the

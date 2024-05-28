@@ -27,8 +27,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/envtest"
 
-	controlplanev1beta1 "github.com/k3s-io/cluster-api-k3s/controlplane/api/v1beta1"
-	controlplanev1 "github.com/k3s-io/cluster-api-k3s/controlplane/api/v1beta2"
+	controlplanev1 "github.com/canonical/cluster-api-k8s/controlplane/api/v1beta2"
 )
 
 // These tests use Ginkgo (BDD-style Go testing framework). Refer to
@@ -58,7 +57,6 @@ var _ = BeforeSuite(func(done Done) {
 	Expect(err).ToNot(HaveOccurred())
 	Expect(cfg).ToNot(BeNil())
 
-	Expect(controlplanev1beta1.AddToScheme(scheme.Scheme)).Should(Succeed())
 	Expect(controlplanev1.AddToScheme(scheme.Scheme)).Should(Succeed())
 
 	// +kubebuilder:scaffold:scheme

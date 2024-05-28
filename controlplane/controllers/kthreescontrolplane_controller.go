@@ -46,11 +46,11 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"sigs.k8s.io/controller-runtime/pkg/source"
 
-	controlplanev1 "github.com/k3s-io/cluster-api-k3s/controlplane/api/v1beta2"
-	k3s "github.com/k3s-io/cluster-api-k3s/pkg/k3s"
-	"github.com/k3s-io/cluster-api-k3s/pkg/kubeconfig"
-	"github.com/k3s-io/cluster-api-k3s/pkg/secret"
-	"github.com/k3s-io/cluster-api-k3s/pkg/token"
+	controlplanev1 "github.com/canonical/cluster-api-k8s/controlplane/api/v1beta2"
+	k3s "github.com/canonical/cluster-api-k8s/pkg/k3s"
+	"github.com/canonical/cluster-api-k8s/pkg/kubeconfig"
+	"github.com/canonical/cluster-api-k8s/pkg/secret"
+	"github.com/canonical/cluster-api-k8s/pkg/token"
 )
 
 // KThreesControlPlaneReconciler reconciles a KThreesControlPlane object.

@@ -37,9 +37,9 @@ import (
 	"sigs.k8s.io/cluster-api/util/patch"
 	ctrl "sigs.k8s.io/controller-runtime"
 
-	bootstrapv1 "github.com/k3s-io/cluster-api-k3s/bootstrap/api/v1beta2"
-	controlplanev1 "github.com/k3s-io/cluster-api-k3s/controlplane/api/v1beta2"
-	k3s "github.com/k3s-io/cluster-api-k3s/pkg/k3s"
+	bootstrapv1 "github.com/canonical/cluster-api-k8s/bootstrap/api/v1beta2"
+	controlplanev1 "github.com/canonical/cluster-api-k8s/controlplane/api/v1beta2"
+	k3s "github.com/canonical/cluster-api-k8s/pkg/k3s"
 )
 
 var ErrPreConditionFailed = errors.New("precondition check failed")

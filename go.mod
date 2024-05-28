@@ -1,4 +1,4 @@
-module github.com/k3s-io/cluster-api-k3s
+module github.com/canonical/cluster-api-k8s
 
 go 1.21
 

@@ -27,9 +27,9 @@ import (
 	ctrlclient "sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
-	controlplanev1 "github.com/k3s-io/cluster-api-k3s/controlplane/api/v1beta2"
-	"github.com/k3s-io/cluster-api-k3s/pkg/etcd"
-	etcdutil "github.com/k3s-io/cluster-api-k3s/pkg/etcd/util"
+	controlplanev1 "github.com/canonical/cluster-api-k8s/controlplane/api/v1beta2"
+	"github.com/canonical/cluster-api-k8s/pkg/etcd"
+	etcdutil "github.com/canonical/cluster-api-k8s/pkg/etcd/util"
 )
 
 const (

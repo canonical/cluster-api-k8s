@@ -21,8 +21,8 @@ import (
 
 	. "github.com/onsi/gomega"
 
-	infrav1 "github.com/k3s-io/cluster-api-k3s/bootstrap/api/v1beta2"
-	"github.com/k3s-io/cluster-api-k3s/pkg/secret"
+	infrav1 "github.com/canonical/cluster-api-k8s/bootstrap/api/v1beta2"
+	"github.com/canonical/cluster-api-k8s/pkg/secret"
 )
 
 func TestControlPlaneInit(t *testing.T) {

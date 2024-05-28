@@ -32,9 +32,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/metrics/server"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
 
-	bootstrapv1beta1 "github.com/k3s-io/cluster-api-k3s/bootstrap/api/v1beta1"
-	bootstrapv1 "github.com/k3s-io/cluster-api-k3s/bootstrap/api/v1beta2"
-	"github.com/k3s-io/cluster-api-k3s/bootstrap/controllers"
+	bootstrapv1 "github.com/canonical/cluster-api-k8s/bootstrap/api/v1beta2"
+	"github.com/canonical/cluster-api-k8s/bootstrap/controllers"
 )
 
 var (
@@ -46,7 +45,6 @@ func init() {
 	_ = clientgoscheme.AddToScheme(scheme)
 	_ = clusterv1beta1.AddToScheme(scheme)
 	_ = expv1beta1.AddToScheme(scheme)
-	_ = bootstrapv1beta1.AddToScheme(scheme)
 	_ = bootstrapv1.AddToScheme(scheme)
 	// +kubebuilder:scaffold:scheme
 }
