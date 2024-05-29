@@ -42,7 +42,7 @@ const (
 	AvailableCondition clusterv1.ConditionType = "Available"
 
 	// WaitingForCK8sServerReason (Severity=Info) documents a CK8sControlPlane object waiting for the first
-	// control plane instance to complete the k3s server operation.
+	// control plane instance to complete the ck8s server operation.
 	WaitingForCK8sServerReason = "WaitingForCK8sServer"
 )
 
@@ -68,7 +68,7 @@ const (
 )
 
 const (
-	// ControlPlaneComponentsHealthyCondition reports the overall status of the k3s server.
+	// ControlPlaneComponentsHealthyCondition reports the overall status of the control plane.
 	ControlPlaneComponentsHealthyCondition clusterv1.ConditionType = "ControlPlaneComponentsHealthy"
 
 	// ControlPlaneComponentsUnhealthyReason (Severity=Error) documents a control plane component not healthy.
@@ -80,7 +80,7 @@ const (
 	// ControlPlaneComponentsInspectionFailedReason documents a failure in inspecting the control plane component status.
 	ControlPlaneComponentsInspectionFailedReason = "ControlPlaneComponentsInspectionFailed"
 
-	// MachineAgentHealthyCondition reports a machine's k3s agent's operational status.
+	// MachineAgentHealthyCondition reports a machine's operational status.
 	MachineAgentHealthyCondition clusterv1.ConditionType = "AgentHealthy"
 
 	// PodProvisioningReason (Severity=Info) documents a pod waiting to be provisioned i.e., Pod is in "Pending" phase.

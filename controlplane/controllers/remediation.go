@@ -211,7 +211,7 @@ func (r *CK8sControlPlaneReconciler) reconcileUnhealthyMachines(ctx context.Cont
 			}
 
 			mAnnotations := machineToBeRemediated.GetAnnotations()
-			mAnnotations[clusterv1.PreTerminateDeleteHookAnnotationPrefix] = k3sHookName
+			mAnnotations[clusterv1.PreTerminateDeleteHookAnnotationPrefix] = ck8sHookName
 			machineToBeRemediated.SetAnnotations(mAnnotations)
 
 			if err := patchHelper.Patch(ctx, machineToBeRemediated); err != nil {

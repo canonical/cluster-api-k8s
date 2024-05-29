@@ -289,7 +289,7 @@ func (r *CK8sControlPlaneReconciler) SetupWithManager(ctx context.Context, mgr c
 
 	r.Scheme = mgr.GetScheme()
 	r.controller = c
-	r.recorder = mgr.GetEventRecorderFor("k3s-control-plane-controller")
+	r.recorder = mgr.GetEventRecorderFor("ck8s-control-plane-controller")
 
 	if r.managementCluster == nil {
 		r.managementCluster = &k3s.Management{

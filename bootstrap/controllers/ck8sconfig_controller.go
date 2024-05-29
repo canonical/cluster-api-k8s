@@ -50,7 +50,7 @@ import (
 	"github.com/canonical/cluster-api-k8s/pkg/token"
 )
 
-// InitLocker is a lock that is used around k3s init.
+// InitLocker is a lock that is used around control plane init.
 type InitLocker interface {
 	Lock(ctx context.Context, cluster *clusterv1.Cluster, machine *clusterv1.Machine) bool
 	Unlock(ctx context.Context, cluster *clusterv1.Cluster) bool
@@ -73,7 +73,7 @@ type Scope struct {
 
 var (
 	ErrInvalidRef   = errors.New("invalid reference")
-	ErrFailedUnlock = errors.New("failed to unlock the k3s init lock")
+	ErrFailedUnlock = errors.New("failed to unlock the init lock")
 )
 
 // +kubebuilder:rbac:groups=bootstrap.cluster.x-k8s.io,resources=ck8sconfigs,verbs=get;list;watch;create;update;patch;delete
@@ -85,7 +85,7 @@ var (
 func (r *CK8sConfigReconciler) Reconcile(ctx context.Context, req ctrl.Request) (_ reconcile.Result, rerr error) {
 	log := r.Log.WithValues("ck8sconfig", req.NamespacedName)
 
-	// Lookup the k3s config
+	// Lookup the ck8s config
 	config := &bootstrapv1.CK8sConfig{}
 	if err := r.Client.Get(ctx, req.NamespacedName, config); err != nil {
 		if apierrors.IsNotFound(err) {

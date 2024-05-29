@@ -46,7 +46,7 @@ func NewControlPlaneInitMutex(client client.Client) *ControlPlaneInitMutex {
 	}
 }
 
-// Lock allows a control plane node to be the first and only node to run k3s init.
+// Lock allows a control plane node to be the first and only node to run init.
 func (c *ControlPlaneInitMutex) Lock(ctx context.Context, cluster *clusterv1.Cluster, machine *clusterv1.Machine) bool {
 	sema := newSemaphore()
 	cmName := configMapName(cluster.Name)

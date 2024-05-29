@@ -209,49 +209,22 @@ spec:
                           CK8sConfigSpec is a CK8sConfigSpec
                           to use for initializing and joining machines to the control plane.
                         properties:
-                          agentConfig:
-                            description: AgentConfig specifies configuration for the
-                              agent nodes
+                          airGapped:
+                            description: |-
+                              AirGapped is a boolean option to signal that we are deploying to an airgap environment.
+                              In this case, the provider assumes that it cannot download and install binaries, and the user
+                              should ensure that all nodes have a `/opt/capi/install.sh` script that installs k8s-snap.
+                            type: boolean
+                          controlPlane:
+                            description: CK8sControlPlaneConfig is configuration for
+                              the control plane node.
                             properties:
-                              airGapped:
-                                description: |-
-                                  AirGapped is a boolean value to define if the bootstrapping should be air-gapped,
-                                  basically supposing that online container registries and k3s install scripts are not reachable.
-                                  User should prepare docker image, k3s binary, and put the install script in `/opt/install.sh`
-                                  on all nodes in the air-gap environment.
-                                type: boolean
-                              kubeProxyArgs:
-                                description: KubeProxyArgs Customized flag for kube-proxy
-                                  process
+                              extraSANs:
+                                description: ExtraSANs is a list of SANs to include
+                                  in the server certificates.
                                 items:
                                   type: string
                                 type: array
-                              kubeletArgs:
-                                description: KubeletArgs Customized flag for kubelet
-                                  process
-                                items:
-                                  type: string
-                                type: array
-                              nodeLabels:
-                                description: NodeLabels  Registering and starting
-                                  kubelet with set of labels
-                                items:
-                                  type: string
-                                type: array
-                              nodeName:
-                                description: NodeName Name of the Node
-                                type: string
-                              nodeTaints:
-                                description: NodeTaints Registering kubelet with set
-                                  of taints
-                                items:
-                                  type: string
-                                type: array
-                              privateRegistry:
-                                description: |-
-                                  TODO: take in a object or secret and write to file. this is not useful
-                                  PrivateRegistry  registry configuration file (default: "/etc/rancher/k3s/registries.yaml")
-                                type: string
                             type: object
                           files:
                             description: Files specifies extra files to be passed
@@ -311,104 +284,20 @@ spec:
                               - path
                               type: object
                             type: array
-                          postK3sCommands:
-                            description: PostK3sCommands specifies extra commands
-                              to run after k3s setup runs
+                          postRunCommands:
+                            description: PostRunCommands specifies extra commands
+                              to run in cloud-init after k8s-snap setup runs.
                             items:
                               type: string
                             type: array
-                          preK3sCommands:
-                            description: PreK3sCommands specifies extra commands to
-                              run before k3s setup runs
+                          preRunCommands:
+                            description: PreRunCommands specifies extra commands to
+                              run in cloud-init before k8s-snap setup runs.
                             items:
                               type: string
                             type: array
-                          serverConfig:
-                            description: ServerConfig specifies configuration for
-                              the agent nodes
-                            properties:
-                              advertiseAddress:
-                                description: 'AdvertiseAddress IP address that apiserver
-                                  uses to advertise to members of the cluster (default:
-                                  node-external-ip/node-ip)'
-                                type: string
-                              advertisePort:
-                                description: 'AdvertisePort Port that apiserver uses
-                                  to advertise to members of the cluster (default:
-                                  listen-port) (default: 0)'
-                                type: string
-                              bindAddress:
-                                description: 'BindAddress k3s bind address (default:
-                                  0.0.0.0)'
-                                type: string
-                              cloudProviderName:
-                                default: external
-                                description: 'CloudProviderName defines the --cloud-provider=
-                                  kubelet extra arg. (default: "external")'
-                                type: string
-                              clusterCidr:
-                                description: 'ClusterCidr  Network CIDR to use for
-                                  pod IPs (default: "10.42.0.0/16")'
-                                type: string
-                              clusterDNS:
-                                description: 'ClusterDNS  Cluster IP for coredns service.
-                                  Should be in your service-cidr range (default: 10.43.0.10)'
-                                type: string
-                              clusterDomain:
-                                description: 'ClusterDomain Cluster Domain (default:
-                                  "cluster.local")'
-                                type: string
-                              disableCloudController:
-                                default: true
-                                description: 'DisableCloudController disables k3s
-                                  default cloud controller manager. (default: true)'
-                                type: boolean
-                              disableComponents:
-                                description: DisableComponents  specifies extra commands
-                                  to run before k3s setup runs
-                                items:
-                                  type: string
-                                type: array
-                              disableExternalCloudProvider:
-                                description: 'DeprecatedDisableExternalCloudProvider
-                                  suppresses the ''cloud-provider=external'' kubelet
-                                  argument. (default: false)'
-                                type: boolean
-                              httpsListenPort:
-                                description: 'HTTPSListenPort HTTPS listen port (default:
-                                  6443)'
-                                type: string
-                              kubeAPIServerArg:
-                                description: KubeAPIServerArgs is a customized flag
-                                  for kube-apiserver process
-                                items:
-                                  type: string
-                                type: array
-                              kubeControllerManagerArgs:
-                                description: KubeControllerManagerArgs is a customized
-                                  flag for kube-controller-manager process
-                                items:
-                                  type: string
-                                type: array
-                              kubeSchedulerArgs:
-                                description: KubeSchedulerArgs is a customized flag
-                                  for kube-scheduler process
-                                items:
-                                  type: string
-                                type: array
-                              serviceCidr:
-                                description: 'ServiceCidr Network CIDR to use for
-                                  services IPs (default: "10.43.0.0/16")'
-                                type: string
-                              tlsSan:
-                                description: TLSSan Add additional hostname or IP
-                                  as a Subject Alternative Name in the TLS cert
-                                items:
-                                  type: string
-                                type: array
-                            type: object
                           version:
-                            description: Version specifies the k3s version
+                            description: Version specifies the Kubernetes version.
                             type: string
                         type: object
                     type: object

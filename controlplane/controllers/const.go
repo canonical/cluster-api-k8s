@@ -31,5 +31,5 @@ const (
 	// dependent certificates have been created.
 	dependentCertRequeueAfter = 30 * time.Second
 
-	k3sHookName = "k3s"
+	ck8sHookName = "ck8s"
 )

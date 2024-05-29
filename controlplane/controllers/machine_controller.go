@@ -79,11 +79,13 @@ func (r *MachineReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 
 	// if machine registered PreTerminate hook, wait for capi asks to resolve PreTerminateDeleteHook
 	if annotations.HasWithPrefix(clusterv1.PreTerminateDeleteHookAnnotationPrefix, m.ObjectMeta.Annotations) &&
-		m.ObjectMeta.Annotations[clusterv1.PreTerminateDeleteHookAnnotationPrefix] == k3sHookName {
+		m.ObjectMeta.Annotations[clusterv1.PreTerminateDeleteHookAnnotationPrefix] == ck8sHookName {
 		if !conditions.IsFalse(m, clusterv1.PreTerminateDeleteHookSucceededCondition) {
 			logger.Info("wait for machine drain and detech volume operation complete.")
 			return ctrl.Result{}, nil
 		}
+
+		// TODO(neoaggelos): adjust the code below for removing nodes from Canonical Kubernetes.
 
 		cluster, err := util.GetClusterFromMetadata(ctx, r.Client, m.ObjectMeta)
 		if err != nil {

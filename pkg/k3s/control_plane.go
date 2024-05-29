@@ -25,7 +25,6 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
-	"k8s.io/apimachinery/pkg/types"
 	kerrors "k8s.io/apimachinery/pkg/util/errors"
 	"k8s.io/apiserver/pkg/storage/names"
 	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
@@ -88,17 +87,17 @@ func NewControlPlane(ctx context.Context, client client.Client, cluster *cluster
 	}
 
 	hasEtcdCA := false
-	etcdCASecret := &corev1.Secret{}
-	etcdCAObjectKey := types.NamespacedName{
-		Namespace: cluster.Namespace,
-		Name:      fmt.Sprintf("%s-etcd", cluster.Name),
-	}
+	// etcdCASecret := &corev1.Secret{}
+	// etcdCAObjectKey := types.NamespacedName{
+	// 	Namespace: cluster.Namespace,
+	// 	Name:      fmt.Sprintf("%s-etcd", cluster.Name),
+	// }
 
-	if err := client.Get(ctx, etcdCAObjectKey, etcdCASecret); err == nil {
-		hasEtcdCA = true
-	} else if !apierrors.IsNotFound(err) {
-		return nil, err
-	}
+	// if err := client.Get(ctx, etcdCAObjectKey, etcdCASecret); err == nil {
+	// 	hasEtcdCA = true
+	// } else if !apierrors.IsNotFound(err) {
+	// 	return nil, err
+	// }
 
 	return &ControlPlane{
 		KCP:                  kcp,
@@ -313,7 +312,7 @@ func getInfraResources(ctx context.Context, cl client.Client, machines collectio
 	return result, nil
 }
 
-// getCK8sConfigs fetches the k3s config for each machine in the collection and returns a map of machine.Name -> CK8sConfig.
+// getCK8sConfigs fetches the ck8s config for each machine in the collection and returns a map of machine.Name -> CK8sConfig.
 func getCK8sConfigs(ctx context.Context, cl client.Client, machines collections.Machines) (map[string]*bootstrapv1.CK8sConfig, error) {
 	result := map[string]*bootstrapv1.CK8sConfig{}
 	for _, m := range machines {

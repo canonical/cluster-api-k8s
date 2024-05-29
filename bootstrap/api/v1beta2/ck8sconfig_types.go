@@ -25,137 +25,44 @@ import (
 
 // CK8sConfigSpec defines the desired state of CK8sConfig.
 type CK8sConfigSpec struct {
+	// Version specifies the Kubernetes version.
+	// +optional
+	Version string `json:"version,omitempty"`
+
 	// Files specifies extra files to be passed to user_data upon creation.
 	// +optional
 	Files []File `json:"files,omitempty"`
 
-	// PreK3sCommands specifies extra commands to run before k3s setup runs
+	// PreRunCommands specifies extra commands to run in cloud-init before k8s-snap setup runs.
 	// +optional
-	PreK3sCommands []string `json:"preK3sCommands,omitempty"`
+	PreRunCommands []string `json:"preRunCommands,omitempty"`
 
-	// PostK3sCommands specifies extra commands to run after k3s setup runs
+	// PostRunCommands specifies extra commands to run in cloud-init after k8s-snap setup runs.
 	// +optional
-	PostK3sCommands []string `json:"postK3sCommands,omitempty"`
+	PostRunCommands []string `json:"postRunCommands,omitempty"`
 
-	// AgentConfig specifies configuration for the agent nodes
+	// AirGapped is a boolean option to signal that we are deploying to an airgap environment.
+	// In this case, the provider assumes that it cannot download and install binaries, and the user
+	// should ensure that all nodes have a `/opt/capi/install.sh` script that installs k8s-snap.
 	// +optional
-	AgentConfig CK8sAgentConfig `json:"agentConfig,omitempty"`
+	AirGapped bool `json:"airGapped,omitempty"`
 
-	// ServerConfig specifies configuration for the agent nodes
+	// CK8sControlPlaneConfig is configuration for the control plane node.
 	// +optional
-	ServerConfig CK8sServerConfig `json:"serverConfig,omitempty"`
-
-	// Version specifies the k3s version
-	// +optional
-	Version string `json:"version,omitempty"`
+	ControlPlaneConfig CK8sControlPlaneConfig `json:"controlPlane,omitempty"`
 }
 
 // TODO
-// Will need extend this func when implementing other k3s database options.
-func (c *CK8sConfigSpec) IsEtcdEmbedded() bool {
+// Will need extend this func when implementing other database options.
+func (c *CK8sConfigSpec) IsK8sDqlite() bool {
 	return true
 }
 
-type CK8sServerConfig struct {
-	// KubeAPIServerArgs is a customized flag for kube-apiserver process
+// CK8sControlPlaneConfig is configuration for control plane noes.
+type CK8sControlPlaneConfig struct {
+	// ExtraSANs is a list of SANs to include in the server certificates.
 	// +optional
-	KubeAPIServerArgs []string `json:"kubeAPIServerArg,omitempty"`
-
-	// KubeControllerManagerArgs is a customized flag for kube-controller-manager process
-	// +optional
-	KubeControllerManagerArgs []string `json:"kubeControllerManagerArgs,omitempty"`
-
-	// KubeSchedulerArgs is a customized flag for kube-scheduler process
-	// +optional
-	KubeSchedulerArgs []string `json:"kubeSchedulerArgs,omitempty"`
-
-	// TLSSan Add additional hostname or IP as a Subject Alternative Name in the TLS cert
-	// +optional
-	TLSSan []string `json:"tlsSan,omitempty"`
-
-	// BindAddress k3s bind address (default: 0.0.0.0)
-	// +optional
-	BindAddress string `json:"bindAddress,omitempty"`
-
-	// HTTPSListenPort HTTPS listen port (default: 6443)
-	// +optional
-	HTTPSListenPort string `json:"httpsListenPort,omitempty"`
-
-	// AdvertiseAddress IP address that apiserver uses to advertise to members of the cluster (default: node-external-ip/node-ip)
-	// +optional
-	AdvertiseAddress string `json:"advertiseAddress,omitempty"`
-
-	// AdvertisePort Port that apiserver uses to advertise to members of the cluster (default: listen-port) (default: 0)
-	// +optional
-	AdvertisePort string `json:"advertisePort,omitempty"`
-
-	// ClusterCidr  Network CIDR to use for pod IPs (default: "10.42.0.0/16")
-	// +optional
-	ClusterCidr string `json:"clusterCidr,omitempty"`
-
-	// ServiceCidr Network CIDR to use for services IPs (default: "10.43.0.0/16")
-	// +optional
-	ServiceCidr string `json:"serviceCidr,omitempty"`
-
-	// ClusterDNS  Cluster IP for coredns service. Should be in your service-cidr range (default: 10.43.0.10)
-	// +optional
-	ClusterDNS string `json:"clusterDNS,omitempty"`
-
-	// ClusterDomain Cluster Domain (default: "cluster.local")
-	// +optional
-	ClusterDomain string `json:"clusterDomain,omitempty"`
-
-	// DisableComponents  specifies extra commands to run before k3s setup runs
-	// +optional
-	DisableComponents []string `json:"disableComponents,omitempty"`
-
-	// DeprecatedDisableExternalCloudProvider suppresses the 'cloud-provider=external' kubelet argument. (default: false)
-	// +optional
-	DeprecatedDisableExternalCloudProvider bool `json:"disableExternalCloudProvider,omitempty"`
-
-	// DisableCloudController disables k3s default cloud controller manager. (default: true)
-	// +optional
-	// +kubebuilder:default=true
-	DisableCloudController bool `json:"disableCloudController,omitempty"`
-
-	// CloudProviderName defines the --cloud-provider= kubelet extra arg. (default: "external")
-	// +optional
-	// +kubebuilder:default=external
-	CloudProviderName string `json:"cloudProviderName,omitempty"`
-}
-
-type CK8sAgentConfig struct {
-	// NodeLabels  Registering and starting kubelet with set of labels
-	// +optional
-	NodeLabels []string `json:"nodeLabels,omitempty"`
-
-	// NodeTaints Registering kubelet with set of taints
-	// +optional
-	NodeTaints []string `json:"nodeTaints,omitempty"`
-
-	// TODO: take in a object or secret and write to file. this is not useful
-	// PrivateRegistry  registry configuration file (default: "/etc/rancher/k3s/registries.yaml")
-	// +optional
-	PrivateRegistry string `json:"privateRegistry,omitempty"`
-
-	// KubeletArgs Customized flag for kubelet process
-	// +optional
-	KubeletArgs []string `json:"kubeletArgs,omitempty"`
-
-	// KubeProxyArgs Customized flag for kube-proxy process
-	// +optional
-	KubeProxyArgs []string `json:"kubeProxyArgs,omitempty"`
-
-	// NodeName Name of the Node
-	// +optional
-	NodeName string `json:"nodeName,omitempty"`
-
-	// AirGapped is a boolean value to define if the bootstrapping should be air-gapped,
-	// basically supposing that online container registries and k3s install scripts are not reachable.
-	// User should prepare docker image, k3s binary, and put the install script in `/opt/install.sh`
-	// on all nodes in the air-gap environment.
-	// +optional
-	AirGapped bool `json:"airGapped,omitempty"`
+	ExtraSANs []string `json:"extraSANs,omitempty"`
 }
 
 // CK8sConfigStatus defines the observed state of CK8sConfig.

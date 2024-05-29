@@ -81,14 +81,15 @@ func NewCertificatesForInitialControlPlane(config *bootstrapv1.CK8sConfigSpec) C
 		},
 	}
 
-	if config.IsEtcdEmbedded() {
-		etcdCert := &Certificate{
-			Purpose:  EtcdCA,
-			CertFile: filepath.Join(certificatesDir, "etcd", "server-ca.crt"),
-			KeyFile:  filepath.Join(certificatesDir, "etcd", "server-ca.key"),
-		}
-		certificates = append(certificates, etcdCert)
-	}
+	// TODO(neoaggelos): handle the case of required certificates for external datastore here
+	// if config.IsEtcdEmbedded() {
+	// 	etcdCert := &Certificate{
+	// 		Purpose:  EtcdCA,
+	// 		CertFile: filepath.Join(certificatesDir, "etcd", "server-ca.crt"),
+	// 		KeyFile:  filepath.Join(certificatesDir, "etcd", "server-ca.key"),
+	// 	}
+	// 	certificates = append(certificates, etcdCert)
+	// }
 
 	return certificates
 }

@@ -140,7 +140,7 @@ func (r *CK8sControlPlaneReconciler) scaleDownControlPlane(
 		}
 
 		mAnnotations := machineToDelete.GetAnnotations()
-		mAnnotations[clusterv1.PreTerminateDeleteHookAnnotationPrefix] = k3sHookName
+		mAnnotations[clusterv1.PreTerminateDeleteHookAnnotationPrefix] = ck8sHookName
 		machineToDelete.SetAnnotations(mAnnotations)
 
 		if err := patchHelper.Patch(ctx, machineToDelete); err != nil {
@@ -383,7 +383,7 @@ func (r *CK8sControlPlaneReconciler) generateMachine(ctx context.Context, kcp *c
 
 	// Machine's bootstrap config may be missing ClusterConfiguration if it is not the first machine in the control plane.
 	// We store ClusterConfiguration as annotation here to detect any changes in KCP ClusterConfiguration and rollout the machine if any.
-	serverConfig, err := json.Marshal(kcp.Spec.CK8sConfigSpec.ServerConfig)
+	serverConfig, err := json.Marshal(kcp.Spec.CK8sConfigSpec.ControlPlaneConfig)
 	if err != nil {
 		return fmt.Errorf("failed to marshal cluster configuration: %w", err)
 	}

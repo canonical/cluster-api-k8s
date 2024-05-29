@@ -6,9 +6,9 @@
 # - docker
 images:
   # Use local dev images built source tree;
-  - name: ghcr.io/k3s-io/cluster-api-k3s/controlplane-controller:dev
+  - name: ghcr.io/canonical/cluster-api-k8s/controlplane-controller:dev
     loadBehavior: mustLoad
-  - name: ghcr.io/k3s-io/cluster-api-k3s/bootstrap-controller:dev
+  - name: ghcr.io/canonical/cluster-api-k8s/bootstrap-controller:dev
     loadBehavior: mustLoad
 
 providers:
@@ -36,10 +36,10 @@ providers:
         replacements:
           - old: "imagePullPolicy: Always"
             new: "imagePullPolicy: IfNotPresent"
-      
+
       # Add v1.7.99 to support tilt (not presented in ../data/shared/v1beta1/metadata.yaml)
       # when bootstrapping with tilt, it will use
-      # the defaultProviderVersion in https://github.com/kubernetes-sigs/cluster-api/blob/main/hack/tools/internal/tilt-prepare/main.go as 
+      # the defaultProviderVersion in https://github.com/kubernetes-sigs/cluster-api/blob/main/hack/tools/internal/tilt-prepare/main.go as
       # default version for docker infrastructure provider
       # name here should match defaultProviderVersion
       - name: v1.7.99 # next; use manifest from source files

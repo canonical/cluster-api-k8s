@@ -14,24 +14,16 @@ import (
 )
 
 func TestMatchesCK8sBootstrapConfig(t *testing.T) {
-	t.Run("returns true if ClusterConfiguration is equal", func(t *testing.T) {
+	t.Run("returns true if BootstrapRef is missing", func(t *testing.T) {
 		g := NewWithT(t)
 		kcp := &controlplanev1.CK8sControlPlane{
 			Spec: controlplanev1.CK8sControlPlaneSpec{
 				CK8sConfigSpec: bootstrapv1.CK8sConfigSpec{
-					ServerConfig: bootstrapv1.CK8sServerConfig{
-						ClusterDomain: "foo",
-					},
+					AirGapped: true,
 				},
 			},
 		}
-		m := &clusterv1.Machine{
-			ObjectMeta: metav1.ObjectMeta{
-				Annotations: map[string]string{
-					controlplanev1.CK8sServerConfigurationAnnotation: "{\n  \"clusterDomain\": \"foo\"\n}",
-				},
-			},
-		}
+		m := &clusterv1.Machine{}
 		machineConfigs := map[string]*bootstrapv1.CK8sConfig{
 			m.Name: {},
 		}
@@ -43,9 +35,7 @@ func TestMatchesCK8sBootstrapConfig(t *testing.T) {
 		kcp := &controlplanev1.CK8sControlPlane{
 			Spec: controlplanev1.CK8sControlPlaneSpec{
 				CK8sConfigSpec: bootstrapv1.CK8sConfigSpec{
-					ServerConfig: bootstrapv1.CK8sServerConfig{
-						ClusterDomain: "foo",
-					},
+					AirGapped: false,
 				},
 			},
 		}
@@ -80,9 +70,7 @@ func TestMatchesCK8sBootstrapConfig(t *testing.T) {
 					Name:      "test",
 				},
 				Spec: bootstrapv1.CK8sConfigSpec{
-					ServerConfig: bootstrapv1.CK8sServerConfig{
-						ClusterDomain: "bar",
-					},
+					AirGapped: true,
 				},
 			},
 		}
@@ -138,31 +126,25 @@ func TestMatchesCK8sBootstrapConfig(t *testing.T) {
 	})
 
 	t.Run("Should match on other configurations", func(t *testing.T) {
-		kThreesConfigSpec := bootstrapv1.CK8sConfigSpec{
+		spec := bootstrapv1.CK8sConfigSpec{
 			Files:           []bootstrapv1.File{},
-			PreK3sCommands:  []string{"test"},
-			PostK3sCommands: []string{"test"},
-			AgentConfig: bootstrapv1.CK8sAgentConfig{
-				NodeName:      "test-node",
-				NodeTaints:    []string{"node-role.kubernetes.io/control-plane:NoSchedule"},
-				KubeProxyArgs: []string{"metrics-bind-address=0.0.0.0"},
-			},
-			ServerConfig: bootstrapv1.CK8sServerConfig{
-				DisableComponents:         []string{"traefik"},
-				KubeControllerManagerArgs: []string{"bind-address=0.0.0.0"},
-				KubeSchedulerArgs:         []string{"bind-address=0.0.0.0"},
+			PreRunCommands:  []string{"test"},
+			PostRunCommands: []string{"test"},
+			AirGapped:       true,
+			ControlPlaneConfig: bootstrapv1.CK8sControlPlaneConfig{
+				ExtraSANs: []string{"my.cluster"},
 			},
 		}
 		kcp := &controlplanev1.CK8sControlPlane{
 			Spec: controlplanev1.CK8sControlPlaneSpec{
 				Replicas: proto.Int32(3),
-				Version:  "v1.13.14+k3s1",
+				Version:  "v1.30.0",
 				MachineTemplate: controlplanev1.CK8sControlPlaneMachineTemplate{
 					ObjectMeta: clusterv1.ObjectMeta{
 						Labels: map[string]string{"test-label": "test-value"},
 					},
 				},
-				CK8sConfigSpec: kThreesConfigSpec,
+				CK8sConfigSpec: spec,
 			},
 		}
 
@@ -196,7 +178,7 @@ func TestMatchesCK8sBootstrapConfig(t *testing.T) {
 					Namespace: "default",
 					Name:      "test",
 				},
-				Spec: kThreesConfigSpec,
+				Spec: spec,
 			},
 		}
 
@@ -208,14 +190,7 @@ func TestMatchesCK8sBootstrapConfig(t *testing.T) {
 
 		t.Run("by returning false if post commands don't match", func(t *testing.T) {
 			g := NewWithT(t)
-			machineConfigs[m.Name].Spec.PostK3sCommands = []string{"new-test"}
-			match := MatchesCK8sBootstrapConfig(machineConfigs, kcp)(m)
-			g.Expect(match).To(BeFalse())
-		})
-
-		t.Run("by returning false if agent configs don't match", func(t *testing.T) {
-			g := NewWithT(t)
-			machineConfigs[m.Name].Spec.AgentConfig.KubeletArgs = []string{"test-arg"}
+			machineConfigs[m.Name].Spec.PostRunCommands = []string{"new-test"}
 			match := MatchesCK8sBootstrapConfig(machineConfigs, kcp)(m)
 			g.Expect(match).To(BeFalse())
 		})
@@ -235,7 +210,7 @@ func TestMatchesCK8sBootstrapConfig(t *testing.T) {
 					},
 				},
 				CK8sConfigSpec: bootstrapv1.CK8sConfigSpec{
-					ServerConfig: bootstrapv1.CK8sServerConfig{},
+					AirGapped: true,
 				},
 			},
 		}
@@ -270,7 +245,7 @@ func TestMatchesCK8sBootstrapConfig(t *testing.T) {
 					Name:      "test",
 				},
 				Spec: bootstrapv1.CK8sConfigSpec{
-					ServerConfig: bootstrapv1.CK8sServerConfig{},
+					AirGapped: true,
 				},
 			},
 		}
