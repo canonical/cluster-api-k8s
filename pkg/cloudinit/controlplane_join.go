@@ -18,19 +18,36 @@ package cloudinit
 
 import "fmt"
 
-// NewInitControlPlane returns the user data string to be used on a controlplane instance.
-func NewJoinControlPlane(input *ControlPlaneInput) ([]byte, error) {
-	input.Header = cloudConfigHeader
-	input.WriteFiles = append(input.WriteFiles, input.AdditionalFiles...)
-	input.WriteFiles = append(input.WriteFiles, input.ConfigFile)
-	input.SentinelFileCommand = sentinelFileCommand
+// JoinControlPlaneInput defines the context to generate a join controlplane instance user data.
+type JoinControlPlaneInput struct {
+	BaseUserData
+	// JoinToken is the token to use to join the cluster.
+	JoinToken string
+}
 
-	// As controlPlaneCloudJoin template is the same as the controlPlaneCloudInit template, will reuse the controlPlaneCloudInit template
-	controlPlaneCloudJoinWithVersion := fmt.Sprintf(controlPlaneCloudInit, input.K3sVersion)
-	userData, err := generate("JoinControlplane", controlPlaneCloudJoinWithVersion, input)
+// NewJoinControlPlane returns the user data string to be used on a controlplane instance.
+func NewJoinControlPlane(input JoinControlPlaneInput) (CloudConfig, error) {
+	config, err := NewBaseCloudConfig(input.BaseUserData)
 	if err != nil {
-		return nil, err
+		return CloudConfig{}, fmt.Errorf("failed to generate base cloud-config: %w", err)
 	}
 
-	return userData, nil
+	// write files
+	config.WriteFiles = append(config.WriteFiles, File{
+		Path:        "/opt/capi/etc/join-token",
+		Content:     input.JoinToken,
+		Permissions: "0400",
+		Owner:       "root:root",
+	})
+
+	// run commands
+	config.RunCommands = append(config.RunCommands, input.PreRunCommands...)
+	config.RunCommands = append(config.RunCommands,
+		"/opt/capi/scripts/install.sh",
+		"/opt/capi/scripts/join-cluster.sh",
+		"/opt/capi/scripts/wait-apiserver-ready.sh",
+	)
+	config.RunCommands = append(config.RunCommands, input.PostRunCommands...)
+
+	return config, nil
 }

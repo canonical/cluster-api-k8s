@@ -94,6 +94,11 @@ func (in *CK8sConfigSpec) DeepCopyInto(out *CK8sConfigSpec) {
 			(*in)[i].DeepCopyInto(&(*out)[i])
 		}
 	}
+	if in.BootCommands != nil {
+		in, out := &in.BootCommands, &out.BootCommands
+		*out = make([]string, len(*in))
+		copy(*out, *in)
+	}
 	if in.PreRunCommands != nil {
 		in, out := &in.PreRunCommands, &out.PreRunCommands
 		*out = make([]string, len(*in))
@@ -244,6 +249,11 @@ func (in *CK8sControlPlaneConfig) DeepCopyInto(out *CK8sControlPlaneConfig) {
 	*out = *in
 	if in.ExtraSANs != nil {
 		in, out := &in.ExtraSANs, &out.ExtraSANs
+		*out = make([]string, len(*in))
+		copy(*out, *in)
+	}
+	if in.NodeTaints != nil {
+		in, out := &in.NodeTaints, &out.NodeTaints
 		*out = make([]string, len(*in))
 		copy(*out, *in)
 	}

@@ -18,33 +18,35 @@ package cloudinit
 
 import "fmt"
 
-const (
-	workerCloudInit = `{{.Header}}
-{{template "files" .WriteFiles}}
-runcmd:
-{{- template "commands" .PreK3sCommands }}
-  - {{ if .AirGapped }} INSTALL_K3S_SKIP_DOWNLOAD=true INSTALL_K3S_EXEC='agent' sh /opt/install.sh {{ else }} curl -sfL https://get.k3s.io |  INSTALL_K3S_VERSION=%s sh -s - agent {{ end }} && {{ .SentinelFileCommand }}
-{{- template "commands" .PostK3sCommands }}
-`
-)
-
-// ControlPlaneInput defines the context to generate a controlplane instance user data.
-type WorkerInput struct {
+// JoinWorkerInput defines the context to generate a join controlplane instance user data.
+type JoinWorkerInput struct {
 	BaseUserData
+	// JoinToken is the token to use to join the cluster.
+	JoinToken string
 }
 
-// NewInitControlPlane returns the user data string to be used on a controlplane instance.
-func NewWorker(input *WorkerInput) ([]byte, error) {
-	input.Header = cloudConfigHeader
-	input.WriteFiles = append(input.WriteFiles, input.AdditionalFiles...)
-	input.WriteFiles = append(input.WriteFiles, input.ConfigFile)
-	input.SentinelFileCommand = sentinelFileCommand
-
-	workerCloudInitWithVersion := fmt.Sprintf(workerCloudInit, input.K3sVersion)
-	userData, err := generate("Worker", workerCloudInitWithVersion, input)
+// NewJoinWorker returns the user data string to be used on a controlplane instance.
+func NewJoinWorker(input JoinWorkerInput) (CloudConfig, error) {
+	config, err := NewBaseCloudConfig(input.BaseUserData)
 	if err != nil {
-		return nil, err
+		return CloudConfig{}, fmt.Errorf("failed to generate base cloud-config: %w", err)
 	}
 
-	return userData, nil
+	// write files
+	config.WriteFiles = append(config.WriteFiles, File{
+		Path:        "/opt/capi/etc/join-token",
+		Content:     input.JoinToken,
+		Permissions: "0400",
+		Owner:       "root:root",
+	})
+
+	// run commands
+	config.RunCommands = append(config.RunCommands, input.PreRunCommands...)
+	config.RunCommands = append(config.RunCommands,
+		"/opt/capi/scripts/install.sh",
+		"/opt/capi/scripts/join-cluster.sh",
+	)
+	config.RunCommands = append(config.RunCommands, input.PostRunCommands...)
+
+	return config, nil
 }

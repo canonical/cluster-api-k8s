@@ -223,7 +223,7 @@ func (c *ControlPlane) GenerateCK8sConfig(spec *bootstrapv1.CK8sConfigSpec) *boo
 
 // ControlPlaneLabelsForCluster returns a set of labels to add to a control plane machine for this specific cluster.
 func ControlPlaneLabelsForCluster(clusterName string, machineTemplate controlplanev1.CK8sControlPlaneMachineTemplate) map[string]string {
-	labels := make(map[string]string)
+	labels := make(map[string]string, len(machineTemplate.ObjectMeta.Labels)+3)
 	for key, value := range machineTemplate.ObjectMeta.Labels {
 		labels[key] = value
 	}

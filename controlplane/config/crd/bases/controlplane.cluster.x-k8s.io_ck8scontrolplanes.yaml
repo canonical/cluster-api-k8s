@@ -240,13 +240,42 @@ spec:
                       In this case, the provider assumes that it cannot download and install binaries, and the user
                       should ensure that all nodes have a `/opt/capi/install.sh` script that installs k8s-snap.
                     type: boolean
+                  bootCommands:
+                    description: BootCommands specifies extra commands to run in cloud-init
+                      early in the boot process.
+                    items:
+                      type: string
+                    type: array
                   controlPlane:
                     description: CK8sControlPlaneConfig is configuration for the control
                       plane node.
                     properties:
+                      cloudProvider:
+                        description: CloudProvider is the cloud-provider configuration
+                          option to set.
+                        type: string
                       extraSANs:
                         description: ExtraSANs is a list of SANs to include in the
                           server certificates.
+                        items:
+                          type: string
+                        type: array
+                      k8sDqlitePort:
+                        description: K8sDqlitePort is the port to use for k8s-dqlite.
+                          If unset, 2379 (etcd) will be used.
+                        type: integer
+                      microclusterAddress:
+                        description: MicroclusterAddress is the address (or CIDR)
+                          to use for microcluster. If unset, the default node interface
+                          is chosen.
+                        type: string
+                      microclusterPort:
+                        description: MicroclusterPort is the port to use for microcluster.
+                          If unset, ":2380" (etcd peer) will be used.
+                        type: integer
+                      nodeTaints:
+                        description: NodeTaints is taints to add to the control plane
+                          kubelet nodes.
                         items:
                           type: string
                         type: array

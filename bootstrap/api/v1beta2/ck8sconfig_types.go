@@ -33,6 +33,10 @@ type CK8sConfigSpec struct {
 	// +optional
 	Files []File `json:"files,omitempty"`
 
+	// BootCommands specifies extra commands to run in cloud-init early in the boot process.
+	// +optional
+	BootCommands []string `json:"bootCommands,omitempty"`
+
 	// PreRunCommands specifies extra commands to run in cloud-init before k8s-snap setup runs.
 	// +optional
 	PreRunCommands []string `json:"preRunCommands,omitempty"`
@@ -63,6 +67,25 @@ type CK8sControlPlaneConfig struct {
 	// ExtraSANs is a list of SANs to include in the server certificates.
 	// +optional
 	ExtraSANs []string `json:"extraSANs,omitempty"`
+
+	// CloudProvider is the cloud-provider configuration option to set.
+	// +optional
+	CloudProvider string `json:"cloudProvider,omitempty"`
+
+	// NodeTaints is taints to add to the control plane kubelet nodes.
+	// +optional
+	NodeTaints []string `json:"nodeTaints,omitempty"`
+
+	// K8sDqlitePort is the port to use for k8s-dqlite. If unset, 2379 (etcd) will be used.
+	// +optional
+	K8sDqlitePort int `json:"k8sDqlitePort,omitempty"`
+
+	// MicroclusterAddress is the address (or CIDR) to use for microcluster. If unset, the default node interface is chosen.
+	MicroclusterAddress string `json:"microclusterAddress,omitempty"`
+
+	// MicroclusterPort is the port to use for microcluster. If unset, ":2380" (etcd peer) will be used.
+	// +optional
+	MicroclusterPort int `json:"microclusterPort,omitempty"`
 }
 
 // CK8sConfigStatus defines the observed state of CK8sConfig.

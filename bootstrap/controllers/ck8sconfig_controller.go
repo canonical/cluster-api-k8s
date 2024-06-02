@@ -42,9 +42,8 @@ import (
 	kubeyaml "sigs.k8s.io/yaml"
 
 	bootstrapv1 "github.com/canonical/cluster-api-k8s/bootstrap/api/v1beta2"
+	"github.com/canonical/cluster-api-k8s/pkg/ck8s"
 	"github.com/canonical/cluster-api-k8s/pkg/cloudinit"
-	"github.com/canonical/cluster-api-k8s/pkg/etcd"
-	"github.com/canonical/cluster-api-k8s/pkg/k3s"
 	"github.com/canonical/cluster-api-k8s/pkg/locking"
 	"github.com/canonical/cluster-api-k8s/pkg/secret"
 	"github.com/canonical/cluster-api-k8s/pkg/token"
@@ -218,28 +217,24 @@ func (r *CK8sConfigReconciler) joinControlplane(ctx context.Context, scope *Scop
 	// injects into config.Version values from top level object
 	r.reconcileTopLevelObjectSettings(scope.Cluster, machine, scope.Config)
 
-	serverURL := fmt.Sprintf("https://%s", scope.Cluster.Spec.ControlPlaneEndpoint.String())
-
-	tokn, err := token.Lookup(ctx, r.Client, client.ObjectKeyFromObject(scope.Cluster))
+	authToken, err := token.Lookup(ctx, r.Client, client.ObjectKeyFromObject(scope.Cluster))
 	if err != nil {
 		conditions.MarkFalse(scope.Config, bootstrapv1.DataSecretAvailableCondition, bootstrapv1.DataSecretGenerationFailedReason, clusterv1.ConditionSeverityWarning, err.Error())
 		return err
 	}
 
-	configStruct := k3s.GenerateJoinControlPlaneConfig(serverURL, *tokn,
-		scope.Cluster.Spec.ControlPlaneEndpoint.Host,
-		scope.Config.Spec.ServerConfig,
-		scope.Config.Spec.AgentConfig)
-	b, err := kubeyaml.Marshal(configStruct)
+	// TODO(neoaggelos): Use authToken to reach the existing k8sd control plane nodes through the k8sd proxy, and generate a token for this node.
+	_ = authToken
+	joinToken := "replace me"
+	// joinToken, err := ck8s.NewControlPlaneJoinToken(ctx, r.Client, authToken, ...)
+
+	configStruct := ck8s.JoinControlPlaneConfig(ck8s.JoinControlPlaneConfig{
+		ControlPlaneEndpoint: scope.Cluster.Spec.ControlPlaneEndpoint.Host,
+		ControlPlaneConfig:   scope.Config.Spec.ControlPlaneConfig,
+	})
+	joinConfig, err := kubeyaml.Marshal(configStruct)
 	if err != nil {
 		return err
-	}
-
-	workerConfigFile := bootstrapv1.File{
-		Path:        k3s.DefaultK3sConfigLocation,
-		Content:     string(b),
-		Owner:       "root:root",
-		Permissions: "0640",
 	}
 
 	files, err := r.resolveFiles(ctx, scope.Config)
@@ -248,30 +243,37 @@ func (r *CK8sConfigReconciler) joinControlplane(ctx context.Context, scope *Scop
 		return err
 	}
 
-	if scope.Config.Spec.IsEtcdEmbedded() {
-		etcdProxyFile := bootstrapv1.File{
-			Path:        etcd.EtcdProxyDaemonsetYamlLocation,
-			Content:     etcd.EtcdProxyDaemonsetYaml,
-			Owner:       "root:root",
-			Permissions: "0640",
-		}
-		files = append(files, etcdProxyFile)
-	}
+	// TODO(neoaggelos): figure out what is needed for k8sd proxy
+	// if scope.Config.Spec.IsEtcdEmbedded() {
+	// 	etcdProxyFile := bootstrapv1.File{
+	// 		Path:        etcd.EtcdProxyDaemonsetYamlLocation,
+	// 		Content:     etcd.EtcdProxyDaemonsetYaml,
+	// 		Owner:       "root:root",
+	// 		Permissions: "0640",
+	// 	}
+	// 	files = append(files, etcdProxyFile)
+	// }
 
-	cpInput := &cloudinit.ControlPlaneInput{
+	input := cloudinit.JoinControlPlaneInput{
 		BaseUserData: cloudinit.BaseUserData{
-			PreK3sCommands:  scope.Config.Spec.PreK3sCommands,
-			PostK3sCommands: scope.Config.Spec.PostK3sCommands,
-			AdditionalFiles: files,
-			ConfigFile:      workerConfigFile,
-			K3sVersion:      scope.Config.Spec.Version,
-			AirGapped:       scope.Config.Spec.AgentConfig.AirGapped,
+			BootCommands:        scope.Config.Spec.BootCommands,
+			PreRunCommands:      scope.Config.Spec.PreRunCommands,
+			PostRunCommands:     scope.Config.Spec.PostRunCommands,
+			KubernetesVersion:   scope.Config.Spec.Version,
+			ExtraFiles:          cloudinit.FilesFromAPI(files),
+			ConfigFileContents:  string(joinConfig),
+			MicroclusterAddress: scope.Config.Spec.ControlPlaneConfig.MicroclusterAddress,
+			AirGapped:           scope.Config.Spec.AirGapped,
 		},
+		JoinToken: joinToken,
 	}
-
-	cloudInitData, err := cloudinit.NewJoinControlPlane(cpInput)
+	cloudConfig, err := cloudinit.NewJoinControlPlane(input)
 	if err != nil {
 		return err
+	}
+	cloudInitData, err := cloudinit.GenerateCloudConfig(cloudConfig)
+	if err != nil {
+		return fmt.Errorf("failed to generate cloud-init: %w", err)
 	}
 
 	if err := r.storeBootstrapData(ctx, scope, cloudInitData); err != nil {
@@ -290,26 +292,19 @@ func (r *CK8sConfigReconciler) joinWorker(ctx context.Context, scope *Scope) err
 	// injects into config.Version values from top level object
 	r.reconcileTopLevelObjectSettings(scope.Cluster, machine, scope.Config)
 
-	serverURL := fmt.Sprintf("https://%s", scope.Cluster.Spec.ControlPlaneEndpoint.String())
-
-	tokn, err := token.Lookup(ctx, r.Client, client.ObjectKeyFromObject(scope.Cluster))
+	authToken, err := token.Lookup(ctx, r.Client, client.ObjectKeyFromObject(scope.Cluster))
 	if err != nil {
 		conditions.MarkFalse(scope.Config, bootstrapv1.DataSecretAvailableCondition, bootstrapv1.DataSecretGenerationFailedReason, clusterv1.ConditionSeverityWarning, err.Error())
 		return err
 	}
-
-	configStruct := k3s.GenerateWorkerConfig(serverURL, *tokn, scope.Config.Spec.ServerConfig, scope.Config.Spec.AgentConfig)
-
-	b, err := kubeyaml.Marshal(configStruct)
+	// TODO(neoaggelos): Use authToken to reach the existing k8sd control plane nodes through the k8sd proxy, and generate a token for this node.
+	_ = authToken
+	joinToken := "replace me"
+	// joinToken, err := ck8s.NewControlPlaneJoinToken(ctx, r.Client, authToken, ...)
+	configStruct := ck8s.GenerateJoinWorkerConfig(ck8s.JoinWorkerConfig{})
+	joinConfig, err := kubeyaml.Marshal(configStruct)
 	if err != nil {
 		return err
-	}
-
-	workerConfigFile := bootstrapv1.File{
-		Path:        k3s.DefaultK3sConfigLocation,
-		Content:     string(b),
-		Owner:       "root:root",
-		Permissions: "0640",
 	}
 
 	files, err := r.resolveFiles(ctx, scope.Config)
@@ -318,20 +313,26 @@ func (r *CK8sConfigReconciler) joinWorker(ctx context.Context, scope *Scope) err
 		return err
 	}
 
-	winput := &cloudinit.WorkerInput{
+	input := cloudinit.JoinWorkerInput{
 		BaseUserData: cloudinit.BaseUserData{
-			PreK3sCommands:  scope.Config.Spec.PreK3sCommands,
-			PostK3sCommands: scope.Config.Spec.PostK3sCommands,
-			AdditionalFiles: files,
-			ConfigFile:      workerConfigFile,
-			K3sVersion:      scope.Config.Spec.Version,
-			AirGapped:       scope.Config.Spec.AgentConfig.AirGapped,
+			BootCommands:        scope.Config.Spec.BootCommands,
+			PreRunCommands:      scope.Config.Spec.PreRunCommands,
+			PostRunCommands:     scope.Config.Spec.PostRunCommands,
+			KubernetesVersion:   scope.Config.Spec.Version,
+			ExtraFiles:          cloudinit.FilesFromAPI(files),
+			ConfigFileContents:  string(joinConfig),
+			MicroclusterAddress: scope.Config.Spec.ControlPlaneConfig.MicroclusterAddress,
+			AirGapped:           scope.Config.Spec.AirGapped,
 		},
+		JoinToken: joinToken,
 	}
-
-	cloudInitData, err := cloudinit.NewWorker(winput)
+	cloudConfig, err := cloudinit.NewJoinWorker(input)
 	if err != nil {
 		return err
+	}
+	cloudInitData, err := cloudinit.GenerateCloudConfig(cloudConfig)
+	if err != nil {
+		return fmt.Errorf("failed to generate cloud-init: %w", err)
 	}
 
 	if err := r.storeBootstrapData(ctx, scope, cloudInitData); err != nil {
@@ -438,24 +439,20 @@ func (r *CK8sConfigReconciler) handleClusterNotInitialized(ctx context.Context, 
 		return ctrl.Result{}, err
 	}
 
-	// TODO support k3s great feature of external backends.
-	// For now just use the etcd option
-	configStruct := k3s.GenerateInitControlPlaneConfig(
-		scope.Cluster.Spec.ControlPlaneEndpoint.Host,
-		*token,
-		scope.Config.Spec.ServerConfig,
-		scope.Config.Spec.AgentConfig)
+	configStruct, err := ck8s.GenerateInitControlPlaneConfig(ck8s.InitControlPlaneConfig{
+		ControlPlaneEndpoint:  scope.Cluster.Spec.ControlPlaneEndpoint.Host,
+		ControlPlaneConfig:    scope.Config.Spec.ControlPlaneConfig,
+		PopulatedCertificates: certificates,
 
-	b, err := kubeyaml.Marshal(configStruct)
+		ClusterNetwork: scope.Cluster.Spec.ClusterNetwork,
+	})
 	if err != nil {
 		return ctrl.Result{}, err
 	}
 
-	initConfigFile := bootstrapv1.File{
-		Path:        k3s.DefaultK3sConfigLocation,
-		Content:     string(b),
-		Owner:       "root:root",
-		Permissions: "0640",
+	initConfig, err := kubeyaml.Marshal(configStruct)
+	if err != nil {
+		return ctrl.Result{}, err
 	}
 
 	files, err := r.resolveFiles(ctx, scope.Config)
@@ -464,31 +461,38 @@ func (r *CK8sConfigReconciler) handleClusterNotInitialized(ctx context.Context, 
 		return ctrl.Result{}, err
 	}
 
-	if scope.Config.Spec.IsEtcdEmbedded() {
-		etcdProxyFile := bootstrapv1.File{
-			Path:        etcd.EtcdProxyDaemonsetYamlLocation,
-			Content:     etcd.EtcdProxyDaemonsetYaml,
-			Owner:       "root:root",
-			Permissions: "0640",
-		}
-		files = append(files, etcdProxyFile)
-	}
+	// TODO(neoaggelos): deploy k8sd-proxy daemonsets
+	// if scope.Config.Spec.IsK8sDqlite() {
+	// 	etcdProxyFile := bootstrapv1.File{
+	// 		Path:        etcd.EtcdProxyDaemonsetYamlLocation,
+	// 		Content:     etcd.EtcdProxyDaemonsetYaml,
+	// 		Owner:       "root:root",
+	// 		Permissions: "0640",
+	// 	}
+	// 	files = append(files, etcdProxyFile)
+	// }
 
-	cpinput := &cloudinit.ControlPlaneInput{
+	cpinput := cloudinit.InitControlPlaneInput{
 		BaseUserData: cloudinit.BaseUserData{
-			PreK3sCommands:  scope.Config.Spec.PreK3sCommands,
-			PostK3sCommands: scope.Config.Spec.PostK3sCommands,
-			AdditionalFiles: files,
-			ConfigFile:      initConfigFile,
-			K3sVersion:      scope.Config.Spec.Version,
-			AirGapped:       scope.Config.Spec.AgentConfig.AirGapped,
+			BootCommands:        scope.Config.Spec.BootCommands,
+			PreRunCommands:      scope.Config.Spec.PreRunCommands,
+			PostRunCommands:     scope.Config.Spec.PostRunCommands,
+			KubernetesVersion:   scope.Config.Spec.Version,
+			ExtraFiles:          cloudinit.FilesFromAPI(files),
+			ConfigFileContents:  string(initConfig),
+			MicroclusterAddress: scope.Config.Spec.ControlPlaneConfig.MicroclusterAddress,
+			AirGapped:           scope.Config.Spec.AirGapped,
 		},
-		Certificates: certificates,
+		Token: *token,
 	}
 
-	cloudInitData, err := cloudinit.NewInitControlPlane(cpinput)
+	cloudConfig, err := cloudinit.NewInitControlPlane(cpinput)
 	if err != nil {
 		return ctrl.Result{}, err
+	}
+	cloudInitData, err := cloudinit.GenerateCloudConfig(cloudConfig)
+	if err != nil {
+		return ctrl.Result{}, fmt.Errorf("failed to generate cloud-init: %w", err)
 	}
 
 	if err := r.storeBootstrapData(ctx, scope, cloudInitData); err != nil {

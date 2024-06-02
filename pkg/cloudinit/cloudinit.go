@@ -18,92 +18,34 @@ package cloudinit
 
 import (
 	"bytes"
+	_ "embed"
 	"fmt"
-	"strings"
 	"text/template"
-
-	bootstrapv1 "github.com/canonical/cluster-api-k8s/bootstrap/api/v1beta2"
 )
 
-var (
-	defaultTemplateFuncMap = template.FuncMap{
-		"Indent": templateYAMLIndent,
-	}
-)
+// CloudConfig is cloud-init userdata. The schema matches the examples found in
+// https://cloudinit.readthedocs.io/en/latest/topics/examples.html.
+type CloudConfig struct {
+	// WriteFiles is a list of files cloud-init will create on the first boot.
+	WriteFiles []File `yaml:"write_files"`
 
-func templateYAMLIndent(i int, input string) string {
-	split := strings.Split(input, "\n")
-	ident := "\n" + strings.Repeat(" ", i)
-	return strings.Repeat(" ", i) + strings.Join(split, ident)
+	// RunCommands is a list of commands to execute during the first boot.
+	RunCommands []string `yaml:"runcmd"`
+
+	// BootCommands is a list of commands to run early in the boot process.
+	BootCommands []string `yaml:"bootcmd"`
 }
 
-const (
-	k3sScriptName        = "/usr/local/bin/k3s"
-	k3sScriptOwner       = "root"
-	k3sScriptPermissions = "0755"
-	cloudConfigHeader    = `## template: jinja
-#cloud-config
-`
+//go:embed scripts/cloud-config-template
+var cloudConfigTemplate string
 
-	filesTemplate = `{{ define "files" -}}
-write_files:{{ range . }}
--   path: {{.Path}}
-    {{ if ne .Encoding "" -}}
-    encoding: "{{.Encoding}}"
-    {{ end -}}
-    {{ if ne .Owner "" -}}
-    owner: {{.Owner}}
-    {{ end -}}
-    {{ if ne .Permissions "" -}}
-    permissions: '{{.Permissions}}'
-    {{ end -}}
-    content: |
-{{.Content | Indent 6}}
-{{- end -}}
-{{- end -}}
-`
+// GenerateCloudConfig generates userdata from a CloudConfig.
+func GenerateCloudConfig(config CloudConfig) ([]byte, error) {
+	tmpl := template.Must(template.New("CloudConfigTemplate").Funcs(templateFuncsMap).Parse(cloudConfigTemplate))
 
-	commandsTemplate = `{{- define "commands" -}}
-{{ range . }}
-  - {{printf "%q" .}}
-{{- end -}}
-{{- end -}}
-`
-	sentinelFileCommand = "mkdir -p /run/cluster-api && echo success > /run/cluster-api/bootstrap-success.complete"
-)
-
-// BaseUserData is shared across all the various types of files written to disk.
-type BaseUserData struct {
-	Header              string
-	PreK3sCommands      []string
-	PostK3sCommands     []string
-	AdditionalFiles     []bootstrapv1.File
-	WriteFiles          []bootstrapv1.File
-	ConfigFile          bootstrapv1.File
-	K3sVersion          string
-	AirGapped           bool
-	SentinelFileCommand string
-}
-
-func generate(kind string, tpl string, data interface{}) ([]byte, error) {
-	tm := template.New(kind).Funcs(defaultTemplateFuncMap)
-	if _, err := tm.Parse(filesTemplate); err != nil {
-		return nil, fmt.Errorf("failed to parse files template: %w", err)
+	b := &bytes.Buffer{}
+	if err := tmpl.Execute(b, config); err != nil {
+		return nil, fmt.Errorf("failed to render cloud-config: %w", err)
 	}
-
-	if _, err := tm.Parse(commandsTemplate); err != nil {
-		return nil, fmt.Errorf("failed to parse commands template: %w", err)
-	}
-
-	t, err := tm.Parse(tpl)
-	if err != nil {
-		return nil, fmt.Errorf("failed to parse %s template: %w", kind, err)
-	}
-
-	var out bytes.Buffer
-	if err := t.Execute(&out, data); err != nil {
-		return nil, fmt.Errorf("failed to generate %s template: %w", kind, err)
-	}
-
-	return out.Bytes(), nil
+	return b.Bytes(), nil
 }
