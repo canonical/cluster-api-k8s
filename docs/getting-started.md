@@ -63,6 +63,10 @@ canonical-k8s-bootstrap-provider       BootstrapProvider        /home/ubuntu/boo
 canonical-k8s-control-plane-provider   ControlPlaneProvider     /home/ubuntu/control-plane-canonical-k8s-control-plane-provider/latest/                     control-plane-components.yaml
 ```
 
+
+The `cluster-api-k8s` repository is currently private. Therefore we need to provide authentication in order to fetch the images.
+Follow [this guide](https://kubernetes.io/docs/tasks/configure-pod-container/pull-image-private-registry/) and modify the `bootstrap-components.yaml` and `control-plane-components.yaml` accordingly.
+
 Now, we can initialize the cluster, we omit the infrastructure provider for now and deploy it manually later:
 
 ```bash
