@@ -1,0 +1,9 @@
+version: 1
+creds:
+  - registry: ghcr.io
+    user: '{{ env "USERNAME" }}'
+    pass: '{{ env "PASSWORD" }}'
+sync:
+  - source: alpine/socat:1.8.0.0
+    target: ghcr.io/canonical/cluster-api-k8s/socat:1.8.0.0
+    type: image

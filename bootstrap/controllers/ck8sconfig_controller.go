@@ -17,9 +17,11 @@ limitations under the License.
 package controllers
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
+	"text/template"
 	"time"
 
 	"github.com/go-logr/logr"
@@ -242,16 +244,29 @@ func (r *CK8sConfigReconciler) joinControlplane(ctx context.Context, scope *Scop
 		return err
 	}
 
+	var k8sdProxyDaemonset bytes.Buffer
+
+	t, err := template.New("k8sd-proxy-daemonset").Parse(ck8s.K8sdProxyDaemonsetYaml)
+	if err != nil {
+		return err
+	}
+
+	if err := t.Execute(&k8sdProxyDaemonset, struct {
+		K8sdPort int
+	}{
+		K8sdPort: configStruct.ControlPlaneConfig.MicroclusterPort,
+	}); err != nil {
+		return err
+	}
+
 	// TODO(neoaggelos): figure out what is needed for k8sd proxy
-	// if scope.Config.Spec.IsEtcdEmbedded() {
-	// 	etcdProxyFile := bootstrapv1.File{
-	// 		Path:        etcd.EtcdProxyDaemonsetYamlLocation,
-	// 		Content:     etcd.EtcdProxyDaemonsetYaml,
-	// 		Owner:       "root:root",
-	// 		Permissions: "0640",
-	// 	}
-	// 	files = append(files, etcdProxyFile)
-	// }
+	k8sdProxyFile := bootstrapv1.File{
+		Path:        ck8s.K8sdProxyDaemonsetYamlLocation,
+		Content:     k8sdProxyDaemonset.String(),
+		Owner:       "root:root",
+		Permissions: "0400",
+	}
+	files = append(files, k8sdProxyFile)
 
 	input := cloudinit.JoinControlPlaneInput{
 		BaseUserData: cloudinit.BaseUserData{

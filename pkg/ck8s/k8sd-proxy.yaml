@@ -1,0 +1,56 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: k8sd-proxy-config
+  namespace: kube-system
+data:
+  k8sd-port: "{{ .K8sdPort }}"
+---
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: k8sd-proxy
+  namespace: kube-system
+  labels:
+    app: k8sd-proxy
+spec:
+  selector:
+    matchLabels:
+      app: k8sd-proxy
+  template:
+    metadata:
+      labels:
+        app: k8sd-proxy
+    spec:
+      tolerations:
+      - key: node-role.kubernetes.io/control-plane
+        operator: Exists
+        effect: NoSchedule
+      - key: node-role.kubernetes.io/master
+        operator: Exists
+        effect: NoSchedule
+      containers:
+      - name: k8sd-proxy
+        image: ghcr.io/canonical/cluster-api-k8s/socat:1.8.0.0
+        env:
+        # TODO: Make this more robust by possibly finding/parsing the right IP.   
+        # This works as a start but might not be sufficient as the kubelet IP might not match microcluster IP.
+        - name: HOSTIP
+          valueFrom:
+            fieldRef:
+              fieldPath: status.hostIP
+        - name: K8SD_PORT
+          valueFrom:
+            configMapKeyRef:
+              name: k8sd-proxy-config
+              key: k8sd-port
+        args: 
+        - TCP4-LISTEN:2380,fork,reuseaddr
+        - TCP4:$(HOSTIP):$(K8SD_PORT)
+        resources:
+          limits:
+            memory: 200Mi
+          requests:
+            cpu: 100m
+            memory: 200Mi
+      terminationGracePeriodSeconds: 30
