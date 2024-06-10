@@ -33,7 +33,7 @@ type CloudConfig struct {
 	RunCommands []string `yaml:"runcmd"`
 
 	// BootCommands is a list of commands to run early in the boot process.
-	BootCommands []string `yaml:"bootcmd"`
+	BootCommands []string `yaml:"bootcmd,omitempty"`
 }
 
 //go:embed scripts/cloud-config-template
