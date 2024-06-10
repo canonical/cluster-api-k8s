@@ -131,6 +131,16 @@ generate: generate-bootstrap generate-controlplane
 .PHONY: manifests
 manifests: manifests-bootstrap manifests-controlplane
 
+.PHONY: prepare
+prepare: manifests generate
+
+.PHONY: dev-bootstrap dev-controlplane
+dev-bootstrap:
+	ENABLE_WEBHOOKS=false go run ./bootstrap/main.go -metrics-addr=0
+
+dev-controlplane:
+	ENABLE_WEBHOOKS=false go run ./controlplane/main.go -metrics-addr=0
+
 ## --------------------------------------
 ## Release
 ## --------------------------------------
