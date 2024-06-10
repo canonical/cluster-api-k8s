@@ -28,7 +28,6 @@ import (
 	kerrors "k8s.io/apimachinery/pkg/util/errors"
 	"k8s.io/klog/v2"
 	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
-	"sigs.k8s.io/cluster-api/util"
 	"sigs.k8s.io/cluster-api/util/annotations"
 	"sigs.k8s.io/cluster-api/util/collections"
 	"sigs.k8s.io/cluster-api/util/conditions"
@@ -36,13 +35,13 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 
 	controlplanev1 "github.com/canonical/cluster-api-k8s/controlplane/api/v1beta2"
-	k3s "github.com/canonical/cluster-api-k8s/pkg/k3s"
+	"github.com/canonical/cluster-api-k8s/pkg/ck8s"
 )
 
 // reconcileUnhealthyMachines tries to remediate CK8sControlPlane unhealthy machines
 // based on the process described in https://github.com/kubernetes-sigs/cluster-api/blob/main/docs/proposals/20191017-kubeadm-based-control-plane.md#remediation-using-delete-and-recreate
 // taken from the kubeadm codebase and adapted for the k3s provider.
-func (r *CK8sControlPlaneReconciler) reconcileUnhealthyMachines(ctx context.Context, controlPlane *k3s.ControlPlane) (ret ctrl.Result, retErr error) { //nolint:gocyclo
+func (r *CK8sControlPlaneReconciler) reconcileUnhealthyMachines(ctx context.Context, controlPlane *ck8s.ControlPlane) (ret ctrl.Result, retErr error) { //nolint:gocyclo
 	log := ctrl.LoggerFrom(ctx)
 	reconciliationTime := time.Now().UTC()
 
@@ -163,6 +162,13 @@ func (r *CK8sControlPlaneReconciler) reconcileUnhealthyMachines(ctx context.Cont
 			return ctrl.Result{}, nil
 		}
 
+		// NOTE(neoaggelos): etcd requires manual adjustment of the cluster nodes to always ensure that a quorum of healthy nodes are available,
+		// so that the cluster does not lock and cause the cluster to go down. In the case of k8s-dqlite, this is automatically handled by the
+		// go-dqlite layer, and Canonical Kubernetes has logic to automatically keep a quorum of nodes in normal operation.
+		//
+		// Therefore, we currently disable this check for simplicity, but should remember that we need this precondition before proceeing.
+
+		/**
 		// Remediation MUST preserve etcd quorum. This rule ensures that KCP will not remove a member that would result in etcd
 		// losing a majority of members and thus become unable to field new requests.
 		if controlPlane.IsEtcdManaged() {
@@ -177,10 +183,19 @@ func (r *CK8sControlPlaneReconciler) reconcileUnhealthyMachines(ctx context.Cont
 				return ctrl.Result{}, nil
 			}
 		}
+		**/
 
 		// Start remediating the unhealthy control plane machine by deleting it.
 		// A new machine will come up completing the operation as part of the regular reconcile.
 
+		// NOTE(neoaggelos): Here, upstream will check whether the node that is about to be removed is the leader of the etcd cluster, and will
+		// attempt to forward the leadership to a different active node before proceeding. This is so that continuous operation of the cluster
+		// is preserved.
+		//
+		// TODO(neoaggelos): For Canonical Kubernetes, we should instead use the RemoveNode endpoint of the k8sd service from a different control
+		// plane node (through the k8sd-proxy), which will handle this operation for us. If that fails, we must not proceed.
+
+		/**
 		// If the control plane is initialized, before deleting the machine:
 		// - if the machine hosts the etcd leader, forward etcd leadership to another machine.
 		// - delete the etcd member hosted on the machine being deleted.
@@ -218,6 +233,7 @@ func (r *CK8sControlPlaneReconciler) reconcileUnhealthyMachines(ctx context.Cont
 				return ctrl.Result{}, errors.Wrapf(err, "failed patch machine for adding preTerminate hook")
 			}
 		}
+		**/
 	}
 
 	// Delete the machine
@@ -260,7 +276,7 @@ func getMachineToBeRemediated(unhealthyMachines collections.Machines) *clusterv1
 // - KCP already reached the maximum number of retries for a machine.
 // NOTE: Counting the number of retries is required In order to prevent infinite remediation e.g. in case the
 // first Control Plane machine is failing due to quota issue.
-func (r *CK8sControlPlaneReconciler) checkRetryLimits(log logr.Logger, machineToBeRemediated *clusterv1.Machine, controlPlane *k3s.ControlPlane, reconciliationTime time.Time) (*RemediationData, bool, error) {
+func (r *CK8sControlPlaneReconciler) checkRetryLimits(log logr.Logger, machineToBeRemediated *clusterv1.Machine, controlPlane *ck8s.ControlPlane, reconciliationTime time.Time) (*RemediationData, bool, error) {
 	// Get last remediation info from the machine.
 	var lastRemediationData *RemediationData
 	if value, ok := machineToBeRemediated.Annotations[controlplanev1.RemediationForAnnotation]; ok {
@@ -352,6 +368,10 @@ func max(x, y time.Duration) time.Duration {
 	return x
 }
 
+// NOTE(neoaggelos): See note above. Implementation kept here for future reference, only remove once the NOTEs and TODOs in the reconcileUnhealthyMachines
+// have been fully addressed and are well-tested.
+
+/**
 // canSafelyRemoveEtcdMember assess if it is possible to remove the member hosted on the machine to be remediated
 // without loosing etcd quorum.
 //
@@ -369,7 +389,7 @@ func max(x, y time.Duration) time.Duration {
 // as well as reconcileControlPlaneConditions before this.
 //
 // adapted from kubeadm controller and makes the assumption that the set of controplane nodes equals the set of etcd nodes.
-func (r *CK8sControlPlaneReconciler) canSafelyRemoveEtcdMember(ctx context.Context, controlPlane *k3s.ControlPlane, machineToBeRemediated *clusterv1.Machine) (bool, error) {
+func (r *CK8sControlPlaneReconciler) canSafelyRemoveEtcdMember(ctx context.Context, controlPlane *ck8s.ControlPlane, machineToBeRemediated *clusterv1.Machine) (bool, error) {
 	log := ctrl.LoggerFrom(ctx)
 
 	workloadCluster, err := r.managementCluster.GetWorkloadCluster(ctx, util.ObjectKey(controlPlane.Cluster))
@@ -449,6 +469,7 @@ func (r *CK8sControlPlaneReconciler) canSafelyRemoveEtcdMember(ctx context.Conte
 
 	return canSafelyRemediate, nil
 }
+**/
 
 // RemediationData struct is used to keep track of information stored in the RemediationInProgressAnnotation in KCP
 // during remediation and then into the RemediationForAnnotation on the replacement machine once it is created.

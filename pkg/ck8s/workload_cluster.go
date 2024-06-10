@@ -1,17 +1,9 @@
-package k3s
+package ck8s
 
 import (
 	"context"
-	"crypto"
-	"crypto/rand"
-	"crypto/rsa"
-	"crypto/tls"
-	"crypto/x509"
-	"crypto/x509/pkix"
 	"fmt"
-	"math/big"
 	"strings"
-	"time"
 
 	"github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
@@ -21,21 +13,18 @@ import (
 	"k8s.io/client-go/rest"
 	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
 	"sigs.k8s.io/cluster-api/util"
-	"sigs.k8s.io/cluster-api/util/certs"
 	"sigs.k8s.io/cluster-api/util/collections"
 	"sigs.k8s.io/cluster-api/util/conditions"
 	ctrlclient "sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
 	controlplanev1 "github.com/canonical/cluster-api-k8s/controlplane/api/v1beta2"
-	"github.com/canonical/cluster-api-k8s/pkg/etcd"
-	etcdutil "github.com/canonical/cluster-api-k8s/pkg/etcd/util"
 )
 
 const (
-	kubeProxyKey              = "kube-proxy"
-	labelNodeRoleControlPlane = "node-role.kubernetes.io/master"
-	k3sServingSecretKey       = "k3s-serving"
+	// NOTE(neoaggelos): See notes below
+	labelNodeRoleControlPlane = "node-role.kubernetes.io/control-plane"
+	k8sdConfigSecretKey       = "k8sd-config"
 )
 
 var (
@@ -51,10 +40,20 @@ type WorkloadCluster interface {
 	UpdateAgentConditions(ctx context.Context, controlPlane *ControlPlane)
 	UpdateEtcdConditions(ctx context.Context, controlPlane *ControlPlane)
 
+	// NOTE(neoaggelos): See notes in (*CK8sControlPlaneReconciler).reconcileEtcdMembers
+	//
+	// TODO(neoaggelos): Replace with operations that use the k8sd proxy with things we need. For example, the function to remove a node _could_ be:
+	//
+	// 		RemoveMachineFromCluster(ctx context.Context, machine *clusterv1.Machine)
+	//
+	// Then, the implementation of WorkloadCluster should handle everything (reaching to k8sd, calling the right endpoints, authenticating, etc)
+	// internally.
+	/**
 	// Etcd tasks
 	RemoveEtcdMemberForMachine(ctx context.Context, machine *clusterv1.Machine) (bool, error)
 	ForwardEtcdLeadership(ctx context.Context, machine *clusterv1.Machine, leaderCandidate *clusterv1.Machine) error
 	ReconcileEtcdMembers(ctx context.Context, nodeNames []string) ([]string, error)
+	**/
 
 	// AllowBootstrapTokensToGetNodes(ctx context.Context) error
 }
@@ -66,8 +65,12 @@ type Workload struct {
 	Client           ctrlclient.Client
 	ClientRestConfig *rest.Config
 
+	// NOTE(neoaggelos): CoreDNSMigrator and etcdClientGenerator are used by upstream to reach and manage the services in the workload cluster
+	// TODO(neoaggelos): Replace them with a k8sdProxyClientGenerator.
+	/**
 	CoreDNSMigrator     coreDNSMigrator
 	etcdClientGenerator etcdClientFor
+	**/
 }
 
 // ClusterStatus holds stats information about the cluster.
@@ -76,14 +79,18 @@ type ClusterStatus struct {
 	Nodes int32
 	// ReadyNodes are the count of nodes that are reporting ready
 	ReadyNodes int32
-	// HasK3sServingSecret will be true if the k3s-serving secret has been uploaded, false otherwise.
-	HasK3sServingSecret bool
+	// HasK8sdConfigMap will be true if the k8sd-config configmap has been uploaded, false otherwise.
+	HasK8sdConfigMap bool
 }
 
 func (w *Workload) getControlPlaneNodes(ctx context.Context) (*corev1.NodeList, error) {
 	nodes := &corev1.NodeList{}
 	labels := map[string]string{
+		// NOTE(neoaggelos): Canonical Kubernetes uses node-role.kubernetes.io/control-plane="" as a label for control plane nodes.
+		labelNodeRoleControlPlane: "",
+		/**
 		labelNodeRoleControlPlane: "true",
+		**/
 	}
 	if err := w.Client.List(ctx, nodes, ctrlclient.MatchingLabels(labels)); err != nil {
 		return nil, err
@@ -101,35 +108,27 @@ func (w *Workload) ClusterStatus(ctx context.Context) (ClusterStatus, error) {
 		return status, err
 	}
 
+	status.Nodes = int32(len(nodes.Items))
 	for _, node := range nodes.Items {
-		nodeCopy := node
-		status.Nodes++
-		if util.IsNodeReady(&nodeCopy) {
+		if util.IsNodeReady(&node) {
 			status.ReadyNodes++
 		}
 	}
 
-	// Get the 'k3s-serving' secret in the 'kube-system' namespace.
-	//
-	// The resource we fetch has no particular importance,
-	// this is just to verify that the Control Plane has been initialized,
-	// by fetching any resource that has been uploaded.
-	// Since the `k3s-serving` secret contains the cluster certificate,
-	// this secret is guaranteed to exist in any k3s deployment,
-	// therefore it can be reliably used for this test.
+	// NOTE(neoaggelos): Check that the k8sd-config on the kube-system configmap exists.
 	key := ctrlclient.ObjectKey{
-		Name:      k3sServingSecretKey,
+		Name:      k8sdConfigSecretKey,
 		Namespace: metav1.NamespaceSystem,
 	}
 
-	err = w.Client.Get(ctx, key, &corev1.Secret{})
+	err = w.Client.Get(ctx, key, &corev1.ConfigMap{})
 	// In case of error we do assume the control plane is not initialized yet.
 	if err != nil {
 		logger := log.FromContext(ctx)
 		logger.Info("Control Plane does not seem to be initialized yet.", "reason", err.Error())
 	}
 
-	status.HasK3sServingSecret = err == nil
+	status.HasK8sdConfigMap = err == nil
 
 	return status, nil
 }
@@ -373,14 +372,25 @@ func (w *Workload) updateManagedEtcdConditions(ctx context.Context, controlPlane
 		return
 	}
 
+	// NOTE(neoaggelos): Upstream queries the etcd cluster endpoint on each of the machine nodes. It verifies that the list of etcd peers retrieved by
+	// every node in the cluster matches with other nodes, and also verifies that they report the same etcd cluster ID.
+	//
+	// In the case of k8s-dqlite, we should do similar steps against the k8s-dqlite cluster. Until that is implemented, we skip this check and assume
+	// that the node's datastore is in healthy condition if there are matching clusterv1.Machine and corev1.Node objects.
+	//
+	// TODO(neoaggelos): Implement API endpoints in k8sd to reach the local k8s-dqlite node and report the known cluster members. Then, verify that the
+	// list of members matches across all the nodes.
+
 	// Update conditions for etcd members on the nodes.
 	var (
 		// kcpErrors is used to store errors that can't be reported on any machine.
 		kcpErrors []string
+		/**
 		// clusterID is used to store and compare the etcd's cluster id.
 		clusterID *uint64
 		// members is used to store the list of etcd members and compare with all the other nodes in the cluster.
 		members []*etcd.Member
+		**/
 	)
 
 	for _, node := range controlPlaneNodes.Items {
@@ -408,6 +418,7 @@ func (w *Workload) updateManagedEtcdConditions(ctx context.Context, controlPlane
 			continue
 		}
 
+		/**
 		currentMembers, err := w.getCurrentEtcdMembers(ctx, machine, node.Name)
 		if err != nil {
 			continue
@@ -455,12 +466,15 @@ func (w *Workload) updateManagedEtcdConditions(ctx context.Context, controlPlane
 			conditions.MarkFalse(machine, controlplanev1.MachineEtcdMemberHealthyCondition, controlplanev1.EtcdMemberUnhealthyReason, clusterv1.ConditionSeverityError, "etcd member has cluster ID %d, but all previously seen etcd members have cluster ID %d", member.ClusterID, *clusterID)
 			continue
 		}
+		**/
 
 		conditions.MarkTrue(machine, controlplanev1.MachineEtcdMemberHealthyCondition)
 	}
 
+	/**
 	// Make sure that the list of etcd members and machines is consistent.
 	kcpErrors = compareMachinesAndMembers(controlPlane, members, kcpErrors)
+	**/
 
 	// Aggregate components error from machines at KCP level
 	aggregateFromMachinesToKCP(aggregateFromMachinesToKCPInput{
@@ -474,6 +488,7 @@ func (w *Workload) updateManagedEtcdConditions(ctx context.Context, controlPlane
 	})
 }
 
+/**
 func (w *Workload) getCurrentEtcdMembers(ctx context.Context, machine *clusterv1.Machine, nodeName string) ([]*etcd.Member, error) {
 	// Create the etcd Client for the etcd Pod scheduled on the Node
 	etcdClient, err := w.etcdClientGenerator.forFirstAvailableNode(ctx, []string{nodeName})
@@ -596,3 +611,4 @@ func newClientCert(caCert *x509.Certificate, key *rsa.PrivateKey, caKey crypto.S
 	c, err := x509.ParseCertificate(b)
 	return c, errors.WithStack(err)
 }
+**/

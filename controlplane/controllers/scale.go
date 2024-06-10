@@ -34,17 +34,16 @@ import (
 	"sigs.k8s.io/cluster-api/util"
 	"sigs.k8s.io/cluster-api/util/collections"
 	"sigs.k8s.io/cluster-api/util/conditions"
-	"sigs.k8s.io/cluster-api/util/patch"
 	ctrl "sigs.k8s.io/controller-runtime"
 
 	bootstrapv1 "github.com/canonical/cluster-api-k8s/bootstrap/api/v1beta2"
 	controlplanev1 "github.com/canonical/cluster-api-k8s/controlplane/api/v1beta2"
-	k3s "github.com/canonical/cluster-api-k8s/pkg/k3s"
+	"github.com/canonical/cluster-api-k8s/pkg/ck8s"
 )
 
 var ErrPreConditionFailed = errors.New("precondition check failed")
 
-func (r *CK8sControlPlaneReconciler) initializeControlPlane(ctx context.Context, cluster *clusterv1.Cluster, kcp *controlplanev1.CK8sControlPlane, controlPlane *k3s.ControlPlane) (ctrl.Result, error) {
+func (r *CK8sControlPlaneReconciler) initializeControlPlane(ctx context.Context, cluster *clusterv1.Cluster, kcp *controlplanev1.CK8sControlPlane, controlPlane *ck8s.ControlPlane) (ctrl.Result, error) {
 	logger := ctrl.LoggerFrom(ctx)
 
 	// Perform an uncached read of all the owned machines. This check is in place to make sure
@@ -73,7 +72,7 @@ func (r *CK8sControlPlaneReconciler) initializeControlPlane(ctx context.Context,
 	return ctrl.Result{Requeue: true}, nil
 }
 
-func (r *CK8sControlPlaneReconciler) scaleUpControlPlane(ctx context.Context, cluster *clusterv1.Cluster, kcp *controlplanev1.CK8sControlPlane, controlPlane *k3s.ControlPlane) (ctrl.Result, error) {
+func (r *CK8sControlPlaneReconciler) scaleUpControlPlane(ctx context.Context, cluster *clusterv1.Cluster, kcp *controlplanev1.CK8sControlPlane, controlPlane *ck8s.ControlPlane) (ctrl.Result, error) {
 	logger := ctrl.LoggerFrom(ctx)
 
 	// Run preflight checks to ensure that the control plane is stable before proceeding with a scale up/scale down operation; if not, wait.
@@ -98,7 +97,7 @@ func (r *CK8sControlPlaneReconciler) scaleDownControlPlane(
 	ctx context.Context,
 	cluster *clusterv1.Cluster,
 	kcp *controlplanev1.CK8sControlPlane,
-	controlPlane *k3s.ControlPlane,
+	controlPlane *ck8s.ControlPlane,
 	outdatedMachines collections.Machines,
 ) (ctrl.Result, error) {
 	logger := ctrl.LoggerFrom(ctx)
@@ -120,6 +119,17 @@ func (r *CK8sControlPlaneReconciler) scaleDownControlPlane(
 		return ctrl.Result{}, fmt.Errorf("failed to pick control plane Machine to delete: %w", err)
 	}
 
+	// NOTE(neoaggelos): Here, upstream will check whether the node that is about to be removed is the leader of the etcd cluster, and will
+	// attempt to forward the leadership to a different active node before proceeding. This is so that continuous operation of the cluster
+	// is preserved.
+	//
+	// TODO(neoaggelos): For Canonical Kubernetes, we should instead use the RemoveNode endpoint of the k8sd service from a different control
+	// plane node (through the k8sd-proxy), which will handle this operation for us. If that fails, we must not proceed.
+	//
+	// Finally, note that upstream only acts if the cluster has a managed etcd. For Canonical Kubernetes, we must always perform this action,
+	// since we must delete the node from microcluster as well.
+
+	/**
 	// If KCP should manage etcd, If etcd leadership is on machine that is about to be deleted, move it to the newest member available.
 	if controlPlane.IsEtcdManaged() {
 		workloadCluster, err := r.managementCluster.GetWorkloadCluster(ctx, util.ObjectKey(cluster))
@@ -147,6 +157,7 @@ func (r *CK8sControlPlaneReconciler) scaleDownControlPlane(
 			return ctrl.Result{}, errors.Wrapf(err, "failed patch machine for adding preTerminate hook")
 		}
 	}
+	**/
 
 	logger = logger.WithValues("machine", machineToDelete)
 	if err := r.Client.Delete(ctx, machineToDelete); err != nil && !apierrors.IsNotFound(err) {
@@ -168,7 +179,7 @@ func (r *CK8sControlPlaneReconciler) scaleDownControlPlane(
 // If the control plane is not passing preflight checks, it requeue.
 //
 // NOTE: this func uses KCP conditions, it is required to call reconcileControlPlaneConditions before this.
-func (r *CK8sControlPlaneReconciler) preflightChecks(_ context.Context, controlPlane *k3s.ControlPlane, excludeFor ...*clusterv1.Machine) (ctrl.Result, error) { //nolint:unparam
+func (r *CK8sControlPlaneReconciler) preflightChecks(_ context.Context, controlPlane *ck8s.ControlPlane, excludeFor ...*clusterv1.Machine) (ctrl.Result, error) { //nolint:unparam
 	logger := r.Log.WithValues("namespace", controlPlane.KCP.Namespace, "CK8sControlPlane", controlPlane.KCP.Name, "cluster", controlPlane.Cluster.Name)
 
 	// If there is no KCP-owned control-plane machines, then control-plane has not been initialized yet,
@@ -237,7 +248,7 @@ func preflightCheckCondition(kind string, obj conditions.Getter, condition clust
 	return nil
 }
 
-func selectMachineForScaleDown(ctx context.Context, controlPlane *k3s.ControlPlane, outdatedMachines collections.Machines) (*clusterv1.Machine, error) {
+func selectMachineForScaleDown(ctx context.Context, controlPlane *ck8s.ControlPlane, outdatedMachines collections.Machines) (*clusterv1.Machine, error) {
 	machines := controlPlane.Machines
 	switch {
 	case controlPlane.MachineWithDeleteAnnotation(outdatedMachines).Len() > 0:
@@ -269,7 +280,7 @@ func (r *CK8sControlPlaneReconciler) cloneConfigsAndGenerateMachine(ctx context.
 		Namespace:   kcp.Namespace,
 		OwnerRef:    infraCloneOwner,
 		ClusterName: cluster.Name,
-		Labels:      k3s.ControlPlaneLabelsForCluster(cluster.Name, kcp.Spec.MachineTemplate),
+		Labels:      ck8s.ControlPlaneLabelsForCluster(cluster.Name, kcp.Spec.MachineTemplate),
 	})
 	if err != nil {
 		// Safe to return early here since no resources have been created yet.
@@ -334,7 +345,7 @@ func (r *CK8sControlPlaneReconciler) generateCK8sConfig(ctx context.Context, kcp
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            names.SimpleNameGenerator.GenerateName(kcp.Name + "-"),
 			Namespace:       kcp.Namespace,
-			Labels:          k3s.ControlPlaneLabelsForCluster(cluster.Name, kcp.Spec.MachineTemplate),
+			Labels:          ck8s.ControlPlaneLabelsForCluster(cluster.Name, kcp.Spec.MachineTemplate),
 			OwnerReferences: []metav1.OwnerReference{owner},
 		},
 		Spec: *spec,
@@ -360,7 +371,7 @@ func (r *CK8sControlPlaneReconciler) generateMachine(ctx context.Context, kcp *c
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      names.SimpleNameGenerator.GenerateName(kcp.Name + "-"),
 			Namespace: kcp.Namespace,
-			Labels:    k3s.ControlPlaneLabelsForCluster(cluster.Name, kcp.Spec.MachineTemplate),
+			Labels:    ck8s.ControlPlaneLabelsForCluster(cluster.Name, kcp.Spec.MachineTemplate),
 			OwnerReferences: []metav1.OwnerReference{
 				*metav1.NewControllerRef(kcp, controlplanev1.GroupVersion.WithKind("CK8sControlPlane")),
 			},

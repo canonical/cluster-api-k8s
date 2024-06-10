@@ -1,22 +1,15 @@
-package k3s
+package ck8s
 
 import (
 	"context"
-	"crypto/tls"
-	"crypto/x509"
 	"fmt"
 	"time"
 
-	"github.com/pkg/errors"
-	corev1 "k8s.io/api/core/v1"
-	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/client-go/kubernetes/scheme"
 	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
 	"sigs.k8s.io/cluster-api/controllers/remote"
 	"sigs.k8s.io/cluster-api/util/collections"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-
-	"github.com/canonical/cluster-api-k8s/pkg/secret"
 )
 
 // ManagementCluster defines all behaviors necessary for something to function as a management cluster.
@@ -31,7 +24,11 @@ type ManagementCluster interface {
 type Management struct {
 	ManagementCluster
 
-	Client          client.Reader
+	Client client.Reader
+
+	// NOTE(neoaggelos): These are used as timeouts when interacting with the etcd of the workload cluster.
+	//
+	// TODO(neoaggelos): Replace these with timeouts for interacting with the k8sd proxy instances of the nodes.
 	EtcdDialTimeout time.Duration
 	EtcdCallTimeout time.Duration
 }
@@ -90,10 +87,16 @@ func (m *Management) GetWorkloadCluster(ctx context.Context, clusterKey client.O
 	}
 
 	workload := &Workload{
-		Client:          c,
+		Client: c,
+		/**
 		CoreDNSMigrator: &CoreDNSMigrator{},
+		**/
 	}
+	// NOTE(neoaggelos): Upstream creates an etcd client generator, so that users can reach etcd on each node.
+	//
+	// TODO(neoaggelos): For Canonical Kubernetes, we need to create a client generator for the k8sd endpoints on the control plane nodes.
 
+	/**
 	// Retrieves the etcd CA key Pair
 	crtData, keyData, err := m.getEtcdCAKeyPair(ctx, clusterKey)
 	if err != nil {
@@ -117,10 +120,12 @@ func (m *Management) GetWorkloadCluster(ctx context.Context, clusterKey client.O
 		tlsConfig.InsecureSkipVerify = true
 		workload.etcdClientGenerator = NewEtcdClientGenerator(restConfig, tlsConfig, m.EtcdDialTimeout, m.EtcdCallTimeout)
 	}
+	**/
 
 	return workload, nil
 }
 
+/**
 func (m *Management) getEtcdCAKeyPair(ctx context.Context, clusterKey client.ObjectKey) ([]byte, []byte, error) {
 	etcdCASecret := &corev1.Secret{}
 	etcdCAObjectKey := client.ObjectKey{
@@ -144,3 +149,4 @@ func (m *Management) getEtcdCAKeyPair(ctx context.Context, clusterKey client.Obj
 	keyData := etcdCASecret.Data[secret.TLSKeyDataName]
 	return crtData, keyData, nil
 }
+**/

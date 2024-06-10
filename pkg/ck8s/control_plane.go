@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package k3s
+package ck8s
 
 import (
 	"context"
@@ -53,11 +53,6 @@ type ControlPlane struct {
 	Machines             collections.Machines
 	machinesPatchHelpers map[string]*patch.Helper
 
-	// check if mgmt cluster has target cluster's etcd ca.
-	// for old cluster created before connect-etcd feature, mgmt cluster don't
-	// store etcd ca, controlplane reconcile loop need bypass any etcd operations.
-	hasEtcdCA bool
-
 	// reconciliationTime is the time of the current reconciliation, and should be used for all "now" calculations
 	reconciliationTime metav1.Time
 
@@ -86,25 +81,11 @@ func NewControlPlane(ctx context.Context, client client.Client, cluster *cluster
 		patchHelpers[machine.Name] = patchHelper
 	}
 
-	hasEtcdCA := false
-	// etcdCASecret := &corev1.Secret{}
-	// etcdCAObjectKey := types.NamespacedName{
-	// 	Namespace: cluster.Namespace,
-	// 	Name:      fmt.Sprintf("%s-etcd", cluster.Name),
-	// }
-
-	// if err := client.Get(ctx, etcdCAObjectKey, etcdCASecret); err == nil {
-	// 	hasEtcdCA = true
-	// } else if !apierrors.IsNotFound(err) {
-	// 	return nil, err
-	// }
-
 	return &ControlPlane{
 		KCP:                  kcp,
 		Cluster:              cluster,
 		Machines:             ownedMachines,
 		machinesPatchHelpers: patchHelpers,
-		hasEtcdCA:            hasEtcdCA,
 		ck8sConfigs:          ck8sConfigs,
 		infraResources:       infraObjects,
 		reconciliationTime:   metav1.Now(),
@@ -332,9 +313,9 @@ func getCK8sConfigs(ctx context.Context, cl client.Client, machines collections.
 	return result, nil
 }
 
-// IsEtcdManaged returns true if the control plane relies on a managed etcd.
+// IsEtcdManaged returns true if the control plane relies on a managed k8s-dqlite.
 func (c *ControlPlane) IsEtcdManaged() bool {
-	return c.KCP.Spec.CK8sConfigSpec.IsEtcdEmbedded() && c.hasEtcdCA
+	return c.KCP.Spec.CK8sConfigSpec.IsEtcdManaged()
 }
 
 // UnhealthyMachines returns the list of control plane machines marked as unhealthy by MHC.

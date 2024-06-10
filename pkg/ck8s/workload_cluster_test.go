@@ -1,4 +1,4 @@
-package k3s
+package ck8s
 
 import (
 	"context"
@@ -16,7 +16,7 @@ func TestClusterStatus(t *testing.T) {
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "node1",
 			Labels: map[string]string{
-				labelNodeRoleControlPlane: "true",
+				labelNodeRoleControlPlane: "",
 			},
 		},
 		Status: corev1.NodeStatus{
@@ -30,7 +30,7 @@ func TestClusterStatus(t *testing.T) {
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "node2",
 			Labels: map[string]string{
-				labelNodeRoleControlPlane: "true",
+				labelNodeRoleControlPlane: "",
 			},
 		},
 		Status: corev1.NodeStatus{
@@ -40,9 +40,9 @@ func TestClusterStatus(t *testing.T) {
 			}},
 		},
 	}
-	servingSecret := &corev1.Secret{
+	servingSecret := &corev1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      k3sServingSecretKey,
+			Name:      k8sdConfigSecretKey,
 			Namespace: metav1.NamespaceSystem,
 		},
 	}
@@ -58,7 +58,7 @@ func TestClusterStatus(t *testing.T) {
 			expectHasSecret: false,
 		},
 		{
-			name:            "returns cluster status with k3s-serving secret",
+			name:            "returns cluster status with k8sd-config configmap",
 			objs:            []client.Object{node1, node2, servingSecret},
 			expectHasSecret: true,
 		},
@@ -75,7 +75,7 @@ func TestClusterStatus(t *testing.T) {
 			g.Expect(err).ToNot(HaveOccurred())
 			g.Expect(status.Nodes).To(BeEquivalentTo(2))
 			g.Expect(status.ReadyNodes).To(BeEquivalentTo(1))
-			g.Expect(status.HasK3sServingSecret).To(Equal(tt.expectHasSecret))
+			g.Expect(status.HasK8sdConfigMap).To(Equal(tt.expectHasSecret))
 		})
 	}
 }

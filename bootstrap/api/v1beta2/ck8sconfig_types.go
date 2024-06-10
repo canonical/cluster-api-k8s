@@ -58,7 +58,7 @@ type CK8sConfigSpec struct {
 
 // TODO
 // Will need extend this func when implementing other database options.
-func (c *CK8sConfigSpec) IsK8sDqlite() bool {
+func (c *CK8sConfigSpec) IsEtcdManaged() bool {
 	return true
 }
 

@@ -47,7 +47,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/source"
 
 	controlplanev1 "github.com/canonical/cluster-api-k8s/controlplane/api/v1beta2"
-	k3s "github.com/canonical/cluster-api-k8s/pkg/k3s"
+	"github.com/canonical/cluster-api-k8s/pkg/ck8s"
 	"github.com/canonical/cluster-api-k8s/pkg/kubeconfig"
 	"github.com/canonical/cluster-api-k8s/pkg/secret"
 	"github.com/canonical/cluster-api-k8s/pkg/token"
@@ -64,8 +64,8 @@ type CK8sControlPlaneReconciler struct {
 	EtcdDialTimeout time.Duration
 	EtcdCallTimeout time.Duration
 
-	managementCluster         k3s.ManagementCluster
-	managementClusterUncached k3s.ManagementCluster
+	managementCluster         ck8s.ManagementCluster
+	managementClusterUncached ck8s.ManagementCluster
 }
 
 // +kubebuilder:rbac:groups=core,resources=events,verbs=get;list;watch;create;patch
@@ -144,7 +144,7 @@ func (r *CK8sControlPlaneReconciler) Reconcile(ctx context.Context, req ctrl.Req
 
 	// Always attempt to update status.
 	if updateErr := r.updateStatus(ctx, kcp, cluster); updateErr != nil {
-		var connFailure *k3s.RemoteClusterConnectionError
+		var connFailure *ck8s.RemoteClusterConnectionError
 		if errors.As(err, &connFailure) {
 			logger.Info("Could not connect to workload cluster to fetch status", "err", updateErr.Error())
 		} else {
@@ -191,7 +191,7 @@ func (r *CK8sControlPlaneReconciler) reconcileDelete(ctx context.Context, cluste
 		return reconcile.Result{}, nil
 	}
 
-	controlPlane, err := k3s.NewControlPlane(ctx, r.Client, cluster, kcp, ownedMachines)
+	controlPlane, err := ck8s.NewControlPlane(ctx, r.Client, cluster, kcp, ownedMachines)
 	if err != nil {
 		logger.Error(err, "failed to initialize control plane")
 		return reconcile.Result{}, err
@@ -292,7 +292,7 @@ func (r *CK8sControlPlaneReconciler) SetupWithManager(ctx context.Context, mgr c
 	r.recorder = mgr.GetEventRecorderFor("ck8s-control-plane-controller")
 
 	if r.managementCluster == nil {
-		r.managementCluster = &k3s.Management{
+		r.managementCluster = &ck8s.Management{
 			Client:          r.Client,
 			EtcdDialTimeout: r.EtcdDialTimeout,
 			EtcdCallTimeout: r.EtcdCallTimeout,
@@ -300,7 +300,7 @@ func (r *CK8sControlPlaneReconciler) SetupWithManager(ctx context.Context, mgr c
 	}
 
 	if r.managementClusterUncached == nil {
-		r.managementClusterUncached = &k3s.Management{
+		r.managementClusterUncached = &ck8s.Management{
 			Client:          mgr.GetAPIReader(),
 			EtcdDialTimeout: r.EtcdDialTimeout,
 			EtcdCallTimeout: r.EtcdCallTimeout,
@@ -343,7 +343,7 @@ func (r *CK8sControlPlaneReconciler) updateStatus(ctx context.Context, kcp *cont
 	}
 
 	logger := r.Log.WithValues("namespace", kcp.Namespace, "CK8sControlPlane", kcp.Name, "cluster", cluster.Name)
-	controlPlane, err := k3s.NewControlPlane(ctx, r.Client, cluster, kcp, ownedMachines)
+	controlPlane, err := ck8s.NewControlPlane(ctx, r.Client, cluster, kcp, ownedMachines)
 	if err != nil {
 		logger.Error(err, "failed to initialize control plane")
 		return err
@@ -395,7 +395,8 @@ func (r *CK8sControlPlaneReconciler) updateStatus(ctx context.Context, kcp *cont
 	kcp.Status.ReadyReplicas = status.ReadyNodes
 	kcp.Status.UnavailableReplicas = replicas - status.ReadyNodes
 
-	if status.HasK3sServingSecret {
+	// NOTE(neoaggelos): We consider the control plane to be initialized iff the k8sd-config exists
+	if status.HasK8sdConfigMap {
 		kcp.Status.Initialized = true
 	}
 
@@ -492,7 +493,7 @@ func (r *CK8sControlPlaneReconciler) reconcile(ctx context.Context, cluster *clu
 		return reconcile.Result{}, nil
 	}
 
-	controlPlane, err := k3s.NewControlPlane(ctx, r.Client, cluster, kcp, ownedMachines)
+	controlPlane, err := ck8s.NewControlPlane(ctx, r.Client, cluster, kcp, ownedMachines)
 	if err != nil {
 		logger.Error(err, "failed to initialize control plane")
 		return reconcile.Result{}, err
@@ -660,7 +661,7 @@ func (r *CK8sControlPlaneReconciler) reconcileKubeconfig(ctx context.Context, cl
 
 // reconcileControlPlaneConditions is responsible of reconciling conditions reporting the status of static pods and
 // the status of the etcd cluster.
-func (r *CK8sControlPlaneReconciler) reconcileControlPlaneConditions(ctx context.Context, controlPlane *k3s.ControlPlane) error {
+func (r *CK8sControlPlaneReconciler) reconcileControlPlaneConditions(ctx context.Context, controlPlane *ck8s.ControlPlane) error {
 	// If the cluster is not yet initialized, there is no way to connect to the workload cluster and fetch information
 	// for updating conditions. Return early.
 	if !controlPlane.KCP.Status.Initialized {
@@ -689,10 +690,17 @@ func (r *CK8sControlPlaneReconciler) reconcileControlPlaneConditions(ctx context
 // This is usually required after a machine deletion.
 //
 // NOTE: this func uses KCP conditions, it is required to call reconcileControlPlaneConditions before this.
-func (r *CK8sControlPlaneReconciler) reconcileEtcdMembers(ctx context.Context, controlPlane *k3s.ControlPlane) error {
-	log := ctrl.LoggerFrom(ctx)
+func (r *CK8sControlPlaneReconciler) reconcileEtcdMembers(ctx context.Context, controlPlane *ck8s.ControlPlane) error {
+	// NOTE(neoaggelos): Upstream uses this to reach the etcd cluster and remove any members that have not yet
+	// been removed, typically after a machine has been deleted. In the case of k8s-dqlite, this is handled automatically
+	// for us, so we do not need to do anything here.
+	//
+	// We still leave this code around in case we need to do work in the future (e.g. make sure any removed nodes do not
+	// still appear on microcluster or k8s-dqlite).
 
-	// If etcd is not managed by KCP this is a no-op.
+	/**
+	log := ctrl.LoggerFrom(ctx)
+	// If k8s-dqlite is not managed by KCP this is a no-op.
 	if !controlPlane.IsEtcdManaged() {
 		return nil
 	}
@@ -733,6 +741,8 @@ func (r *CK8sControlPlaneReconciler) reconcileEtcdMembers(ctx context.Context, c
 		log.Info("Etcd members without nodes removed from the cluster", "members", removedMembers)
 	}
 
+	**/
+
 	return nil
 }
 
@@ -740,7 +750,7 @@ func (r *CK8sControlPlaneReconciler) upgradeControlPlane(
 	ctx context.Context,
 	cluster *clusterv1.Cluster,
 	kcp *controlplanev1.CK8sControlPlane,
-	controlPlane *k3s.ControlPlane,
+	controlPlane *ck8s.ControlPlane,
 	machinesRequireUpgrade collections.Machines,
 ) (ctrl.Result, error) {
 	// TODO: handle reconciliation of etcd members and kubeadm config in case they get out of sync with cluster
