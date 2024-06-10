@@ -48,6 +48,7 @@ func NewInitControlPlane(input InitControlPlaneInput) (CloudConfig, error) {
 		"/opt/capi/scripts/wait-apiserver-ready.sh",
 		"/opt/capi/scripts/deploy-manifests.sh",
 		"/opt/capi/scripts/configure-token.sh",
+		"/opt/capi/scripts/create-bootstrap-sentinel.sh",
 	)
 	config.RunCommands = append(config.RunCommands, input.PostRunCommands...)
 

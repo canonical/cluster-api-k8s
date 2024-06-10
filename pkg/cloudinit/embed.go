@@ -13,11 +13,12 @@ var (
 type script string
 
 var (
-	scriptInstall            script = "install.sh"
-	scriptBootstrap          script = "bootstrap.sh"
-	scriptConfigureToken     script = "configure-token.sh"
-	scriptWaitAPIServerReady script = "wait-apiserver-ready.sh"
-	scriptDeployManifests    script = "deploy-manifests.sh"
+	scriptInstall                 script = "install.sh"
+	scriptBootstrap               script = "bootstrap.sh"
+	scriptConfigureToken          script = "configure-token.sh"
+	scriptWaitAPIServerReady      script = "wait-apiserver-ready.sh"
+	scriptDeployManifests         script = "deploy-manifests.sh"
+	scriptCreateSentinelBootstrap script = "create-sentinel-bootstrap.sh"
 )
 
 func mustEmbed(s script) string {
@@ -31,10 +32,11 @@ func mustEmbed(s script) string {
 var (
 	// scripts is a map of all embedded bash scripts used in the cloud-init.
 	scripts = map[script]string{
-		scriptInstall:            mustEmbed(scriptInstall),
-		scriptBootstrap:          mustEmbed(scriptBootstrap),
-		scriptConfigureToken:     mustEmbed(scriptConfigureToken),
-		scriptWaitAPIServerReady: mustEmbed(scriptWaitAPIServerReady),
-		scriptDeployManifests:    mustEmbed(scriptDeployManifests),
+		scriptInstall:                 mustEmbed(scriptInstall),
+		scriptBootstrap:               mustEmbed(scriptBootstrap),
+		scriptConfigureToken:          mustEmbed(scriptConfigureToken),
+		scriptWaitAPIServerReady:      mustEmbed(scriptWaitAPIServerReady),
+		scriptDeployManifests:         mustEmbed(scriptDeployManifests),
+		scriptCreateSentinelBootstrap: mustEmbed(scriptCreateSentinelBootstrap),
 	}
 )

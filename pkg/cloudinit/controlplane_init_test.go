@@ -54,6 +54,7 @@ func TestNewInitControlPlane(t *testing.T) {
 		"/opt/capi/scripts/wait-apiserver-ready.sh",
 		"/opt/capi/scripts/deploy-manifests.sh",
 		"/opt/capi/scripts/configure-token.sh",
+		"/opt/capi/scripts/create-sentinel-bootstrap.sh",
 		"postrun1",
 		"postrun2",
 	}))
