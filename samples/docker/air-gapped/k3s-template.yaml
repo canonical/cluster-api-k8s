@@ -12,7 +12,7 @@ spec:
       - 10.46.0.0/16
     serviceDomain: cluster.local
   controlPlaneRef:
-    apiVersion: controlplane.cluster.x-k8s.io/v1beta1
+    apiVersion: controlplane.cluster.x-k8s.io/v1beta2
     kind: CK8sControlPlane
     name: ${CLUSTER_NAME}-control-plane
   infrastructureRef:
@@ -26,19 +26,21 @@ metadata:
   name: ${CLUSTER_NAME}
 spec: {}
 ---
-apiVersion: controlplane.cluster.x-k8s.io/v1beta1
+apiVersion: controlplane.cluster.x-k8s.io/v1beta2
 kind: CK8sControlPlane
 metadata:
   name: ${CLUSTER_NAME}-control-plane
   namespace: default
 spec:
-  infrastructureTemplate:
-    apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
-    kind: DockerMachineTemplate
-    name: ${CLUSTER_NAME}-control-plane
+  machineTemplate:
+    infrastructureTemplate:
+      apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
+      kind: DockerMachineTemplate
+      name: ${CLUSTER_NAME}-control-plane
   spec:
-    agentConfig:
-      airGapped: true
+    airGapped: true
+    controlPlane:
+      k8sDqlitePort: 2380
   replicas: ${CONTROL_PLANE_MACHINE_COUNT}
   version: ${KUBERNETES_VERSION}
 ---
@@ -67,7 +69,7 @@ spec:
       clusterName: ${CLUSTER_NAME}
       bootstrap:
         configRef:
-          apiVersion: bootstrap.cluster.x-k8s.io/v1beta1
+          apiVersion: bootstrap.cluster.x-k8s.io/v1beta2
           kind: CK8sConfigTemplate
           name: ${CLUSTER_NAME}-md-0
       infrastructureRef:
@@ -84,12 +86,13 @@ spec:
     spec:
       customImage: ${AIRGAPPED_KIND_IMAGE}
 ---
-apiVersion: bootstrap.cluster.x-k8s.io/v1beta1
+apiVersion: bootstrap.cluster.x-k8s.io/v1beta2
 kind: CK8sConfigTemplate
 metadata:
   name: ${CLUSTER_NAME}-md-0
 spec:
   template:
     spec:
-      agentConfig:
-        airGapped: true
+      airGapped: true
+      controlPlane:
+        k8sDqlitePort: 2380
