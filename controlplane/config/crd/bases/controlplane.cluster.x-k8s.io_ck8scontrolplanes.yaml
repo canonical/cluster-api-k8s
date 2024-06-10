@@ -76,7 +76,7 @@ spec:
                   MachineTemplate contains information about how machines should be shaped
                   when creating or updating a control plane.
                 properties:
-                  infrastructureRef:
+                  infrastructureTemplate:
                     description: |-
                       InfrastructureRef is a required reference to a custom resource
                       offered by an infrastructure provider.
@@ -164,7 +164,7 @@ spec:
                       to be detached. The default value is 0, meaning that the volumes can be detached without any time limitations.
                     type: string
                 required:
-                - infrastructureRef
+                - infrastructureTemplate
                 type: object
               remediationStrategy:
                 description: The RemediationStrategy that controls how control plane

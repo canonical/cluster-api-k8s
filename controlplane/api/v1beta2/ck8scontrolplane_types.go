@@ -95,7 +95,7 @@ type CK8sControlPlaneMachineTemplate struct {
 	ObjectMeta clusterv1.ObjectMeta `json:"metadata,omitempty"`
 	// InfrastructureRef is a required reference to a custom resource
 	// offered by an infrastructure provider.
-	InfrastructureRef corev1.ObjectReference `json:"infrastructureRef"`
+	InfrastructureRef corev1.ObjectReference `json:"infrastructureTemplate"`
 	// NodeDrainTimeout is the total amount of time that the controller will spend on draining a controlplane node
 	// The default value is 0, meaning that the node can be drained without any time limitations.
 	// NOTE: NodeDrainTimeout is different from `kubectl drain --timeout`
