@@ -117,6 +117,20 @@ GINKGO_VER := $(call get_go_version,github.com/onsi/ginkgo/v2)
 GINKGO := $(abspath $(TOOLS_BIN_DIR)/$(GINKGO_BIN)-$(GINKGO_VER))
 GINKGO_PKG := github.com/onsi/ginkgo/v2/ginkgo
 
+
+## --------------------------------------
+## Development
+## --------------------------------------
+
+.PHONY: install
+install: install-bootstrap install-controlplane
+
+.PHONY: generate
+generate: generate-bootstrap generate-controlplane
+
+.PHONY: manifests
+manifests: manifests-bootstrap manifests-controlplane
+
 ## --------------------------------------
 ## Release
 ## --------------------------------------
