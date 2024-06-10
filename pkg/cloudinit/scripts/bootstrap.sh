@@ -8,4 +8,4 @@
 address="$(cat /opt/capi/etc/microcluster-address)"
 config_file="/opt/capi/etc/config.yaml"
 
-k8s bootstrap --address "${address}" --config "${config_file}"
+k8s bootstrap --address "${address}" --file "${config_file}"
