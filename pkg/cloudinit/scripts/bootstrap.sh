@@ -8,4 +8,6 @@
 address="$(cat /opt/capi/etc/microcluster-address)"
 config_file="/opt/capi/etc/config.yaml"
 
-k8s bootstrap --address "${address}" --file "${config_file}"
+if [ ! -f /etc/kubernetes/pki/ca.crt ]; then
+  k8s bootstrap --address "${address}" --file "${config_file}"
+fi
