@@ -120,12 +120,12 @@ RUN mkdir -p /var/lib/pebble/default/layers /snap/k8s/current /var/snap/k8s/comm
     && ln -sf "$(which true)" "$(which crictl)"
 
 ## NOTE(neoaggelos): Install binaries
+COPY --from=build-k8s-dqlite /out /snap/k8s/current
 COPY --from=build-runc /out /snap/k8s/current
 COPY --from=build-helm /out /snap/k8s/current
 COPY --from=build-containerd /out /snap/k8s/current
 COPY --from=build-cni /out /snap/k8s/current
 COPY --from=build-kubernetes /out /snap/k8s/current
-COPY --from=build-k8s-dqlite /out /snap/k8s/current
 COPY --from=build-k8sd /out /snap/k8s/current
 COPY --from=build-pebble /out /snap/k8s/current
 
