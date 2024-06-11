@@ -42,8 +42,10 @@ func NewJoinWorker(input JoinWorkerInput) (CloudConfig, error) {
 
 	// run commands
 	config.RunCommands = append(config.RunCommands, input.PreRunCommands...)
+	if !input.AirGapped {
+		config.RunCommands = append(config.RunCommands, "/opt/capi/scripts/install.sh")
+	}
 	config.RunCommands = append(config.RunCommands,
-		"/opt/capi/scripts/install.sh",
 		"/opt/capi/scripts/join-cluster.sh",
 	)
 	config.RunCommands = append(config.RunCommands, input.PostRunCommands...)

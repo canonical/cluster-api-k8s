@@ -36,20 +36,6 @@ func NewBaseCloudConfig(data BaseUserData) (CloudConfig, error) {
 		return CloudConfig{}, fmt.Errorf("failed to parse kubernetes version %q: %w", data.KubernetesVersion, err)
 	}
 
-	// for airgapped installs, we expect the user to provider the install script.
-	if data.AirGapped {
-		var hasInstallFile bool
-		for _, file := range data.ExtraFiles {
-			if file.Path == "/opt/capi/scripts/install.sh" {
-				hasInstallFile = true
-				break
-			}
-		}
-		if !hasInstallFile {
-			return CloudConfig{}, fmt.Errorf("cluster is marked as airgapped but no script with path /opt/capi/scripts/install.sh was specified")
-		}
-	}
-
 	config := CloudConfig{
 		RunCommands: []string{"set -x"},
 		WriteFiles:  make([]File, 0, len(scripts)+len(data.ExtraFiles)+3),

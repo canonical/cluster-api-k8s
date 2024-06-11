@@ -45,9 +45,9 @@ type CK8sConfigSpec struct {
 	// +optional
 	PostRunCommands []string `json:"postRunCommands,omitempty"`
 
-	// AirGapped is a boolean option to signal that we are deploying to an airgap environment.
-	// In this case, the provider assumes that it cannot download and install binaries, and the user
-	// should ensure that all nodes have a `/opt/capi/install.sh` script that installs k8s-snap.
+	// AirGapped is used to signal that we are deploying to an airgap environment. In this case,
+	// the provider will not attempt to install k8s-snap on the machine. The user is expected to
+	// install k8s-snap manually with preRunCommands, or provide an image with k8s-snap pre-installed.
 	// +optional
 	AirGapped bool `json:"airGapped,omitempty"`
 
