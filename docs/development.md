@@ -12,7 +12,10 @@ sudo snap install clusterctl --devmode --edge
 
 ```bash
 # build docker image for k8s-snap
-docker build -t ghcr.io/canonical/cluster-api-k8s/k8s-snap:v1.30.1 --build-arg BRANCH=autoupdate/moonray
+(
+    cd templates/docker
+    docker build -t ghcr.io/canonical/cluster-api-k8s/k8s-snap:v1.30.1 --build-arg BRANCH=autoupdate/moonray
+)
 
 # create network 'kind', required by capd
 sudo docker network create kind --driver=bridge \
