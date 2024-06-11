@@ -6,10 +6,10 @@ spec:
   clusterNetwork:
     pods:
       cidrBlocks:
-      - 10.45.0.0/16
+      - 10.1.0.0/16
     services:
       cidrBlocks:
-      - 10.46.0.0/16
+      - 10.152.0.0/16
     serviceDomain: cluster.local
   controlPlaneRef:
     apiVersion: controlplane.cluster.x-k8s.io/v1beta2
@@ -39,8 +39,6 @@ spec:
       name: ${CLUSTER_NAME}-control-plane
   spec:
     airGapped: true
-    controlPlane:
-      k8sDqlitePort: 2380
   replicas: ${CONTROL_PLANE_MACHINE_COUNT}
   version: ${KUBERNETES_VERSION}
 ---
@@ -51,7 +49,7 @@ metadata:
 spec:
   template:
     spec:
-      customImage: ${AIRGAPPED_KIND_IMAGE}
+      customImage: ${KIND_IMAGE}
 ---
 apiVersion: cluster.x-k8s.io/v1beta1
 kind: MachineDeployment
@@ -84,7 +82,7 @@ metadata:
 spec:
   template:
     spec:
-      customImage: ${AIRGAPPED_KIND_IMAGE}
+      customImage: ${KIND_IMAGE}
 ---
 apiVersion: bootstrap.cluster.x-k8s.io/v1beta2
 kind: CK8sConfigTemplate
@@ -94,5 +92,3 @@ spec:
   template:
     spec:
       airGapped: true
-      controlPlane:
-        k8sDqlitePort: 2380
