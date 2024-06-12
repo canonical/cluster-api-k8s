@@ -31,5 +31,9 @@ const (
 	// dependent certificates have been created.
 	dependentCertRequeueAfter = 30 * time.Second
 
+	// ck8sHookName is the value for the clusterv1.PreTerminateDeleteHookAnnotationPrefix annotation.
+	// it is set on machines that are getting deleted (either because of a user initiated control plane
+	// scaling down, or because of a provider initiated remediation), such that the provider can perform
+	// the necessary cleanup steps.
 	ck8sHookName = "ck8s"
 )
