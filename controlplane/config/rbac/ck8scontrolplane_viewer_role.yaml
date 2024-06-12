@@ -1,0 +1,20 @@
+# permissions for end users to view ck8scontrolplanes.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: ck8scontrolplane-viewer-role
+rules:
+- apiGroups:
+  - controlplane.cluster.x-k8s.io
+  resources:
+  - ck8scontrolplanes
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - controlplane.cluster.x-k8s.io
+  resources:
+  - ck8scontrolplanes/status
+  verbs:
+  - get
