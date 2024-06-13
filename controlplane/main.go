@@ -56,8 +56,7 @@ func main() {
 	var metricsAddr string
 	var enableLeaderElection bool
 	var syncPeriod time.Duration
-	var etcdDialTimeout time.Duration
-	var etcdCallTimeout time.Duration
+	var k8sdDialTimeout time.Duration
 
 	flag.StringVar(&metricsAddr, "metrics-addr", ":8080", "The address the metric endpoint binds to.")
 	flag.BoolVar(&enableLeaderElection, "enable-leader-election", false,
@@ -67,11 +66,8 @@ func main() {
 	flag.DurationVar(&syncPeriod, "sync-period", 10*time.Minute,
 		"The minimum interval at which watched resources are reconciled (e.g. 15m)")
 
-	flag.DurationVar(&etcdDialTimeout, "etcd-dial-timeout-duration", 10*time.Second,
-		"Duration that the etcd client waits at most to establish a connection with etcd")
-
-	flag.DurationVar(&etcdCallTimeout, "etcd-call-timeout-duration", 15*time.Second,
-		"Duration that the etcd client waits at most for read and write operations to etcd.")
+	flag.DurationVar(&k8sdDialTimeout, "k8sd-dial-timeout-duration", 10*time.Second,
+		"Duration that the proxy client waits at most to establish a connection with k8sd")
 
 	flag.Parse()
 
@@ -103,8 +99,7 @@ func main() {
 		Client:          mgr.GetClient(),
 		Log:             ctrPlaneLogger,
 		Scheme:          mgr.GetScheme(),
-		EtcdDialTimeout: etcdDialTimeout,
-		EtcdCallTimeout: etcdCallTimeout,
+		K8sdDialTimeout: k8sdDialTimeout,
 	}).SetupWithManager(ctx, mgr, &ctrPlaneLogger); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "CK8sControlPlane")
 		os.Exit(1)
@@ -115,8 +110,7 @@ func main() {
 		Client:          mgr.GetClient(),
 		Log:             ctrMachineLogger,
 		Scheme:          mgr.GetScheme(),
-		EtcdDialTimeout: etcdDialTimeout,
-		EtcdCallTimeout: etcdCallTimeout,
+		K8sdDialTimeout: k8sdDialTimeout,
 	}).SetupWithManager(ctx, mgr, &ctrMachineLogger); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "Machine")
 		os.Exit(1)

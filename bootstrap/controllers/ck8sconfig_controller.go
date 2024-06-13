@@ -244,29 +244,16 @@ func (r *CK8sConfigReconciler) joinControlplane(ctx context.Context, scope *Scop
 		return err
 	}
 
-	var k8sdProxyDaemonset bytes.Buffer
-
-	t, err := template.New("k8sd-proxy-daemonset").Parse(ck8s.K8sdProxyDaemonsetYaml)
-	if err != nil {
-		return err
-	}
-
-	if err := t.Execute(&k8sdProxyDaemonset, struct {
-		K8sdPort int
-	}{
-		K8sdPort: configStruct.ControlPlaneConfig.MicroclusterPort,
-	}); err != nil {
-		return err
-	}
-
 	// TODO(neoaggelos): figure out what is needed for k8sd proxy
-	k8sdProxyFile := bootstrapv1.File{
-		Path:        ck8s.K8sdProxyDaemonsetYamlLocation,
-		Content:     k8sdProxyDaemonset.String(),
-		Owner:       "root:root",
-		Permissions: "0400",
-	}
-	files = append(files, k8sdProxyFile)
+	// if scope.Config.Spec.IsEtcdEmbedded() {
+	// 	etcdProxyFile := bootstrapv1.File{
+	// 		Path:        etcd.EtcdProxyDaemonsetYamlLocation,
+	// 		Content:     etcd.EtcdProxyDaemonsetYaml,
+	// 		Owner:       "root:root",
+	// 		Permissions: "0640",
+	// 	}
+	// 	files = append(files, etcdProxyFile)
+	// }
 
 	input := cloudinit.JoinControlPlaneInput{
 		BaseUserData: cloudinit.BaseUserData{
@@ -476,16 +463,34 @@ func (r *CK8sConfigReconciler) handleClusterNotInitialized(ctx context.Context, 
 		return ctrl.Result{}, err
 	}
 
-	// TODO(neoaggelos): deploy k8sd-proxy daemonsets
-	// if scope.Config.Spec.IsK8sDqlite() {
-	// 	etcdProxyFile := bootstrapv1.File{
-	// 		Path:        etcd.EtcdProxyDaemonsetYamlLocation,
-	// 		Content:     etcd.EtcdProxyDaemonsetYaml,
-	// 		Owner:       "root:root",
-	// 		Permissions: "0640",
-	// 	}
-	// 	files = append(files, etcdProxyFile)
-	// }
+	var microclusterPort int
+	microclusterPort = scope.Config.Spec.ControlPlaneConfig.MicroclusterPort
+	if microclusterPort == 0 {
+		microclusterPort = 2380
+	}
+
+	var k8sdProxyDaemonset bytes.Buffer
+
+	t, err := template.New("k8sd-proxy-daemonset").Parse(ck8s.K8sdProxyDaemonsetYaml)
+	if err != nil {
+		return ctrl.Result{}, err
+	}
+
+	if err := t.Execute(&k8sdProxyDaemonset, struct {
+		K8sdPort int
+	}{
+		K8sdPort: microclusterPort,
+	}); err != nil {
+		return ctrl.Result{}, err
+	}
+
+	k8sdProxyFile := bootstrapv1.File{
+		Path:        ck8s.K8sdProxyDaemonsetYamlLocation,
+		Content:     k8sdProxyDaemonset.String(),
+		Owner:       "root:root",
+		Permissions: "0400",
+	}
+	files = append(files, k8sdProxyFile)
 
 	cpinput := cloudinit.InitControlPlaneInput{
 		BaseUserData: cloudinit.BaseUserData{

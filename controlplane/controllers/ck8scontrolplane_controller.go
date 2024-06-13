@@ -61,8 +61,7 @@ type CK8sControlPlaneReconciler struct {
 	controller controller.Controller
 	recorder   record.EventRecorder
 
-	EtcdDialTimeout time.Duration
-	EtcdCallTimeout time.Duration
+	K8sdDialTimeout time.Duration
 
 	managementCluster         ck8s.ManagementCluster
 	managementClusterUncached ck8s.ManagementCluster
@@ -150,6 +149,31 @@ func (r *CK8sControlPlaneReconciler) Reconcile(ctx context.Context, req ctrl.Req
 		} else {
 			logger.Error(err, "Failed to update CK8sControlPlane Status")
 			err = kerrors.NewAggregate([]error{err, updateErr})
+		}
+	}
+
+	var microclusterPort int
+	microclusterPort = kcp.Spec.CK8sConfigSpec.ControlPlaneConfig.MicroclusterPort
+	if microclusterPort == 0 {
+		microclusterPort = 2380
+	}
+
+	w, err := r.managementCluster.GetWorkloadCluster(ctx, util.ObjectKey(cluster))
+	if err != nil {
+		logger.Error(err, "failed to get workload cluster")
+	}
+
+	proxy, err := w.GetK8sdProxyForControlPlane(ctx)
+	if err != nil {
+		logger.Error(err, "failed to get k8sd proxy for control plane")
+	}
+
+	if proxy != nil {
+		err = ck8s.CheckIfK8sdIsReachable(ctx, proxy.Client, proxy.NodeIP, microclusterPort)
+		if err != nil {
+			logger.Error(err, "failed to reach k8sd")
+		} else {
+			logger.Info("k8sd is reachable")
 		}
 	}
 
@@ -294,16 +318,14 @@ func (r *CK8sControlPlaneReconciler) SetupWithManager(ctx context.Context, mgr c
 	if r.managementCluster == nil {
 		r.managementCluster = &ck8s.Management{
 			Client:          r.Client,
-			EtcdDialTimeout: r.EtcdDialTimeout,
-			EtcdCallTimeout: r.EtcdCallTimeout,
+			K8sdDialTimeout: r.K8sdDialTimeout,
 		}
 	}
 
 	if r.managementClusterUncached == nil {
 		r.managementClusterUncached = &ck8s.Management{
 			Client:          mgr.GetAPIReader(),
-			EtcdDialTimeout: r.EtcdDialTimeout,
-			EtcdCallTimeout: r.EtcdCallTimeout,
+			K8sdDialTimeout: r.K8sdDialTimeout,
 		}
 	}
 
