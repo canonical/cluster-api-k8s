@@ -62,7 +62,7 @@ func (g *k8sdProxyGenerator) forNode(ctx context.Context, node *corev1.Node) (*K
 
 	podname, ok := podmap[node.Name]
 	if !ok {
-		return nil, fmt.Errorf("this node does not have a k8sd proxy pod")
+		return nil, fmt.Errorf("missing k8sd proxy pod for node %s", node.Name)
 	}
 
 	nodeInternalIP, err := getNodeInternalIP(node)

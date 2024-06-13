@@ -244,17 +244,6 @@ func (r *CK8sConfigReconciler) joinControlplane(ctx context.Context, scope *Scop
 		return err
 	}
 
-	// TODO(neoaggelos): figure out what is needed for k8sd proxy
-	// if scope.Config.Spec.IsEtcdEmbedded() {
-	// 	etcdProxyFile := bootstrapv1.File{
-	// 		Path:        etcd.EtcdProxyDaemonsetYamlLocation,
-	// 		Content:     etcd.EtcdProxyDaemonsetYaml,
-	// 		Owner:       "root:root",
-	// 		Permissions: "0640",
-	// 	}
-	// 	files = append(files, etcdProxyFile)
-	// }
-
 	input := cloudinit.JoinControlPlaneInput{
 		BaseUserData: cloudinit.BaseUserData{
 			BootCommands:        scope.Config.Spec.BootCommands,
