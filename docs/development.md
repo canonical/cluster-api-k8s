@@ -77,7 +77,7 @@ kubectl create -f c1.yaml
 ### Check status
 
 ```bash
-sudo docker ps                                                       # check running containers
+sudo docker ps                                                  # check running containers
 kubectl get cluster,machine,ck8scontrolplane,secrets            # get overview of workload cluster resources
 clusterctl describe cluster c1                                  # describe the cluster
 clusterctl get kubeconfig c1 > kubeconfig                       # get the workload cluster kubeconfig file
