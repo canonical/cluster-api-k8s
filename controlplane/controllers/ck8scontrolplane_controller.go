@@ -152,6 +152,7 @@ func (r *CK8sControlPlaneReconciler) Reconcile(ctx context.Context, req ctrl.Req
 		}
 	}
 
+	// TODO(berkayoz) This is a temporary workaround to check if k8sd is reachable
 	var microclusterPort int
 	microclusterPort = kcp.Spec.CK8sConfigSpec.ControlPlaneConfig.MicroclusterPort
 	if microclusterPort == 0 {
