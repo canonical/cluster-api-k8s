@@ -14,7 +14,7 @@ sudo snap install clusterctl --devmode --edge
 # build docker image for k8s-snap
 (
     cd templates/docker
-    docker build . -t k8s-snap:dev --build-arg BRANCH=autoupdate/moonray
+    sudo docker build . -t k8s-snap:dev --build-arg BRANCH=autoupdate/moonray
 )
 
 # create network 'kind', required by capd
@@ -35,7 +35,7 @@ sudo docker exec management-cluster k8s bootstrap
 
 # get kubeconfig
 mkdir -p ~/.kube
-docker exec management-cluster k8s config > ~/.kube/config
+sudo docker exec management-cluster k8s config > ~/.kube/config
 ```
 
 ### Initialize ClusterAPI
@@ -77,7 +77,7 @@ kubectl create -f c1.yaml
 ### Check status
 
 ```bash
-docker ps                                                       # check running containers
+sudo docker ps                                                  # check running containers
 kubectl get cluster,machine,ck8scontrolplane,secrets            # get overview of workload cluster resources
 clusterctl describe cluster c1                                  # describe the cluster
 clusterctl get kubeconfig c1 > kubeconfig                       # get the workload cluster kubeconfig file
@@ -88,7 +88,7 @@ kubectl get pod,node -A -o wide --kubeconfig=kubeconfig         # interact with 
 
 ```bash
 # check running containers
-$ docker ps
+$ sudo docker ps
 CONTAINER ID   IMAGE                                COMMAND                  CREATED          STATUS          PORTS                              NAMES
 7a46ef0c1c92   k8s-snap:dev                         "/usr/local/bin/entr…"   7 minutes ago    Up 7 minutes    0/tcp, 127.0.0.1:32771->6443/tcp   c1-control-plane-wkqjc
 1bd9fffbc5f9   kindest/haproxy:v20230510-486859a6   "haproxy -W -db -f /…"   7 minutes ago    Up 7 minutes    0/tcp, 0.0.0.0:32770->6443/tcp     c1-lb
@@ -151,5 +151,5 @@ kubectl delete cluster c1
 ### Delete management cluster
 
 ```bash
-docker rm -fv management-cluster
+sudo docker rm -fv management-cluster
 ```
