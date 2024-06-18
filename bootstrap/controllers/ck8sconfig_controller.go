@@ -61,6 +61,9 @@ type CK8sConfigReconciler struct {
 	Log          logr.Logger
 	CK8sInitLock InitLocker
 	Scheme       *runtime.Scheme
+
+	K8sdDialTimeout   time.Duration
+	managementCluster ck8s.ManagementCluster
 }
 
 type Scope struct {
@@ -223,15 +226,35 @@ func (r *CK8sConfigReconciler) joinControlplane(ctx context.Context, scope *Scop
 		return err
 	}
 
-	// TODO(neoaggelos): Use authToken to reach the existing k8sd control plane nodes through the k8sd proxy, and generate a token for this node.
-	_ = authToken
-	joinToken := "replace me"
-	// joinToken, err := ck8s.NewControlPlaneJoinToken(ctx, r.Client, authToken, ...)
+	if authToken == nil {
+		return fmt.Errorf("auth token is missing")
+	}
 
-	joinConfig, err := kubeyaml.Marshal(ck8s.JoinControlPlaneConfig{
+	workloadCluster, err := r.managementCluster.GetWorkloadCluster(ctx, util.ObjectKey(scope.Cluster))
+	if err != nil {
+		return fmt.Errorf("failed to create remote cluster client: %w", err)
+	}
+	k8sdProxy, err := workloadCluster.GetK8sdProxyForControlPlane(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to create k8sd proxy: %w", err)
+	}
+
+	// TODO(bschimke): We should probably have the full HostPort as part of the K8sdProxy struct.
+	// Also, we need one place to check for if the port is set, not in multiple places.
+	microclusterPort := scope.Config.Spec.ControlPlaneConfig.MicroclusterPort
+	if microclusterPort == 0 {
+		microclusterPort = 2380
+	}
+	joinToken, err := ck8s.NewControlPlaneJoinToken(ctx, k8sdProxy, *authToken, microclusterPort, scope.Config.Name)
+	if err != nil {
+		return fmt.Errorf("failed to request join token: %w", err)
+	}
+
+	configStruct := ck8s.GenerateJoinControlPlaneConfig(ck8s.JoinControlPlaneConfig{
 		ControlPlaneEndpoint: scope.Cluster.Spec.ControlPlaneEndpoint.Host,
 		ControlPlaneConfig:   scope.Config.Spec.ControlPlaneConfig,
 	})
+	joinConfig, err := kubeyaml.Marshal(configStruct)
 	if err != nil {
 		return err
 	}
@@ -496,6 +519,13 @@ func (r *CK8sConfigReconciler) handleClusterNotInitialized(ctx context.Context, 
 func (r *CK8sConfigReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	if r.CK8sInitLock == nil {
 		r.CK8sInitLock = locking.NewControlPlaneInitMutex(mgr.GetClient())
+	}
+
+	if r.managementCluster == nil {
+		r.managementCluster = &ck8s.Management{
+			Client:          r.Client,
+			K8sdDialTimeout: r.K8sdDialTimeout,
+		}
 	}
 
 	return ctrl.NewControllerManagedBy(mgr).

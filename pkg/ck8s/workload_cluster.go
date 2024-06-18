@@ -1,7 +1,9 @@
 package ck8s
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
 	"strings"
 
@@ -19,6 +21,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
 	controlplanev1 "github.com/canonical/cluster-api-k8s/controlplane/api/v1beta2"
+	apiv1 "github.com/canonical/cluster-api-k8s/pkg/ck8s/api"
 )
 
 const (

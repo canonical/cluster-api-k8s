@@ -10,10 +10,10 @@ type JoinControlPlaneConfig struct {
 	ControlPlaneConfig   bootstrapv1.CK8sControlPlaneConfig
 }
 
-func GenerateJoinControlPlaneConfig(cfg JoinControlPlaneConfig) (apiv1.ControlPlaneNodeJoinConfig, error) {
+func GenerateJoinControlPlaneConfig(cfg JoinControlPlaneConfig) apiv1.ControlPlaneNodeJoinConfig {
 	return apiv1.ControlPlaneNodeJoinConfig{
 		ExtraSANS: append(cfg.ControlPlaneConfig.ExtraSANs, cfg.ControlPlaneEndpoint),
-	}, nil
+	}
 }
 
 type JoinWorkerConfig struct {
