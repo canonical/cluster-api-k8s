@@ -109,9 +109,10 @@ RUN /src/k8s-snap/build-scripts/build-component.sh pebble
 ## IMAGE(build-preload-images): Fetch OCI images that can be pre-loaded to containerd
 
 # TODO(neoaggelos): fetch all used images from k8s-snap
-FROM builder AS build-preload-images
-# RUN GOBIN=$PWD go install github.com/regclient/regclient/cmd/regctl@v0.6.1
-# RUN ./regctl image export registry.k8s.io/pause:3.7 --platform=local > /out/pause.tar
+FROM build-k8sd AS build-preload-images
+WORKDIR /src/k8s-snap/src/k8s/tools
+RUN /out/bin/k8s list-images \
+    | xargs -n1 './regctl.sh image export --platform local --user-agent containerd/v1.6.33 $0 /out/images/$(echo $0 | tr ":/" "-").tar'
 
 ####################################################################################################
 ## IMAGE(k8s-snap): k8s-snap image
@@ -136,6 +137,7 @@ COPY --from=build-cni /out /snap/k8s/current
 COPY --from=build-kubernetes /out /snap/k8s/current
 COPY --from=build-k8sd /out /snap/k8s/current
 COPY --from=build-pebble /out /snap/k8s/current
+COPY --from=build-preload-images /out/images /var/snap/k8s/common/images
 
 ## NOTE(neoaggelos): OCI images
 COPY --from=build-preload-images /out /capi/images
