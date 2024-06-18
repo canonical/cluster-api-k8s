@@ -298,10 +298,20 @@ func (r *CK8sConfigReconciler) joinWorker(ctx context.Context, scope *Scope) err
 		conditions.MarkFalse(scope.Config, bootstrapv1.DataSecretAvailableCondition, bootstrapv1.DataSecretGenerationFailedReason, clusterv1.ConditionSeverityWarning, err.Error())
 		return err
 	}
-	// TODO(neoaggelos): Use authToken to reach the existing k8sd control plane nodes through the k8sd proxy, and generate a token for this node.
-	_ = authToken
-	joinToken := "replace me"
-	// joinToken, err := ck8s.NewControlPlaneJoinToken(ctx, r.Client, authToken, ...)
+
+	if authToken == nil {
+		return fmt.Errorf("auth token not yet generated")
+	}
+
+	workloadCluster, err := r.managementCluster.GetWorkloadCluster(ctx, util.ObjectKey(scope.Cluster))
+	if err != nil {
+		return fmt.Errorf("failed to create remote cluster client: %w", err)
+	}
+
+	joinToken, err := workloadCluster.NewWorkerJoinToken(ctx, *authToken, scope.Config.Spec.ControlPlaneConfig.MicroclusterPort, scope.Config.Name)
+	if err != nil {
+		return fmt.Errorf("failed to request join token: %w", err)
+	}
 
 	configStruct := ck8s.GenerateJoinWorkerConfig(ck8s.JoinWorkerConfig{})
 	joinConfig, err := kubeyaml.Marshal(configStruct)
