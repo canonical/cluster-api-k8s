@@ -44,6 +44,7 @@ type WorkloadCluster interface {
 	UpdateAgentConditions(ctx context.Context, controlPlane *ControlPlane)
 	UpdateEtcdConditions(ctx context.Context, controlPlane *ControlPlane)
 	NewControlPlaneJoinToken(ctx context.Context, authToken string, microclusterPort int, name string) (string, error)
+	NewWorkerJoinToken(ctx context.Context, authToken string, microclusterPort int, name string) (string, error)
 
 	// NOTE(neoaggelos): See notes in (*CK8sControlPlaneReconciler).reconcileEtcdMembers
 	//
@@ -193,6 +194,12 @@ func (w *Workload) GetK8sdProxyForControlPlane(ctx context.Context) (*K8sdClient
 // NewControlPlaneJoinToken reaches out to the control-plane of the workload cluster via k8sd-proxy client.
 func (w *Workload) NewControlPlaneJoinToken(ctx context.Context, authToken string, microclusterPort int, name string) (string, error) {
 	return w.requestJoinToken(ctx, microclusterPort, authToken, name, false)
+}
+
+// NewControlPlaneJoinToken creates a new join token for a worker node.
+// NewControlPlaneJoinToken reaches out to the control-plane of the workload cluster via k8sd-proxy client.
+func (w *Workload) NewWorkerJoinToken(ctx context.Context, authToken string, microclusterPort int, name string) (string, error) {
+	return w.requestJoinToken(ctx, microclusterPort, authToken, name, true)
 }
 
 // requestJoinToken requests a join token from the existing control-plane nodes via the k8sd proxy.
