@@ -196,8 +196,8 @@ func (w *Workload) NewControlPlaneJoinToken(ctx context.Context, authToken strin
 	return w.requestJoinToken(ctx, microclusterPort, authToken, name, false)
 }
 
-// NewControlPlaneJoinToken creates a new join token for a worker node.
-// NewControlPlaneJoinToken reaches out to the control-plane of the workload cluster via k8sd-proxy client.
+// NewWorkerJoinToken creates a new join token for a worker node.
+// NewWorkerJoinToken reaches out to the control-plane of the workload cluster via k8sd-proxy client.
 func (w *Workload) NewWorkerJoinToken(ctx context.Context, authToken string, microclusterPort int, name string) (string, error) {
 	return w.requestJoinToken(ctx, microclusterPort, authToken, name, true)
 }
