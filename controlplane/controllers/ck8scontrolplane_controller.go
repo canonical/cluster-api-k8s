@@ -152,32 +152,6 @@ func (r *CK8sControlPlaneReconciler) Reconcile(ctx context.Context, req ctrl.Req
 		}
 	}
 
-	// TODO(berkayoz) This is a temporary workaround to check if k8sd is reachable
-	var microclusterPort int
-	microclusterPort = kcp.Spec.CK8sConfigSpec.ControlPlaneConfig.MicroclusterPort
-	if microclusterPort == 0 {
-		microclusterPort = 2380
-	}
-
-	w, err := r.managementCluster.GetWorkloadCluster(ctx, util.ObjectKey(cluster))
-	if err != nil {
-		logger.Error(err, "failed to get workload cluster")
-	}
-
-	proxy, err := w.GetK8sdProxyForControlPlane(ctx)
-	if err != nil {
-		logger.Error(err, "failed to get k8sd proxy for control plane")
-	}
-
-	if proxy != nil {
-		err = ck8s.CheckIfK8sdIsReachable(ctx, proxy.Client, proxy.NodeIP, microclusterPort)
-		if err != nil {
-			logger.Error(err, "failed to reach k8sd")
-		} else {
-			logger.Info("k8sd is reachable")
-		}
-	}
-
 	// Always attempt to Patch the CK8sControlPlane object and status after each reconciliation.
 	if patchErr := patchCK8sControlPlane(ctx, patchHelper, kcp); patchErr != nil {
 		logger.Error(err, "Failed to patch CK8sControlPlane")
