@@ -17,11 +17,9 @@ limitations under the License.
 package controllers
 
 import (
-	"bytes"
 	"context"
 	"errors"
 	"fmt"
-	"text/template"
 	"time"
 
 	"github.com/go-logr/logr"
@@ -458,28 +456,10 @@ func (r *CK8sConfigReconciler) handleClusterNotInitialized(ctx context.Context, 
 		microclusterPort = 2380
 	}
 
-	var k8sdProxyDaemonset bytes.Buffer
-
-	t, err := template.New("k8sd-proxy-daemonset").Parse(ck8s.K8sdProxyDaemonsetYaml)
+	ds, err := ck8s.RenderK8sdProxyDaemonSetManifest(ck8s.K8sdProxyDaemonSetInput{K8sdPort: microclusterPort})
 	if err != nil {
-		return ctrl.Result{}, err
+		return ctrl.Result{}, fmt.Errorf("failed to render k8sd-proxy daemonset: %w", err)
 	}
-
-	if err := t.Execute(&k8sdProxyDaemonset, struct {
-		K8sdPort int
-	}{
-		K8sdPort: microclusterPort,
-	}); err != nil {
-		return ctrl.Result{}, err
-	}
-
-	k8sdProxyFile := bootstrapv1.File{
-		Path:        ck8s.K8sdProxyDaemonsetYamlLocation,
-		Content:     k8sdProxyDaemonset.String(),
-		Owner:       "root:root",
-		Permissions: "0400",
-	}
-	files = append(files, k8sdProxyFile)
 
 	cpinput := cloudinit.InitControlPlaneInput{
 		BaseUserData: cloudinit.BaseUserData{
@@ -492,7 +472,8 @@ func (r *CK8sConfigReconciler) handleClusterNotInitialized(ctx context.Context, 
 			MicroclusterAddress: scope.Config.Spec.ControlPlaneConfig.MicroclusterAddress,
 			AirGapped:           scope.Config.Spec.AirGapped,
 		},
-		Token: *token,
+		Token:              *token,
+		K8sdProxyDaemonSet: string(ds),
 	}
 
 	cloudConfig, err := cloudinit.NewInitControlPlane(cpinput)

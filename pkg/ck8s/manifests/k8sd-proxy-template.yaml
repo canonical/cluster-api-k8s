@@ -33,7 +33,7 @@ spec:
       - name: k8sd-proxy
         image: ghcr.io/canonical/cluster-api-k8s/socat:1.8.0.0
         env:
-        # TODO: Make this more robust by possibly finding/parsing the right IP.   
+        # TODO: Make this more robust by possibly finding/parsing the right IP.
         # This works as a start but might not be sufficient as the kubelet IP might not match microcluster IP.
         - name: HOSTIP
           valueFrom:
@@ -44,7 +44,7 @@ spec:
             configMapKeyRef:
               name: k8sd-proxy-config
               key: k8sd-port
-        args: 
+        args:
         - TCP4-LISTEN:2380,fork,reuseaddr
         - TCP4:$(HOSTIP):$(K8SD_PORT)
         resources:

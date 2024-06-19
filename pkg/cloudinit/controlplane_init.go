@@ -23,6 +23,8 @@ type InitControlPlaneInput struct {
 	BaseUserData
 	// Token is used to join more cluster nodes.
 	Token string
+	// K8sdProxyDaemonSet is the manifest that deploys k8sd-proxy to the cluster.
+	K8sdProxyDaemonSet string
 }
 
 // NewInitControlPlane returns the user data string to be used on a controlplane instance.
@@ -33,12 +35,21 @@ func NewInitControlPlane(input InitControlPlaneInput) (CloudConfig, error) {
 	}
 
 	// write files
-	config.WriteFiles = append(config.WriteFiles, File{
-		Path:        "/capi/etc/token",
-		Content:     input.Token,
-		Permissions: "0400",
-		Owner:       "root:root",
-	})
+	config.WriteFiles = append(
+		config.WriteFiles,
+		File{
+			Path:        "/capi/etc/token",
+			Content:     input.Token,
+			Permissions: "0400",
+			Owner:       "root:root",
+		},
+		File{
+			Path:        "/capi/manifests/00-k8sd-proxy.yaml",
+			Content:     input.K8sdProxyDaemonSet,
+			Permissions: "0400",
+			Owner:       "root:root",
+		},
+	)
 
 	// run commands
 	config.RunCommands = append(config.RunCommands, input.PreRunCommands...)
