@@ -34,15 +34,15 @@ func TestK8sdProxyManual(t *testing.T) {
 		t.Fatalf("failed to create client: %v", err)
 	}
 
-	g, err := ck8s.NewK8sdProxyGenerator(config, 10*time.Second)
+	g, err := ck8s.NewK8sdClientGenerator(config, 10*time.Second)
 	if err != nil {
 		t.Fatalf("failed to create k8sd proxy generator: %v", err)
 	}
 
 	w := &ck8s.Workload{
-		Client:             c,
-		ClientRestConfig:   config,
-		K8sdProxyGenerator: g,
+		Client:              c,
+		ClientRestConfig:    config,
+		K8sdClientGenerator: g,
 	}
 
 	proxy, err := w.GetK8sdProxyForControlPlane(ctx)

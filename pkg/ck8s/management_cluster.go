@@ -73,7 +73,7 @@ const (
 func (m *Management) GetWorkloadCluster(ctx context.Context, clusterKey client.ObjectKey) (*Workload, error) {
 	restConfig, err := remote.RESTConfig(ctx, CK8sControlPlaneControllerName, m.Client, clusterKey)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to get config: %w", err)
 	}
 	restConfig.Timeout = 30 * time.Second
 
@@ -82,15 +82,15 @@ func (m *Management) GetWorkloadCluster(ctx context.Context, clusterKey client.O
 		return nil, &RemoteClusterConnectionError{Name: clusterKey.String(), Err: err}
 	}
 
-	g, err := NewK8sdProxyGenerator(restConfig, m.K8sdDialTimeout)
+	g, err := NewK8sdClientGenerator(restConfig, m.K8sdDialTimeout)
 	if err != nil {
-		return nil, err
+		return nil, &RemoteClusterConnectionError{Name: clusterKey.String(), Err: err}
 	}
 
 	workload := &Workload{
-		Client:             c,
-		ClientRestConfig:   restConfig,
-		K8sdProxyGenerator: g,
+		Client:              c,
+		ClientRestConfig:    restConfig,
+		K8sdClientGenerator: g,
 
 		/**
 		CoreDNSMigrator: &CoreDNSMigrator{},

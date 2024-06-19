@@ -63,9 +63,9 @@ type WorkloadCluster interface {
 type Workload struct {
 	WorkloadCluster
 
-	Client             ctrlclient.Client
-	ClientRestConfig   *rest.Config
-	K8sdProxyGenerator *k8sdProxyGenerator
+	Client              ctrlclient.Client
+	ClientRestConfig    *rest.Config
+	K8sdClientGenerator *k8sdClientGenerator
 
 	// NOTE(neoaggelos): CoreDNSMigrator and etcdClientGenerator are used by upstream to reach and manage the services in the workload cluster
 	// TODO(neoaggelos): Replace them with a k8sdProxyClientGenerator.
@@ -182,14 +182,14 @@ func getNodeInternalIP(node *corev1.Node) (string, error) {
 	return "", fmt.Errorf("unable to find internal IP for node %s", node.Name)
 }
 
-func (w *Workload) GetK8sdProxyForControlPlane(ctx context.Context) (*K8sdProxy, error) {
+func (w *Workload) GetK8sdProxyForControlPlane(ctx context.Context) (*K8sdClient, error) {
 	cplaneNodes, err := w.getControlPlaneNodes(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get control plane nodes: %w", err)
 	}
 
 	for _, node := range cplaneNodes.Items {
-		proxy, err := w.K8sdProxyGenerator.forNode(ctx, &node)
+		proxy, err := w.K8sdClientGenerator.forNode(ctx, &node)
 		if err != nil {
 			continue
 		}

@@ -16,36 +16,31 @@ import (
 	"k8s.io/client-go/rest"
 )
 
-const K8sdProxyDaemonsetYamlLocation = "/capi/manifests/k8sd-proxy.yaml"
-
-//go:embed k8sd-proxy.yaml
-var K8sdProxyDaemonsetYaml string
-
-type K8sdProxy struct {
+type K8sdClient struct {
 	NodeIP string
 	Client *http.Client
 }
 
-type k8sdProxyGenerator struct {
+type k8sdClientGenerator struct {
 	restConfig         *rest.Config
 	clientset          *kubernetes.Clientset
 	proxyClientTimeout time.Duration
 }
 
-func NewK8sdProxyGenerator(restConfig *rest.Config, proxyClientTimeout time.Duration) (*k8sdProxyGenerator, error) {
+func NewK8sdClientGenerator(restConfig *rest.Config, proxyClientTimeout time.Duration) (*k8sdClientGenerator, error) {
 	clientset, err := kubernetes.NewForConfig(restConfig)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create clientset: %w", err)
 	}
 
-	return &k8sdProxyGenerator{
+	return &k8sdClientGenerator{
 		restConfig:         restConfig,
 		clientset:          clientset,
 		proxyClientTimeout: proxyClientTimeout,
 	}, nil
 }
 
-func (g *k8sdProxyGenerator) forNodeName(ctx context.Context, nodeName string) (*K8sdProxy, error) {
+func (g *k8sdClientGenerator) forNodeName(ctx context.Context, nodeName string) (*K8sdClient, error) {
 	node, err := g.clientset.CoreV1().Nodes().Get(ctx, nodeName, metav1.GetOptions{})
 	if err != nil {
 		return nil, errors.Wrap(err, "unable to get node in target cluster")
@@ -54,7 +49,7 @@ func (g *k8sdProxyGenerator) forNodeName(ctx context.Context, nodeName string) (
 	return g.forNode(ctx, node)
 }
 
-func (g *k8sdProxyGenerator) forNode(ctx context.Context, node *corev1.Node) (*K8sdProxy, error) {
+func (g *k8sdClientGenerator) forNode(ctx context.Context, node *corev1.Node) (*K8sdClient, error) {
 	podmap, err := g.getProxyPods(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get proxy pods: %w", err)
@@ -75,13 +70,13 @@ func (g *k8sdProxyGenerator) forNode(ctx context.Context, node *corev1.Node) (*K
 		return nil, err
 	}
 
-	return &K8sdProxy{
+	return &K8sdClient{
 		NodeIP: nodeInternalIP,
 		Client: client,
 	}, nil
 }
 
-func (g *k8sdProxyGenerator) getProxyPods(ctx context.Context) (map[string]string, error) {
+func (g *k8sdClientGenerator) getProxyPods(ctx context.Context) (map[string]string, error) {
 	pods, err := g.clientset.CoreV1().Pods("kube-system").List(ctx, metav1.ListOptions{LabelSelector: "app=k8sd-proxy"})
 	if err != nil {
 		return nil, errors.Wrap(err, "unable to list k8sd-proxy pods in target cluster")
@@ -99,7 +94,7 @@ func (g *k8sdProxyGenerator) getProxyPods(ctx context.Context) (map[string]strin
 	return podmap, nil
 }
 
-func (g *k8sdProxyGenerator) NewHTTPClient(ctx context.Context, podName string) (*http.Client, error) {
+func (g *k8sdClientGenerator) NewHTTPClient(ctx context.Context, podName string) (*http.Client, error) {
 	p := proxy.Proxy{
 		Kind:         "pods",
 		Namespace:    metav1.NamespaceSystem,
