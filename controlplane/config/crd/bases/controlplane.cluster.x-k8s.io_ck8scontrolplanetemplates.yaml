@@ -229,6 +229,12 @@ spec:
                                 description: CloudProvider is the cloud-provider configuration
                                   option to set.
                                 type: string
+                              extraKubeAPIServerArgs:
+                                additionalProperties:
+                                  type: string
+                                description: ExtraKubeAPIServerArgs is extra arguments
+                                  to add to kube-apiserver.
+                                type: object
                               extraSANs:
                                 description: ExtraSANs is a list of SANs to include
                                   in the server certificates.

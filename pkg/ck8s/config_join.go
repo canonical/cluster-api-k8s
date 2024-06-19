@@ -8,11 +8,15 @@ import (
 type JoinControlPlaneConfig struct {
 	ControlPlaneEndpoint string
 	ControlPlaneConfig   bootstrapv1.CK8sControlPlaneConfig
+
+	ExtraKubeAPIServerArgs map[string]*string
 }
 
 func GenerateJoinControlPlaneConfig(cfg JoinControlPlaneConfig) apiv1.ControlPlaneNodeJoinConfig {
 	return apiv1.ControlPlaneNodeJoinConfig{
 		ExtraSANS: append(cfg.ControlPlaneConfig.ExtraSANs, cfg.ControlPlaneEndpoint),
+
+		ExtraNodeKubeAPIServerArgs: cfg.ControlPlaneConfig.ExtraKubeAPIServerArgs,
 	}
 }
 

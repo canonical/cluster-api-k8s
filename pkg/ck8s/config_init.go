@@ -95,5 +95,7 @@ func GenerateInitControlPlaneConfig(cfg InitControlPlaneConfig) (apiv1.Bootstrap
 		out.ControlPlaneTaints = v
 	}
 
+	out.ExtraNodeKubeAPIServerArgs = cfg.ControlPlaneConfig.ExtraKubeAPIServerArgs
+
 	return out, nil
 }
