@@ -227,25 +227,15 @@ func (r *CK8sConfigReconciler) joinControlplane(ctx context.Context, scope *Scop
 	}
 
 	if authToken == nil {
-		return fmt.Errorf("auth token is missing")
+		return fmt.Errorf("auth token not yet generated")
 	}
 
 	workloadCluster, err := r.managementCluster.GetWorkloadCluster(ctx, util.ObjectKey(scope.Cluster))
 	if err != nil {
 		return fmt.Errorf("failed to create remote cluster client: %w", err)
 	}
-	k8sdProxy, err := workloadCluster.GetK8sdProxyForControlPlane(ctx)
-	if err != nil {
-		return fmt.Errorf("failed to create k8sd proxy: %w", err)
-	}
 
-	// TODO(bschimke): We should probably have the full HostPort as part of the K8sdProxy struct.
-	// Also, we need one place to check for if the port is set, not in multiple places.
-	microclusterPort := scope.Config.Spec.ControlPlaneConfig.MicroclusterPort
-	if microclusterPort == 0 {
-		microclusterPort = 2380
-	}
-	joinToken, err := ck8s.NewControlPlaneJoinToken(ctx, k8sdProxy, *authToken, microclusterPort, scope.Config.Name)
+	joinToken, err := workloadCluster.NewControlPlaneJoinToken(ctx, *authToken, scope.Config.Spec.ControlPlaneConfig.MicroclusterPort, scope.Config.Name)
 	if err != nil {
 		return fmt.Errorf("failed to request join token: %w", err)
 	}
