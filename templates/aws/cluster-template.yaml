@@ -55,6 +55,8 @@ metadata:
 spec:
   template:
     spec:
+      # ami:
+      #   id: ami-0750f57b80795fb10
       iamInstanceProfile: control-plane.cluster-api-provider-aws.sigs.k8s.io
       instanceType: ${AWS_CONTROL_PLANE_INSTANCE_TYPE:=t3.large}
       publicIP: ${AWS_PUBLIC_IP:=false}
@@ -91,6 +93,8 @@ metadata:
 spec:
   template:
     spec:
+      # ami:
+      #   id: ami-0750f57b80795fb10
       iamInstanceProfile: nodes.cluster-api-provider-aws.sigs.k8s.io
       instanceType: ${AWS_NODE_INSTANCE_TYPE:=t3.large}
       publicIP: ${AWS_PUBLIC_IP:=false}
@@ -103,3 +107,6 @@ metadata:
 spec:
   template:
     spec:
+
+      # ami:
+      #   id: ami-0750f57b80795fb10
