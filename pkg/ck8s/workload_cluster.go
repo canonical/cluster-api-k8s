@@ -42,7 +42,7 @@ type WorkloadCluster interface {
 	ClusterStatus(ctx context.Context) (ClusterStatus, error)
 	UpdateAgentConditions(ctx context.Context, controlPlane *ControlPlane)
 	UpdateEtcdConditions(ctx context.Context, controlPlane *ControlPlane)
-	NewInitControlPlaneJoinToken()
+	NewControlPlaneJoinToken(ctx context.Context, authToken string, microclusterPort int, name string) (string, error)
 
 	// NOTE(neoaggelos): See notes in (*CK8sControlPlaneReconciler).reconcileEtcdMembers
 	//
@@ -699,3 +699,5 @@ func newClientCert(caCert *x509.Certificate, key *rsa.PrivateKey, caKey crypto.S
 	return c, errors.WithStack(err)
 }
 **/
+
+var _ WorkloadCluster = &Workload{}
