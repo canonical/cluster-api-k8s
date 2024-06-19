@@ -3,7 +3,6 @@ package ck8s
 import (
 	"context"
 	"fmt"
-	"net/http"
 	"strings"
 
 	"github.com/pkg/errors"
@@ -153,21 +152,6 @@ func nodeHasUnreachableTaint(node corev1.Node) bool {
 		}
 	}
 	return false
-}
-
-func CheckIfK8sdIsReachable(ctx context.Context, client *http.Client, nodeIP string, k8sdPort int) error {
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, fmt.Sprintf("https://%s:%v/", nodeIP, k8sdPort), nil)
-	if err != nil {
-		return fmt.Errorf("failed to create request: %w", err)
-	}
-
-	res, err := client.Do(req)
-	if err != nil {
-		return fmt.Errorf("failed to reach k8sd through proxy client: %w", err)
-	}
-	res.Body.Close()
-
-	return nil
 }
 
 func getNodeInternalIP(node *corev1.Node) (string, error) {
