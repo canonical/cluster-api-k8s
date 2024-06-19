@@ -26,11 +26,7 @@ type Management struct {
 
 	Client client.Reader
 
-	// NOTE(neoaggelos): These are used as timeouts when interacting with the etcd of the workload cluster.
-	//
-	// TODO(neoaggelos): Replace these with timeouts for interacting with the k8sd proxy instances of the nodes.
-	EtcdDialTimeout time.Duration
-	EtcdCallTimeout time.Duration
+	K8sdDialTimeout time.Duration
 }
 
 // RemoteClusterConnectionError represents a failure to connect to a remote cluster.
@@ -77,7 +73,7 @@ const (
 func (m *Management) GetWorkloadCluster(ctx context.Context, clusterKey client.ObjectKey) (*Workload, error) {
 	restConfig, err := remote.RESTConfig(ctx, CK8sControlPlaneControllerName, m.Client, clusterKey)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to get config: %w", err)
 	}
 	restConfig.Timeout = 30 * time.Second
 
@@ -86,8 +82,16 @@ func (m *Management) GetWorkloadCluster(ctx context.Context, clusterKey client.O
 		return nil, &RemoteClusterConnectionError{Name: clusterKey.String(), Err: err}
 	}
 
+	g, err := NewK8sdClientGenerator(restConfig, m.K8sdDialTimeout)
+	if err != nil {
+		return nil, &RemoteClusterConnectionError{Name: clusterKey.String(), Err: err}
+	}
+
 	workload := &Workload{
-		Client: c,
+		Client:              c,
+		ClientRestConfig:    restConfig,
+		K8sdClientGenerator: g,
+
 		/**
 		CoreDNSMigrator: &CoreDNSMigrator{},
 		**/

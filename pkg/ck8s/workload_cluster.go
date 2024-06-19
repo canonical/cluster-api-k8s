@@ -62,8 +62,9 @@ type WorkloadCluster interface {
 type Workload struct {
 	WorkloadCluster
 
-	Client           ctrlclient.Client
-	ClientRestConfig *rest.Config
+	Client              ctrlclient.Client
+	ClientRestConfig    *rest.Config
+	K8sdClientGenerator *k8sdClientGenerator
 
 	// NOTE(neoaggelos): CoreDNSMigrator and etcdClientGenerator are used by upstream to reach and manage the services in the workload cluster
 	// TODO(neoaggelos): Replace them with a k8sdProxyClientGenerator.
@@ -151,6 +152,36 @@ func nodeHasUnreachableTaint(node corev1.Node) bool {
 		}
 	}
 	return false
+}
+
+func getNodeInternalIP(node *corev1.Node) (string, error) {
+	// TODO: Make this more robust by possibly finding/parsing the right IP.
+	// This works as a start but might not be sufficient as the kubelet IP might not match microcluster IP.
+	for _, addr := range node.Status.Addresses {
+		if addr.Type == "InternalIP" {
+			return addr.Address, nil
+		}
+	}
+
+	return "", fmt.Errorf("unable to find internal IP for node %s", node.Name)
+}
+
+func (w *Workload) GetK8sdProxyForControlPlane(ctx context.Context) (*K8sdClient, error) {
+	cplaneNodes, err := w.getControlPlaneNodes(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get control plane nodes: %w", err)
+	}
+
+	for _, node := range cplaneNodes.Items {
+		proxy, err := w.K8sdClientGenerator.forNode(ctx, &node)
+		if err != nil {
+			continue
+		}
+
+		return proxy, nil
+	}
+
+	return nil, fmt.Errorf("failed to get k8sd proxy for control plane")
 }
 
 // UpdateAgentConditions is responsible for updating machine conditions reflecting the status of all the control plane

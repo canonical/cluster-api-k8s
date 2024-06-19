@@ -61,8 +61,7 @@ type CK8sControlPlaneReconciler struct {
 	controller controller.Controller
 	recorder   record.EventRecorder
 
-	EtcdDialTimeout time.Duration
-	EtcdCallTimeout time.Duration
+	K8sdDialTimeout time.Duration
 
 	managementCluster         ck8s.ManagementCluster
 	managementClusterUncached ck8s.ManagementCluster
@@ -294,16 +293,14 @@ func (r *CK8sControlPlaneReconciler) SetupWithManager(ctx context.Context, mgr c
 	if r.managementCluster == nil {
 		r.managementCluster = &ck8s.Management{
 			Client:          r.Client,
-			EtcdDialTimeout: r.EtcdDialTimeout,
-			EtcdCallTimeout: r.EtcdCallTimeout,
+			K8sdDialTimeout: r.K8sdDialTimeout,
 		}
 	}
 
 	if r.managementClusterUncached == nil {
 		r.managementClusterUncached = &ck8s.Management{
 			Client:          mgr.GetAPIReader(),
-			EtcdDialTimeout: r.EtcdDialTimeout,
-			EtcdCallTimeout: r.EtcdCallTimeout,
+			K8sdDialTimeout: r.K8sdDialTimeout,
 		}
 	}
 

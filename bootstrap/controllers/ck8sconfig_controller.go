@@ -242,17 +242,6 @@ func (r *CK8sConfigReconciler) joinControlplane(ctx context.Context, scope *Scop
 		return err
 	}
 
-	// TODO(neoaggelos): figure out what is needed for k8sd proxy
-	// if scope.Config.Spec.IsEtcdEmbedded() {
-	// 	etcdProxyFile := bootstrapv1.File{
-	// 		Path:        etcd.EtcdProxyDaemonsetYamlLocation,
-	// 		Content:     etcd.EtcdProxyDaemonsetYaml,
-	// 		Owner:       "root:root",
-	// 		Permissions: "0640",
-	// 	}
-	// 	files = append(files, etcdProxyFile)
-	// }
-
 	input := cloudinit.JoinControlPlaneInput{
 		BaseUserData: cloudinit.BaseUserData{
 			BootCommands:        scope.Config.Spec.BootCommands,
@@ -461,16 +450,16 @@ func (r *CK8sConfigReconciler) handleClusterNotInitialized(ctx context.Context, 
 		return ctrl.Result{}, err
 	}
 
-	// TODO(neoaggelos): deploy k8sd-proxy daemonsets
-	// if scope.Config.Spec.IsK8sDqlite() {
-	// 	etcdProxyFile := bootstrapv1.File{
-	// 		Path:        etcd.EtcdProxyDaemonsetYamlLocation,
-	// 		Content:     etcd.EtcdProxyDaemonsetYaml,
-	// 		Owner:       "root:root",
-	// 		Permissions: "0640",
-	// 	}
-	// 	files = append(files, etcdProxyFile)
-	// }
+	var microclusterPort int
+	microclusterPort = scope.Config.Spec.ControlPlaneConfig.MicroclusterPort
+	if microclusterPort == 0 {
+		microclusterPort = 2380
+	}
+
+	ds, err := ck8s.RenderK8sdProxyDaemonSetManifest(ck8s.K8sdProxyDaemonSetInput{K8sdPort: microclusterPort})
+	if err != nil {
+		return ctrl.Result{}, fmt.Errorf("failed to render k8sd-proxy daemonset: %w", err)
+	}
 
 	cpinput := cloudinit.InitControlPlaneInput{
 		BaseUserData: cloudinit.BaseUserData{
@@ -483,7 +472,8 @@ func (r *CK8sConfigReconciler) handleClusterNotInitialized(ctx context.Context, 
 			MicroclusterAddress: scope.Config.Spec.ControlPlaneConfig.MicroclusterAddress,
 			AirGapped:           scope.Config.Spec.AirGapped,
 		},
-		Token: *token,
+		Token:              *token,
+		K8sdProxyDaemonSet: string(ds),
 	}
 
 	cloudConfig, err := cloudinit.NewInitControlPlane(cpinput)

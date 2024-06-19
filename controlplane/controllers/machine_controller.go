@@ -22,8 +22,7 @@ type MachineReconciler struct {
 	Log    logr.Logger
 	Scheme *runtime.Scheme
 
-	EtcdDialTimeout time.Duration
-	EtcdCallTimeout time.Duration
+	K8sdDialTimeout time.Duration
 
 	// NOTE(neoaggelos): See note below
 	/**
