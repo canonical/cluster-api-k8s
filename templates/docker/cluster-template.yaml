@@ -39,6 +39,9 @@ spec:
       name: ${CLUSTER_NAME}-control-plane
   spec:
     airGapped: true
+    controlPlane:
+      extraKubeAPIServerArgs:
+        --anonymous-auth: "true"
   replicas: ${CONTROL_PLANE_MACHINE_COUNT}
   version: ${KUBERNETES_VERSION}
 ---

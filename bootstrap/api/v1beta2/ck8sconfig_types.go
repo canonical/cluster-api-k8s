@@ -86,6 +86,10 @@ type CK8sControlPlaneConfig struct {
 	// MicroclusterPort is the port to use for microcluster. If unset, ":2380" (etcd peer) will be used.
 	// +optional
 	MicroclusterPort int `json:"microclusterPort,omitempty"`
+
+	// ExtraKubeAPIServerArgs is extra arguments to add to kube-apiserver.
+	// +optional
+	ExtraKubeAPIServerArgs map[string]*string `json:"extraKubeAPIServerArgs,omitempty"`
 }
 
 // CK8sConfigStatus defines the observed state of CK8sConfig.
