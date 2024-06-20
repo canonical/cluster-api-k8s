@@ -1,8 +1,11 @@
 package ck8s
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
+	"net/http"
 	"strings"
 
 	"github.com/pkg/errors"
@@ -19,6 +22,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
 	controlplanev1 "github.com/canonical/cluster-api-k8s/controlplane/api/v1beta2"
+	apiv1 "github.com/canonical/cluster-api-k8s/pkg/ck8s/api"
 )
 
 const (
@@ -39,6 +43,7 @@ type WorkloadCluster interface {
 	ClusterStatus(ctx context.Context) (ClusterStatus, error)
 	UpdateAgentConditions(ctx context.Context, controlPlane *ControlPlane)
 	UpdateEtcdConditions(ctx context.Context, controlPlane *ControlPlane)
+	NewControlPlaneJoinToken(ctx context.Context, authToken string, microclusterPort int, name string) (string, error)
 
 	// NOTE(neoaggelos): See notes in (*CK8sControlPlaneReconciler).reconcileEtcdMembers
 	//
@@ -182,6 +187,56 @@ func (w *Workload) GetK8sdProxyForControlPlane(ctx context.Context) (*K8sdClient
 	}
 
 	return nil, fmt.Errorf("failed to get k8sd proxy for control plane")
+}
+
+// NewControlPlaneJoinToken creates a new join token for a control plane node.
+// NewControlPlaneJoinToken reaches out to the control-plane of the workload cluster via k8sd-proxy client.
+func (w *Workload) NewControlPlaneJoinToken(ctx context.Context, authToken string, microclusterPort int, name string) (string, error) {
+	return w.requestJoinToken(ctx, microclusterPort, authToken, name, false)
+}
+
+// requestJoinToken requests a join token from the existing control-plane nodes via the k8sd proxy.
+func (w *Workload) requestJoinToken(ctx context.Context, microclusterPort int, authToken string, name string, worker bool) (string, error) {
+	// FIXME: We need to check the default value for this port in one place, not in multiple places.
+	// See https://github.com/canonical/cluster-api-k8s/pull/8#discussion_r1645536362 for context.
+	if microclusterPort == 0 {
+		microclusterPort = 2380
+	}
+
+	k8sdProxy, err := w.GetK8sdProxyForControlPlane(ctx)
+	if err != nil {
+		return "", fmt.Errorf("failed to create k8sd proxy: %w", err)
+	}
+	type wrappedResponse struct {
+		Error    string                     `json:"error"`
+		Metadata apiv1.GetJoinTokenResponse `json:"metadata"`
+	}
+
+	requestBody, err := json.Marshal(apiv1.GetJoinTokenRequest{Name: name, Worker: worker})
+	if err != nil {
+		return "", fmt.Errorf("failed to prepare worker info request: %w", err)
+	}
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, fmt.Sprintf("https://%s:%v/1.0/x/capi/generate-join-token", k8sdProxy.NodeIP, microclusterPort), bytes.NewBuffer(requestBody))
+	if err != nil {
+		return "", fmt.Errorf("failed to create request: %w", err)
+	}
+
+	req.Header.Add("capi-auth-token", authToken)
+	res, err := k8sdProxy.Client.Do(req)
+	if err != nil {
+		return "", fmt.Errorf("failed to reach k8sd through proxy client: %w", err)
+	}
+	defer res.Body.Close()
+
+	var wrappedResp wrappedResponse
+	if err := json.NewDecoder(res.Body).Decode(&wrappedResp); err != nil {
+		return "", fmt.Errorf("failed to parse HTTP response: %w", err)
+	}
+	if res.StatusCode != 200 {
+		return "", fmt.Errorf("request for join token request failed: %s", wrappedResp.Error)
+	}
+	return wrappedResp.Metadata.EncodedToken, nil
 }
 
 // UpdateAgentConditions is responsible for updating machine conditions reflecting the status of all the control plane
@@ -645,3 +700,5 @@ func newClientCert(caCert *x509.Certificate, key *rsa.PrivateKey, caKey crypto.S
 	return c, errors.WithStack(err)
 }
 **/
+
+var _ WorkloadCluster = &Workload{}

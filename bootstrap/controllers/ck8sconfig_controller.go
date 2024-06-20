@@ -61,6 +61,9 @@ type CK8sConfigReconciler struct {
 	Log          logr.Logger
 	CK8sInitLock InitLocker
 	Scheme       *runtime.Scheme
+
+	K8sdDialTimeout   time.Duration
+	managementCluster ck8s.ManagementCluster
 }
 
 type Scope struct {
@@ -223,15 +226,25 @@ func (r *CK8sConfigReconciler) joinControlplane(ctx context.Context, scope *Scop
 		return err
 	}
 
-	// TODO(neoaggelos): Use authToken to reach the existing k8sd control plane nodes through the k8sd proxy, and generate a token for this node.
-	_ = authToken
-	joinToken := "replace me"
-	// joinToken, err := ck8s.NewControlPlaneJoinToken(ctx, r.Client, authToken, ...)
+	if authToken == nil {
+		return fmt.Errorf("auth token not yet generated")
+	}
 
-	joinConfig, err := kubeyaml.Marshal(ck8s.JoinControlPlaneConfig{
+	workloadCluster, err := r.managementCluster.GetWorkloadCluster(ctx, util.ObjectKey(scope.Cluster))
+	if err != nil {
+		return fmt.Errorf("failed to create remote cluster client: %w", err)
+	}
+
+	joinToken, err := workloadCluster.NewControlPlaneJoinToken(ctx, *authToken, scope.Config.Spec.ControlPlaneConfig.MicroclusterPort, scope.Config.Name)
+	if err != nil {
+		return fmt.Errorf("failed to request join token: %w", err)
+	}
+
+	configStruct := ck8s.GenerateJoinControlPlaneConfig(ck8s.JoinControlPlaneConfig{
 		ControlPlaneEndpoint: scope.Cluster.Spec.ControlPlaneEndpoint.Host,
 		ControlPlaneConfig:   scope.Config.Spec.ControlPlaneConfig,
 	})
+	joinConfig, err := kubeyaml.Marshal(configStruct)
 	if err != nil {
 		return err
 	}
@@ -496,6 +509,13 @@ func (r *CK8sConfigReconciler) handleClusterNotInitialized(ctx context.Context, 
 func (r *CK8sConfigReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	if r.CK8sInitLock == nil {
 		r.CK8sInitLock = locking.NewControlPlaneInitMutex(mgr.GetClient())
+	}
+
+	if r.managementCluster == nil {
+		r.managementCluster = &ck8s.Management{
+			Client:          r.Client,
+			K8sdDialTimeout: r.K8sdDialTimeout,
+		}
 	}
 
 	return ctrl.NewControllerManagedBy(mgr).
