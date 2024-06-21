@@ -39,6 +39,7 @@ import (
 	bootstrapv1 "github.com/canonical/cluster-api-k8s/bootstrap/api/v1beta2"
 	controlplanev1 "github.com/canonical/cluster-api-k8s/controlplane/api/v1beta2"
 	"github.com/canonical/cluster-api-k8s/pkg/ck8s"
+	"github.com/canonical/cluster-api-k8s/pkg/token"
 )
 
 var ErrPreConditionFailed = errors.New("precondition check failed")
@@ -158,6 +159,29 @@ func (r *CK8sControlPlaneReconciler) scaleDownControlPlane(
 		}
 	}
 	**/
+
+	clusterObjectKey := util.ObjectKey(cluster)
+	workloadCluster, err := r.managementCluster.GetWorkloadCluster(ctx, clusterObjectKey)
+	if err != nil {
+		logger.Error(err, "failed to create client to workload cluster")
+		return ctrl.Result{}, errors.Wrapf(err, "failed to create client to workload cluster")
+	}
+
+	authToken, err := token.Lookup(ctx, r.Client, clusterObjectKey)
+	if err != nil {
+		return ctrl.Result{}, fmt.Errorf("failed to lookup auth token: %w", err)
+	}
+
+	if authToken == nil {
+		return ctrl.Result{}, fmt.Errorf("auth token not yet generated")
+	}
+
+	// TODO: Get from CK8sConfig
+	microclusterPort := 2380
+	err = workloadCluster.RemoveMachineFromCluster(ctx, machineToDelete, *authToken, microclusterPort)
+	if err != nil {
+		logger.Error(err, "failed to remove machine from microcluster")
+	}
 
 	logger = logger.WithValues("machine", machineToDelete)
 	if err := r.Client.Delete(ctx, machineToDelete); err != nil && !apierrors.IsNotFound(err) {

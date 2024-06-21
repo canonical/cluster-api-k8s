@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"slices"
 	"strings"
 
 	"github.com/pkg/errors"
@@ -45,6 +46,8 @@ type WorkloadCluster interface {
 	UpdateEtcdConditions(ctx context.Context, controlPlane *ControlPlane)
 	NewControlPlaneJoinToken(ctx context.Context, authToken string, microclusterPort int, name string) (string, error)
 	NewWorkerJoinToken(ctx context.Context, authToken string, microclusterPort int, name string) (string, error)
+
+	RemoveMachineFromCluster(ctx context.Context, machine *clusterv1.Machine, authToken string, microclusterPort int) error
 
 	// NOTE(neoaggelos): See notes in (*CK8sControlPlaneReconciler).reconcileEtcdMembers
 	//
@@ -172,13 +175,24 @@ func getNodeInternalIP(node *corev1.Node) (string, error) {
 	return "", fmt.Errorf("unable to find internal IP for node %s", node.Name)
 }
 
-func (w *Workload) GetK8sdProxyForControlPlane(ctx context.Context) (*K8sdClient, error) {
+type k8sdProxyOptions struct {
+	// BlacklistedControlPlanes is a list of control plane nodes which k8sd proxy should not use.
+	// This is useful when a control plane node is being removed and we want to avoid using it
+	BlacklistedControlPlanes []string
+}
+
+// GetK8sdProxyForControlPlane returns a k8sd proxy client for the control plane.
+func (w *Workload) GetK8sdProxyForControlPlane(ctx context.Context, options k8sdProxyOptions) (*K8sdClient, error) {
 	cplaneNodes, err := w.getControlPlaneNodes(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get control plane nodes: %w", err)
 	}
 
 	for _, node := range cplaneNodes.Items {
+		if slices.Contains(options.BlacklistedControlPlanes, node.Name) {
+			continue
+		}
+
 		proxy, err := w.K8sdClientGenerator.forNode(ctx, &node)
 		if err != nil {
 			continue
@@ -204,46 +218,80 @@ func (w *Workload) NewWorkerJoinToken(ctx context.Context, authToken string, mic
 
 // requestJoinToken requests a join token from the existing control-plane nodes via the k8sd proxy.
 func (w *Workload) requestJoinToken(ctx context.Context, microclusterPort int, authToken string, name string, worker bool) (string, error) {
+	request := apiv1.GetJoinTokenRequest{Name: name, Worker: worker}
+	response := &apiv1.GetJoinTokenResponse{}
+	err := w.doK8sdRequest(ctx, microclusterPort, http.MethodPost, "1.0/x/capi/generate-join-token", authToken, request, response, k8sdProxyOptions{})
+	if err != nil {
+		return "", fmt.Errorf("failed to get join token: %w", err)
+	}
+	return response.EncodedToken, nil
+}
+
+func (w *Workload) RemoveMachineFromCluster(ctx context.Context, machine *clusterv1.Machine, authToken string, microclusterPort int) error {
+	request := &apiv1.RemoveNodeRequest{Name: machine.Name, Force: true}
+	err := w.doK8sdRequest(ctx, microclusterPort, http.MethodPost, "1.0/x/capi/remove-node", authToken, request, nil, k8sdProxyOptions{BlacklistedControlPlanes: []string{machine.Name}})
+	if err != nil {
+		return fmt.Errorf("failed to remove %s from cluster: %w", machine.Name, err)
+	}
+	return nil
+}
+
+func (w *Workload) doK8sdRequest(ctx context.Context, microclusterPort int, method, endpoint, authToken string, request any, response any, k8sdProxyOptions k8sdProxyOptions) error {
+	type wrappedResponse struct {
+		Error    string          `json:"error"`
+		Metadata json.RawMessage `json:"metadata"`
+	}
+
 	// FIXME: We need to check the default value for this port in one place, not in multiple places.
 	// See https://github.com/canonical/cluster-api-k8s/pull/8#discussion_r1645536362 for context.
 	if microclusterPort == 0 {
 		microclusterPort = 2380
 	}
 
-	k8sdProxy, err := w.GetK8sdProxyForControlPlane(ctx)
+	k8sdProxy, err := w.GetK8sdProxyForControlPlane(ctx, k8sdProxyOptions)
 	if err != nil {
-		return "", fmt.Errorf("failed to create k8sd proxy: %w", err)
-	}
-	type wrappedResponse struct {
-		Error    string                     `json:"error"`
-		Metadata apiv1.GetJoinTokenResponse `json:"metadata"`
+		return fmt.Errorf("failed to create k8sd proxy: %w", err)
 	}
 
-	requestBody, err := json.Marshal(apiv1.GetJoinTokenRequest{Name: name, Worker: worker})
+	url := fmt.Sprintf("https://%s:%v/%s", k8sdProxy.NodeIP, microclusterPort, endpoint)
+
+	requestBody, err := json.Marshal(request)
 	if err != nil {
-		return "", fmt.Errorf("failed to prepare worker info request: %w", err)
+		return fmt.Errorf("failed to prepare worker info request: %w", err)
 	}
 
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, fmt.Sprintf("https://%s:%v/1.0/x/capi/generate-join-token", k8sdProxy.NodeIP, microclusterPort), bytes.NewBuffer(requestBody))
+	req, err := http.NewRequestWithContext(ctx, method, url, bytes.NewBuffer(requestBody))
 	if err != nil {
-		return "", fmt.Errorf("failed to create request: %w", err)
+		return fmt.Errorf("failed to create request: %w", err)
 	}
 
 	req.Header.Add("capi-auth-token", authToken)
 	res, err := k8sdProxy.Client.Do(req)
 	if err != nil {
-		return "", fmt.Errorf("failed to reach k8sd through proxy client: %w", err)
+		return fmt.Errorf("failed to reach k8sd through proxy client: %w", err)
 	}
 	defer res.Body.Close()
+	if res.StatusCode != http.StatusOK {
+		return fmt.Errorf("HTTP request failed with status code: %d", res.StatusCode)
+	}
 
-	var wrappedResp wrappedResponse
-	if err := json.NewDecoder(res.Body).Decode(&wrappedResp); err != nil {
-		return "", fmt.Errorf("failed to parse HTTP response: %w", err)
+	if response == nil {
+		// Nothing to decode
+		return nil
 	}
-	if res.StatusCode != 200 {
-		return "", fmt.Errorf("request for join token request failed: %s", wrappedResp.Error)
+
+	respBody := wrappedResponse{}
+	if err := json.NewDecoder(res.Body).Decode(&respBody); err != nil {
+		return fmt.Errorf("failed to parse HTTP response: %w", err)
 	}
-	return wrappedResp.Metadata.EncodedToken, nil
+	if respBody.Error != "" {
+		return fmt.Errorf("k8sd request failed: %s", respBody.Error)
+	}
+	if err := json.Unmarshal(respBody.Metadata, response); err != nil {
+		return fmt.Errorf("failed to parse HTTP response: %w", err)
+	}
+
+	return nil
 }
 
 // UpdateAgentConditions is responsible for updating machine conditions reflecting the status of all the control plane

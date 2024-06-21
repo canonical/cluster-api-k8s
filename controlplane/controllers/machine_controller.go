@@ -4,6 +4,7 @@ import (
 	"context"
 	"time"
 
+	"github.com/canonical/cluster-api-k8s/pkg/ck8s"
 	"github.com/go-logr/logr"
 	"github.com/pkg/errors"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -24,10 +25,7 @@ type MachineReconciler struct {
 
 	K8sdDialTimeout time.Duration
 
-	// NOTE(neoaggelos): See note below
-	/**
 	managementCluster ck8s.ManagementCluster
-	**/
 }
 
 func (r *MachineReconciler) SetupWithManager(ctx context.Context, mgr ctrl.Manager, log *logr.Logger) error {
@@ -36,15 +34,15 @@ func (r *MachineReconciler) SetupWithManager(ctx context.Context, mgr ctrl.Manag
 		Build(r)
 
 	// NOTE(neoaggelos): See note below
-	/**
 	if r.managementCluster == nil {
 		r.managementCluster = &ck8s.Management{
-			Client:          r.Client,
-			EtcdDialTimeout: r.EtcdDialTimeout,
-			EtcdCallTimeout: r.EtcdCallTimeout,
+			Client: r.Client,
+			/*
+				EtcdDialTimeout: r.EtcdDialTimeout,
+				EtcdCallTimeout: r.EtcdCallTimeout,
+			*/
 		}
 	}
-	**/
 
 	return err
 }
@@ -101,7 +99,6 @@ func (r *MachineReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 			logger.Info("unable to get cluster.")
 			return ctrl.Result{}, errors.Wrapf(err, "unable to get cluster")
 		}
-
 		workloadCluster, err := r.managementCluster.GetWorkloadCluster(ctx, util.ObjectKey(cluster))
 		if err != nil {
 			logger.Error(err, "failed to create client to workload cluster")

@@ -66,7 +66,7 @@ func main() {
 	flag.DurationVar(&syncPeriod, "sync-period", 10*time.Minute,
 		"The minimum interval at which watched resources are reconciled (e.g. 15m)")
 
-	flag.DurationVar(&k8sdDialTimeout, "k8sd-dial-timeout-duration", 10*time.Second,
+	flag.DurationVar(&k8sdDialTimeout, "k8sd-dial-timeout-duration", 60*time.Second,
 		"Duration that the proxy client waits at most to establish a connection with k8sd")
 
 	flag.Parse()
