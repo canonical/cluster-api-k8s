@@ -10,13 +10,13 @@ spec:
   clusterNetwork:
     pods:
       cidrBlocks:
-      - 10.45.0.0/16
+      - 10.1.0.0/16
     services:
       cidrBlocks:
-      - 10.46.0.0/16
+      - 10.152.0.0/16
     serviceDomain: cluster.local
   controlPlaneRef:
-    apiVersion: controlplane.cluster.x-k8s.io/v1beta1
+    apiVersion: controlplane.cluster.x-k8s.io/v1beta2
     kind: CK8sControlPlane
     name: ${CLUSTER_NAME}-control-plane
   infrastructureRef:
@@ -30,22 +30,24 @@ metadata:
   name: ${CLUSTER_NAME}
 spec: {}
 ---
-apiVersion: controlplane.cluster.x-k8s.io/v1beta1
+apiVersion: controlplane.cluster.x-k8s.io/v1beta2
 kind: CK8sControlPlane
 metadata:
   name: ${CLUSTER_NAME}-control-plane
   namespace: ${NAMESPACE}
 spec:
-  infrastructureTemplate:
-    apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
-    kind: DockerMachineTemplate
-    name: ${CLUSTER_NAME}-control-plane
+  machineTemplate:
+    infrastructureTemplate:
+      apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
+      kind: DockerMachineTemplate
+      name: ${CLUSTER_NAME}-control-plane
+  spec:
+    airGapped: true
+    controlPlane:
+      extraKubeAPIServerArgs:
+        --anonymous-auth: "true"
   replicas: ${CONTROL_PLANE_MACHINE_COUNT}
   version: ${KUBERNETES_VERSION}
-  spec:
-    serverConfig:
-      tlsSan:
-        - 0.0.0.0
 ---
 apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
 kind: DockerMachineTemplate
@@ -55,7 +57,8 @@ metadata:
 spec:
   template:
     spec:
-      customImage: kindest/node:${KIND_IMAGE_VERSION}
+      # TODO: make this customable
+      customImage: k8s-snap:dev
 ---
 apiVersion: cluster.x-k8s.io/v1beta1
 kind: MachineDeployment
@@ -82,7 +85,7 @@ spec:
       clusterName: ${CLUSTER_NAME}
       bootstrap:
         configRef:
-          apiVersion: bootstrap.cluster.x-k8s.io/v1beta1
+          apiVersion: bootstrap.cluster.x-k8s.io/v1beta2
           kind: CK8sConfigTemplate
           name: ${CLUSTER_NAME}-md-0
       infrastructureRef:
@@ -98,9 +101,10 @@ metadata:
 spec:
   template:
     spec:
-      customImage: kindest/node:${KIND_IMAGE_VERSION}
+      # TODO: make this customable
+      customImage: k8s-snap:dev
 ---
-apiVersion: bootstrap.cluster.x-k8s.io/v1beta1
+apiVersion: bootstrap.cluster.x-k8s.io/v1beta2
 kind: CK8sConfigTemplate
 metadata:
   name: ${CLUSTER_NAME}-md-0
@@ -108,3 +112,4 @@ metadata:
 spec:
   template:
     spec:
+      airGapped: true
