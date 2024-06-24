@@ -14,7 +14,7 @@ The default behaviour is to `snap install k8s` using the matching track (e.g. in
 You can override this behaviour by changing the default installation script by setting the following fields on the config template:
 
 ```yaml
-apiVersion: controlplane.cluster.x-k8s.io/v1beta1
+apiVersion: controlplane.cluster.x-k8s.io/v1beta2
 kind: CK8sControlPlane
 metadata:
   name: ${CLUSTER_NAME}-control-plane
@@ -47,7 +47,7 @@ For airgap deployments, or environment you can specify `airGapped: true` to prev
 Any extra yaml files placed in `/capi/manifests` will be applied once on the cluster after bootstrapping. Files are applied in alphabetical order, so you can use this in case of dependencies. Example:
 
 ```yaml
-apiVersion: controlplane.cluster.x-k8s.io/v1beta1
+apiVersion: controlplane.cluster.x-k8s.io/v1beta2
 kind: CK8sControlPlane
 metadata:
   name: ${CLUSTER_NAME}-control-plane
