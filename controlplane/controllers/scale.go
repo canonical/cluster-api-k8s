@@ -176,8 +176,7 @@ func (r *CK8sControlPlaneReconciler) scaleDownControlPlane(
 		return ctrl.Result{}, fmt.Errorf("auth token not yet generated")
 	}
 
-	err = workloadCluster.RemoveMachineFromCluster(ctx, machineToDelete, *authToken)
-	if err != nil {
+	if err := workloadCluster.RemoveMachineFromCluster(ctx, machineToDelete, *authToken); err != nil {
 		logger.Error(err, "failed to remove machine from microcluster")
 	}
 
