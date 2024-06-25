@@ -44,10 +44,10 @@ type WorkloadCluster interface {
 	ClusterStatus(ctx context.Context) (ClusterStatus, error)
 	UpdateAgentConditions(ctx context.Context, controlPlane *ControlPlane)
 	UpdateEtcdConditions(ctx context.Context, controlPlane *ControlPlane)
-	NewControlPlaneJoinToken(ctx context.Context, authToken string, microclusterPort int, name string) (string, error)
-	NewWorkerJoinToken(ctx context.Context, authToken string, microclusterPort int, name string) (string, error)
+	NewControlPlaneJoinToken(ctx context.Context, authToken string, name string) (string, error)
+	NewWorkerJoinToken(ctx context.Context, authToken string, name string) (string, error)
 
-	RemoveMachineFromCluster(ctx context.Context, machine *clusterv1.Machine, authToken string, microclusterPort int) error
+	RemoveMachineFromCluster(ctx context.Context, machine *clusterv1.Machine, authToken string) error
 
 	// NOTE(neoaggelos): See notes in (*CK8sControlPlaneReconciler).reconcileEtcdMembers
 	//
@@ -206,47 +206,48 @@ func (w *Workload) GetK8sdProxyForControlPlane(ctx context.Context, options k8sd
 
 // NewControlPlaneJoinToken creates a new join token for a control plane node.
 // NewControlPlaneJoinToken reaches out to the control-plane of the workload cluster via k8sd-proxy client.
-func (w *Workload) NewControlPlaneJoinToken(ctx context.Context, authToken string, microclusterPort int, name string) (string, error) {
-	return w.requestJoinToken(ctx, microclusterPort, authToken, name, false)
+func (w *Workload) NewControlPlaneJoinToken(ctx context.Context, authToken string, name string) (string, error) {
+	return w.requestJoinToken(ctx, authToken, name, false)
 }
 
 // NewWorkerJoinToken creates a new join token for a worker node.
 // NewWorkerJoinToken reaches out to the control-plane of the workload cluster via k8sd-proxy client.
-func (w *Workload) NewWorkerJoinToken(ctx context.Context, authToken string, microclusterPort int, name string) (string, error) {
-	return w.requestJoinToken(ctx, microclusterPort, authToken, name, true)
+func (w *Workload) NewWorkerJoinToken(ctx context.Context, authToken string, name string) (string, error) {
+	return w.requestJoinToken(ctx, authToken, name, true)
 }
 
 // requestJoinToken requests a join token from the existing control-plane nodes via the k8sd proxy.
-func (w *Workload) requestJoinToken(ctx context.Context, microclusterPort int, authToken string, name string, worker bool) (string, error) {
+func (w *Workload) requestJoinToken(ctx context.Context, authToken string, name string, worker bool) (string, error) {
 	request := apiv1.GetJoinTokenRequest{Name: name, Worker: worker}
 	response := &apiv1.GetJoinTokenResponse{}
-	err := w.doK8sdRequest(ctx, microclusterPort, http.MethodPost, "1.0/x/capi/generate-join-token", authToken, request, response, k8sdProxyOptions{})
+	err := w.doK8sdRequest(ctx, http.MethodPost, "1.0/x/capi/generate-join-token", authToken, request, response, k8sdProxyOptions{})
 	if err != nil {
 		return "", fmt.Errorf("failed to get join token: %w", err)
 	}
 	return response.EncodedToken, nil
 }
 
-func (w *Workload) RemoveMachineFromCluster(ctx context.Context, machine *clusterv1.Machine, authToken string, microclusterPort int) error {
+func (w *Workload) RemoveMachineFromCluster(ctx context.Context, machine *clusterv1.Machine, authToken string) error {
 	request := &apiv1.RemoveNodeRequest{Name: machine.Name, Force: true}
-	err := w.doK8sdRequest(ctx, microclusterPort, http.MethodPost, "1.0/x/capi/remove-node", authToken, request, nil, k8sdProxyOptions{BlacklistedControlPlanes: []string{machine.Name}})
+
+	// If we see that blacklisting control-planes is causing issues, let's consider removing it.
+	// It *should* not be necessary as a machine should be able to remove itself from the cluster.
+	err := w.doK8sdRequest(ctx, http.MethodPost, "1.0/x/capi/remove-node", authToken, request, nil, k8sdProxyOptions{BlacklistedControlPlanes: []string{machine.Name}})
 	if err != nil {
 		return fmt.Errorf("failed to remove %s from cluster: %w", machine.Name, err)
 	}
 	return nil
 }
 
-func (w *Workload) doK8sdRequest(ctx context.Context, microclusterPort int, method, endpoint, authToken string, request any, response any, k8sdProxyOptions k8sdProxyOptions) error {
+func (w *Workload) doK8sdRequest(ctx context.Context, method, endpoint, authToken string, request any, response any, k8sdProxyOptions k8sdProxyOptions) error {
 	type wrappedResponse struct {
 		Error    string          `json:"error"`
 		Metadata json.RawMessage `json:"metadata"`
 	}
 
-	// FIXME: We need to check the default value for this port in one place, not in multiple places.
+	// FIXME: Get this from the workload cluster's configuration instead of hardcoding it.
 	// See https://github.com/canonical/cluster-api-k8s/pull/8#discussion_r1645536362 for context.
-	if microclusterPort == 0 {
-		microclusterPort = 2380
-	}
+	microclusterPort := 2380
 
 	k8sdProxy, err := w.GetK8sdProxyForControlPlane(ctx, k8sdProxyOptions)
 	if err != nil {

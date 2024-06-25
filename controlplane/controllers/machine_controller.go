@@ -36,7 +36,8 @@ func (r *MachineReconciler) SetupWithManager(ctx context.Context, mgr ctrl.Manag
 	// NOTE(neoaggelos): See note below
 	if r.managementCluster == nil {
 		r.managementCluster = &ck8s.Management{
-			Client: r.Client,
+			Client:          r.Client,
+			K8sdDialTimeout: r.K8sdDialTimeout,
 			/*
 				EtcdDialTimeout: r.EtcdDialTimeout,
 				EtcdCallTimeout: r.EtcdCallTimeout,
