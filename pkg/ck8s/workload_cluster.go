@@ -263,7 +263,7 @@ func (w *Workload) doK8sdRequest(ctx context.Context, method, endpoint string, r
 	if err != nil {
 		return fmt.Errorf("failed to create request: %w", err)
 	}
-	fmt.Println(w.authToken)
+
 	req.Header.Add("capi-auth-token", w.authToken)
 	res, err := k8sdProxy.Client.Do(req)
 	if err != nil {
