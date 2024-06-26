@@ -298,9 +298,7 @@ func (r *CK8sConfigReconciler) joinWorker(ctx context.Context, scope *Scope) err
 		return fmt.Errorf("failed to create remote cluster client: %w", err)
 	}
 
-	// Accept any hostname by passing an empty string
-	// Some infrastructures will have machines where hostname and machine name do not match by design (e.g. AWS)
-	joinToken, err := workloadCluster.NewWorkerJoinToken(ctx, "")
+	joinToken, err := workloadCluster.NewWorkerJoinToken(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to request join token: %w", err)
 	}
