@@ -97,12 +97,16 @@ func (m *Management) GetWorkloadCluster(ctx context.Context, clusterKey client.O
 		return nil, fmt.Errorf("auth token not yet generated")
 	}
 
+	if microclusterPort == 0 {
+		microclusterPort = 2380
+	}
+
 	workload := &Workload{
-		AuthToken:           *authToken,
+		authToken:           *authToken,
 		Client:              c,
 		ClientRestConfig:    restConfig,
 		K8sdClientGenerator: g,
-		MicroclusterPort:    microclusterPort,
+		microclusterPort:    microclusterPort,
 
 		/**
 		CoreDNSMigrator: &CoreDNSMigrator{},

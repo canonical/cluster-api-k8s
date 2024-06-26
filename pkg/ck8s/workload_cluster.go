@@ -69,11 +69,11 @@ type WorkloadCluster interface {
 // Workload defines operations on workload clusters.
 type Workload struct {
 	WorkloadCluster
-	AuthToken           string
+	authToken           string
 	Client              ctrlclient.Client
 	ClientRestConfig    *rest.Config
 	K8sdClientGenerator *k8sdClientGenerator
-	MicroclusterPort    int
+	microclusterPort    int
 
 	// NOTE(neoaggelos): CoreDNSMigrator and etcdClientGenerator are used by upstream to reach and manage the services in the workload cluster
 	// TODO(neoaggelos): Replace them with a k8sdProxyClientGenerator.
@@ -252,7 +252,7 @@ func (w *Workload) doK8sdRequest(ctx context.Context, method, endpoint string, r
 		return fmt.Errorf("failed to create k8sd proxy: %w", err)
 	}
 
-	url := fmt.Sprintf("https://%s:%v/%s", k8sdProxy.NodeIP, w.MicroclusterPort, endpoint)
+	url := fmt.Sprintf("https://%s:%v/%s", k8sdProxy.NodeIP, w.microclusterPort, endpoint)
 
 	requestBody, err := json.Marshal(request)
 	if err != nil {
@@ -263,16 +263,13 @@ func (w *Workload) doK8sdRequest(ctx context.Context, method, endpoint string, r
 	if err != nil {
 		return fmt.Errorf("failed to create request: %w", err)
 	}
-
-	req.Header.Add("capi-auth-token", w.AuthToken)
+	fmt.Println(w.authToken)
+	req.Header.Add("capi-auth-token", w.authToken)
 	res, err := k8sdProxy.Client.Do(req)
 	if err != nil {
 		return fmt.Errorf("failed to reach k8sd through proxy client: %w", err)
 	}
 	defer res.Body.Close()
-	if res.StatusCode != http.StatusOK {
-		return fmt.Errorf("HTTP request failed with status code: %d", res.StatusCode)
-	}
 
 	if response == nil {
 		// Nothing to decode
@@ -282,6 +279,9 @@ func (w *Workload) doK8sdRequest(ctx context.Context, method, endpoint string, r
 	var responseBody wrappedResponse
 	if err := json.NewDecoder(res.Body).Decode(&responseBody); err != nil {
 		return fmt.Errorf("failed to parse HTTP response: %w", err)
+	}
+	if res.StatusCode != http.StatusOK {
+		return fmt.Errorf("HTTP request failed with status code: %d (%s)", res.StatusCode, responseBody.Error)
 	}
 	if responseBody.Error != "" {
 		return fmt.Errorf("k8sd request failed: %s", responseBody.Error)
