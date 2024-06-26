@@ -193,7 +193,7 @@ func (w *Workload) GetK8sdProxyForControlPlane(ctx context.Context, options k8sd
 			continue
 		}
 
-		proxy, err := w.K8sdClientGenerator.forNode(ctx, &node)
+		proxy, err := w.K8sdClientGenerator.forNode(ctx, &node) // #nosec G601
 		if err != nil {
 			continue
 		}
