@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"slices"
 	"strings"
 
 	"github.com/pkg/errors"
@@ -44,10 +43,10 @@ type WorkloadCluster interface {
 	ClusterStatus(ctx context.Context) (ClusterStatus, error)
 	UpdateAgentConditions(ctx context.Context, controlPlane *ControlPlane)
 	UpdateEtcdConditions(ctx context.Context, controlPlane *ControlPlane)
-	NewControlPlaneJoinToken(ctx context.Context, authToken string, name string) (string, error)
-	NewWorkerJoinToken(ctx context.Context, authToken string, name string) (string, error)
+	NewControlPlaneJoinToken(ctx context.Context, name string) (string, error)
+	NewWorkerJoinToken(ctx context.Context, name string) (string, error)
 
-	RemoveMachineFromCluster(ctx context.Context, machine *clusterv1.Machine, authToken string) error
+	RemoveMachineFromCluster(ctx context.Context, machine *clusterv1.Machine) error
 
 	// NOTE(neoaggelos): See notes in (*CK8sControlPlaneReconciler).reconcileEtcdMembers
 	//
@@ -70,10 +69,11 @@ type WorkloadCluster interface {
 // Workload defines operations on workload clusters.
 type Workload struct {
 	WorkloadCluster
-
+	AuthToken           string
 	Client              ctrlclient.Client
 	ClientRestConfig    *rest.Config
 	K8sdClientGenerator *k8sdClientGenerator
+	MicroclusterPort    int
 
 	// NOTE(neoaggelos): CoreDNSMigrator and etcdClientGenerator are used by upstream to reach and manage the services in the workload cluster
 	// TODO(neoaggelos): Replace them with a k8sdProxyClientGenerator.
@@ -176,9 +176,9 @@ func getNodeInternalIP(node *corev1.Node) (string, error) {
 }
 
 type k8sdProxyOptions struct {
-	// BlacklistedControlPlanes is a list of control plane nodes which k8sd proxy should not use.
+	// IgnoreNodes is a set of node names that should be ignored when selecting a control plane node to proxy to.
 	// This is useful when a control plane node is being removed and we want to avoid using it
-	BlacklistedControlPlanes []string
+	IgnoreNodes map[string]struct{}
 }
 
 // GetK8sdProxyForControlPlane returns a k8sd proxy client for the control plane.
@@ -189,7 +189,7 @@ func (w *Workload) GetK8sdProxyForControlPlane(ctx context.Context, options k8sd
 	}
 
 	for _, node := range cplaneNodes.Items {
-		if slices.Contains(options.BlacklistedControlPlanes, node.Name) {
+		if _, ok := options.IgnoreNodes[node.Name]; ok {
 			continue
 		}
 
@@ -206,55 +206,51 @@ func (w *Workload) GetK8sdProxyForControlPlane(ctx context.Context, options k8sd
 
 // NewControlPlaneJoinToken creates a new join token for a control plane node.
 // NewControlPlaneJoinToken reaches out to the control-plane of the workload cluster via k8sd-proxy client.
-func (w *Workload) NewControlPlaneJoinToken(ctx context.Context, authToken string, name string) (string, error) {
-	return w.requestJoinToken(ctx, authToken, name, false)
+func (w *Workload) NewControlPlaneJoinToken(ctx context.Context, name string) (string, error) {
+	return w.requestJoinToken(ctx, name, false)
 }
 
 // NewWorkerJoinToken creates a new join token for a worker node.
 // NewWorkerJoinToken reaches out to the control-plane of the workload cluster via k8sd-proxy client.
-func (w *Workload) NewWorkerJoinToken(ctx context.Context, authToken string, name string) (string, error) {
-	return w.requestJoinToken(ctx, authToken, name, true)
+func (w *Workload) NewWorkerJoinToken(ctx context.Context, name string) (string, error) {
+	return w.requestJoinToken(ctx, name, true)
 }
 
 // requestJoinToken requests a join token from the existing control-plane nodes via the k8sd proxy.
-func (w *Workload) requestJoinToken(ctx context.Context, authToken string, name string, worker bool) (string, error) {
+func (w *Workload) requestJoinToken(ctx context.Context, name string, worker bool) (string, error) {
 	request := apiv1.GetJoinTokenRequest{Name: name, Worker: worker}
 	response := &apiv1.GetJoinTokenResponse{}
-	err := w.doK8sdRequest(ctx, http.MethodPost, "1.0/x/capi/generate-join-token", authToken, request, response, k8sdProxyOptions{})
+	err := w.doK8sdRequest(ctx, http.MethodPost, "1.0/x/capi/generate-join-token", request, response, k8sdProxyOptions{})
 	if err != nil {
 		return "", fmt.Errorf("failed to get join token: %w", err)
 	}
 	return response.EncodedToken, nil
 }
 
-func (w *Workload) RemoveMachineFromCluster(ctx context.Context, machine *clusterv1.Machine, authToken string) error {
+func (w *Workload) RemoveMachineFromCluster(ctx context.Context, machine *clusterv1.Machine) error {
 	request := &apiv1.RemoveNodeRequest{Name: machine.Name, Force: true}
 
-	// If we see that blacklisting control-planes is causing issues, let's consider removing it.
+	// If we see that ignoring control-planes is causing issues, let's consider removing it.
 	// It *should* not be necessary as a machine should be able to remove itself from the cluster.
-	err := w.doK8sdRequest(ctx, http.MethodPost, "1.0/x/capi/remove-node", authToken, request, nil, k8sdProxyOptions{BlacklistedControlPlanes: []string{machine.Name}})
+	err := w.doK8sdRequest(ctx, http.MethodPost, "1.0/x/capi/remove-node", request, nil, k8sdProxyOptions{IgnoreNodes: map[string]struct{}{machine.Name: {}}})
 	if err != nil {
 		return fmt.Errorf("failed to remove %s from cluster: %w", machine.Name, err)
 	}
 	return nil
 }
 
-func (w *Workload) doK8sdRequest(ctx context.Context, method, endpoint, authToken string, request any, response any, k8sdProxyOptions k8sdProxyOptions) error {
+func (w *Workload) doK8sdRequest(ctx context.Context, method, endpoint string, request any, response any, k8sdProxyOptions k8sdProxyOptions) error {
 	type wrappedResponse struct {
 		Error    string          `json:"error"`
 		Metadata json.RawMessage `json:"metadata"`
 	}
-
-	// FIXME: Get this from the workload cluster's configuration instead of hardcoding it.
-	// See https://github.com/canonical/cluster-api-k8s/pull/8#discussion_r1645536362 for context.
-	microclusterPort := 2380
 
 	k8sdProxy, err := w.GetK8sdProxyForControlPlane(ctx, k8sdProxyOptions)
 	if err != nil {
 		return fmt.Errorf("failed to create k8sd proxy: %w", err)
 	}
 
-	url := fmt.Sprintf("https://%s:%v/%s", k8sdProxy.NodeIP, microclusterPort, endpoint)
+	url := fmt.Sprintf("https://%s:%v/%s", k8sdProxy.NodeIP, w.MicroclusterPort, endpoint)
 
 	requestBody, err := json.Marshal(request)
 	if err != nil {
@@ -266,7 +262,7 @@ func (w *Workload) doK8sdRequest(ctx context.Context, method, endpoint, authToke
 		return fmt.Errorf("failed to create request: %w", err)
 	}
 
-	req.Header.Add("capi-auth-token", authToken)
+	req.Header.Add("capi-auth-token", w.AuthToken)
 	res, err := k8sdProxy.Client.Do(req)
 	if err != nil {
 		return fmt.Errorf("failed to reach k8sd through proxy client: %w", err)
@@ -281,14 +277,14 @@ func (w *Workload) doK8sdRequest(ctx context.Context, method, endpoint, authToke
 		return nil
 	}
 
-	respBody := wrappedResponse{}
-	if err := json.NewDecoder(res.Body).Decode(&respBody); err != nil {
+	var responseBody wrappedResponse
+	if err := json.NewDecoder(res.Body).Decode(&responseBody); err != nil {
 		return fmt.Errorf("failed to parse HTTP response: %w", err)
 	}
-	if respBody.Error != "" {
-		return fmt.Errorf("k8sd request failed: %s", respBody.Error)
+	if responseBody.Error != "" {
+		return fmt.Errorf("k8sd request failed: %s", responseBody.Error)
 	}
-	if err := json.Unmarshal(respBody.Metadata, response); err != nil {
+	if err := json.Unmarshal(responseBody.Metadata, response); err != nil {
 		return fmt.Errorf("failed to parse HTTP response: %w", err)
 	}
 

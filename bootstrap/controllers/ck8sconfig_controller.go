@@ -220,22 +220,12 @@ func (r *CK8sConfigReconciler) joinControlplane(ctx context.Context, scope *Scop
 	// injects into config.Version values from top level object
 	r.reconcileTopLevelObjectSettings(scope.Cluster, machine, scope.Config)
 
-	authToken, err := token.Lookup(ctx, r.Client, client.ObjectKeyFromObject(scope.Cluster))
-	if err != nil {
-		conditions.MarkFalse(scope.Config, bootstrapv1.DataSecretAvailableCondition, bootstrapv1.DataSecretGenerationFailedReason, clusterv1.ConditionSeverityWarning, err.Error())
-		return err
-	}
-
-	if authToken == nil {
-		return fmt.Errorf("auth token not yet generated")
-	}
-
-	workloadCluster, err := r.managementCluster.GetWorkloadCluster(ctx, util.ObjectKey(scope.Cluster))
+	workloadCluster, err := r.managementCluster.GetWorkloadCluster(ctx, util.ObjectKey(scope.Cluster), scope.Config.Spec.ControlPlaneConfig.MicroclusterPort)
 	if err != nil {
 		return fmt.Errorf("failed to create remote cluster client: %w", err)
 	}
 
-	joinToken, err := workloadCluster.NewControlPlaneJoinToken(ctx, *authToken, scope.Config.Name)
+	joinToken, err := workloadCluster.NewControlPlaneJoinToken(ctx, scope.Config.Name)
 	if err != nil {
 		return fmt.Errorf("failed to request join token: %w", err)
 	}
@@ -303,14 +293,14 @@ func (r *CK8sConfigReconciler) joinWorker(ctx context.Context, scope *Scope) err
 		return fmt.Errorf("auth token not yet generated")
 	}
 
-	workloadCluster, err := r.managementCluster.GetWorkloadCluster(ctx, util.ObjectKey(scope.Cluster))
+	workloadCluster, err := r.managementCluster.GetWorkloadCluster(ctx, util.ObjectKey(scope.Cluster), scope.Config.Spec.ControlPlaneConfig.MicroclusterPort)
 	if err != nil {
 		return fmt.Errorf("failed to create remote cluster client: %w", err)
 	}
 
 	// Accept any hostname by passing an empty string
 	// Some infrastructures will have machines where hostname and machine name do not match by design (e.g. AWS)
-	joinToken, err := workloadCluster.NewWorkerJoinToken(ctx, *authToken, "")
+	joinToken, err := workloadCluster.NewWorkerJoinToken(ctx, "")
 	if err != nil {
 		return fmt.Errorf("failed to request join token: %w", err)
 	}
