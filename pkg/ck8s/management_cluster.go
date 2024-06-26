@@ -25,7 +25,7 @@ type ManagementCluster interface {
 type Management struct {
 	ManagementCluster
 
-	Client client.Reader
+	Client client.Client
 
 	K8sdDialTimeout time.Duration
 }
@@ -88,7 +88,7 @@ func (m *Management) GetWorkloadCluster(ctx context.Context, clusterKey client.O
 		return nil, &RemoteClusterConnectionError{Name: clusterKey.String(), Err: err}
 	}
 
-	authToken, err := token.Lookup(ctx, c, clusterKey)
+	authToken, err := token.Lookup(ctx, m.Client, clusterKey)
 	if err != nil {
 		return nil, fmt.Errorf("failed to lookup auth token: %w", err)
 	}
@@ -171,3 +171,5 @@ func (m *Management) getEtcdCAKeyPair(ctx context.Context, clusterKey client.Obj
 	return crtData, keyData, nil
 }
 **/
+
+var _ ManagementCluster = &Management{}

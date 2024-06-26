@@ -299,7 +299,7 @@ func (r *CK8sControlPlaneReconciler) SetupWithManager(ctx context.Context, mgr c
 
 	if r.managementClusterUncached == nil {
 		r.managementClusterUncached = &ck8s.Management{
-			Client:          mgr.GetAPIReader(),
+			Client:          mgr.GetClient(),
 			K8sdDialTimeout: r.K8sdDialTimeout,
 		}
 	}
