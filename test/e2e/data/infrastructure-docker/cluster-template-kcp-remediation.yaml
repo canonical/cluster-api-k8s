@@ -40,6 +40,10 @@ spec:
   replicas: ${CONTROL_PLANE_MACHINE_COUNT}
   version: ${KUBERNETES_VERSION}
   spec:
+    airGapped: true
+    controlPlane:
+      extraKubeAPIServerArgs:
+        --anonymous-auth: "true"
     files:
     - path: /wait-signal.sh
       content: |
