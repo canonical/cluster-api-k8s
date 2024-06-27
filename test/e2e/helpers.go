@@ -22,15 +22,19 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"strconv"
+	"strings"
 	"time"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/pkg/errors"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/klog/v2"
 	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
+	"sigs.k8s.io/cluster-api/controllers/noderefutil"
 	expv1 "sigs.k8s.io/cluster-api/exp/api/v1beta1"
 	"sigs.k8s.io/cluster-api/test/framework"
 	"sigs.k8s.io/cluster-api/test/framework/clusterctl"
@@ -587,6 +591,40 @@ func UpgradeControlPlaneAndWaitForUpgrade(ctx context.Context, input UpgradeCont
 	}, input.WaitForMachinesToBeUpgraded...)
 }
 
+type WaitForNodesReadyInput struct {
+	Lister            framework.Lister
+	KubernetesVersion string
+	Count             int
+	WaitForNodesReady []interface{}
+}
+
+// WaitForNodesReady waits until there are exactly the given count nodes and they have the correct Kubernetes minor version
+// and are ready.
+func WaitForNodesReady(ctx context.Context, input WaitForNodesReadyInput) {
+	Eventually(func() (bool, error) {
+		nodeList := &corev1.NodeList{}
+		if err := input.Lister.List(ctx, nodeList); err != nil {
+			return false, err
+		}
+		nodeReadyCount := 0
+		for _, node := range nodeList.Items {
+			n := node
+			match, err := CompareVersions(node.Status.NodeInfo.KubeletVersion, input.KubernetesVersion, "minor")
+			if err != nil {
+				return false, fmt.Errorf("failed to compare versions: %w", err)
+			}
+			if !match {
+				return false, nil
+			}
+			if !noderefutil.IsNodeReady(&n) {
+				return false, nil
+			}
+			nodeReadyCount++
+		}
+		return input.Count == nodeReadyCount, nil
+	}, input.WaitForNodesReady...).Should(BeTrue())
+}
+
 // byClusterOptions returns a set of ListOptions that allows to identify all the objects belonging to a Cluster.
 func byClusterOptions(name, namespace string) []client.ListOption {
 	return []client.ListOption{
@@ -595,4 +633,57 @@ func byClusterOptions(name, namespace string) []client.ListOption {
 			clusterv1.ClusterNameLabel: name,
 		},
 	}
+}
+
+func parseVersion(version string) ([]int, error) {
+	// Remove the leading "v" if it exists
+	if strings.HasPrefix(version, "v") {
+		version = version[1:]
+	}
+
+	parts := strings.Split(version, ".")
+	if len(parts) != 3 {
+		return nil, fmt.Errorf("invalid version format")
+	}
+
+	intParts := make([]int, len(parts))
+	for i, part := range parts {
+		num, err := strconv.Atoi(part)
+		if err != nil {
+			return nil, fmt.Errorf("invalid version part: %w", err)
+		}
+		intParts[i] = num
+	}
+
+	return intParts, nil
+}
+
+func compareVersionParts(v1, v2 []int, level string) bool {
+	switch strings.ToLower(level) {
+	case "major":
+		return v1[0] == v2[0]
+	case "minor":
+		return v1[0] == v2[0] && v1[1] == v2[1]
+	case "patch":
+		return v1[0] == v2[0] && v1[1] == v2[1] && v1[2] == v2[2]
+	default:
+		return v1[0] == v2[0] && v1[1] == v2[1] && v1[2] == v2[2]
+	}
+}
+
+// CompareVersions compares two versions and returns true if they are equal at the specified level.
+// The level can be "major", "minor", "patch" or an empty string to compare the full version.
+// Returns an error if the versions are not in the correct format.
+// Example: CompareVersions("1.19.0", "1.19.1", "patch") returns false
+func CompareVersions(version1, version2, level string) (bool, error) {
+	v1, err := parseVersion(version1)
+	if err != nil {
+		return false, fmt.Errorf("failed to parse version1: %w", err)
+	}
+
+	v2, err := parseVersion(version2)
+	if err != nil {
+		return false, fmt.Errorf("failed to parse version2: %w", err)
+	}
+	return compareVersionParts(v1, v2, level), nil
 }
