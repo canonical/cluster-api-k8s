@@ -225,6 +225,12 @@ spec:
                             description: CK8sControlPlaneConfig is configuration for
                               the control plane node.
                             properties:
+                              annotations:
+                                additionalProperties:
+                                  type: string
+                                description: Annotations is a map of annotations to
+                                  add to the control plane node.
+                                type: object
                               cloudProvider:
                                 description: CloudProvider is the cloud-provider configuration
                                   option to set.
@@ -320,6 +326,31 @@ spec:
                               - path
                               type: object
                             type: array
+                          initConfig:
+                            description: CK8sInitConfig is configuration for the initializing
+                              the cluster features.
+                            properties:
+                              enableDefaultDNS:
+                                default: true
+                                description: EnableDefaultDNS specifies whether to
+                                  enable the default DNS configuration.
+                                type: boolean
+                              enableDefaultLocalStorage:
+                                default: true
+                                description: EnableDefaultLocalStorage specifies whether
+                                  to enable the default local storage.
+                                type: boolean
+                              enableDefaultMetricsServer:
+                                default: true
+                                description: EnableDefaultMetricsServer specifies
+                                  whether to enable the default metrics server.
+                                type: boolean
+                              enableDefaultNetwork:
+                                default: true
+                                description: EnableDefaultNetwork specifies whether
+                                  to enable the default CNI.
+                                type: boolean
+                            type: object
                           postRunCommands:
                             description: PostRunCommands specifies extra commands
                               to run in cloud-init after k8s-snap setup runs.

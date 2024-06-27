@@ -54,6 +54,10 @@ type CK8sConfigSpec struct {
 	// CK8sControlPlaneConfig is configuration for the control plane node.
 	// +optional
 	ControlPlaneConfig CK8sControlPlaneConfig `json:"controlPlane,omitempty"`
+
+	// CK8sInitConfig is configuration for the initializing the cluster features.
+	// +optional
+	InitConfig CK8sInitConfiguration `json:"initConfig,omitempty"`
 }
 
 // TODO
@@ -62,7 +66,7 @@ func (c *CK8sConfigSpec) IsEtcdManaged() bool {
 	return true
 }
 
-// CK8sControlPlaneConfig is configuration for control plane noes.
+// CK8sControlPlaneConfig is configuration for control plane nodes.
 type CK8sControlPlaneConfig struct {
 	// ExtraSANs is a list of SANs to include in the server certificates.
 	// +optional
@@ -90,6 +94,33 @@ type CK8sControlPlaneConfig struct {
 	// ExtraKubeAPIServerArgs is extra arguments to add to kube-apiserver.
 	// +optional
 	ExtraKubeAPIServerArgs map[string]*string `json:"extraKubeAPIServerArgs,omitempty"`
+
+	// Annotations is a map of annotations to add to the control plane node.
+	// +optional
+	Annotations map[string]string `json:"annotations,omitempty"`
+}
+
+// CK8sInitConfiguration is configuration for the initializing the cluster features.
+type CK8sInitConfiguration struct {
+	// EnableDefaultDNS specifies whether to enable the default DNS configuration.
+	// +optional
+	// +kubebuilder:default=true
+	EnableDefaultDNS *bool `json:"enableDefaultDNS,omitempty"`
+
+	// EnableDefaultLocalStorage specifies whether to enable the default local storage.
+	// +optional
+	// +kubebuilder:default=true
+	EnableDefaultLocalStorage *bool `json:"enableDefaultLocalStorage,omitempty"`
+
+	// EnableDefaultMetricsServer specifies whether to enable the default metrics server.
+	// +optional
+	// +kubebuilder:default=true
+	EnableDefaultMetricsServer *bool `json:"enableDefaultMetricsServer,omitempty"`
+
+	// EnableDefaultNetwork specifies whether to enable the default CNI.
+	// +optional
+	// +kubebuilder:default=true
+	EnableDefaultNetwork *bool `json:"enableDefaultNetwork,omitempty"`
 }
 
 // CK8sConfigStatus defines the observed state of CK8sConfig.

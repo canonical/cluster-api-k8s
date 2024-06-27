@@ -15,6 +15,7 @@ import (
 type InitControlPlaneConfig struct {
 	ControlPlaneEndpoint  string
 	ControlPlaneConfig    bootstrapv1.CK8sControlPlaneConfig
+	InitConfig            bootstrapv1.CK8sInitConfiguration
 	PopulatedCertificates secret.Certificates
 
 	ClusterNetwork *clusterv1.ClusterNetwork
@@ -55,11 +56,13 @@ func GenerateInitControlPlaneConfig(cfg InitControlPlaneConfig) (apiv1.Bootstrap
 		out.ClusterConfig.CloudProvider = ptr.To(v)
 	}
 
-	// TODO(neoaggelos): configurable components through the CK8sConfigTemplate
-	out.ClusterConfig.DNS.Enabled = ptr.To(true)
-	out.ClusterConfig.Network.Enabled = ptr.To(true)
-	out.ClusterConfig.MetricsServer.Enabled = ptr.To(true)
-	out.ClusterConfig.LocalStorage.Enabled = ptr.To(true)
+	// annotations
+	out.ClusterConfig.Annotations = cfg.ControlPlaneConfig.Annotations
+
+	out.ClusterConfig.DNS.Enabled = cfg.InitConfig.EnableDefaultDNS
+	out.ClusterConfig.Network.Enabled = cfg.InitConfig.EnableDefaultNetwork
+	out.ClusterConfig.MetricsServer.Enabled = cfg.InitConfig.EnableDefaultMetricsServer
+	out.ClusterConfig.LocalStorage.Enabled = cfg.InitConfig.EnableDefaultLocalStorage
 
 	// networking
 	if cfg.ClusterNetwork != nil {

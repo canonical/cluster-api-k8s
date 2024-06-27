@@ -455,6 +455,7 @@ func (r *CK8sConfigReconciler) handleClusterNotInitialized(ctx context.Context, 
 		ControlPlaneEndpoint:  scope.Cluster.Spec.ControlPlaneEndpoint.Host,
 		ControlPlaneConfig:    scope.Config.Spec.ControlPlaneConfig,
 		PopulatedCertificates: certificates,
+		InitConfig:            scope.Config.Spec.InitConfig,
 
 		ClusterNetwork: scope.Cluster.Spec.ClusterNetwork,
 	})
