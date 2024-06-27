@@ -1,0 +1,33 @@
+name: E2E Tests
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  e2e-tests:
+    name: Build provider images
+    runs-on: ubuntu-22.04
+
+    steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@v2
+        with:
+          egress-policy: audit
+      - name: Check out repo
+        uses: actions/checkout@v4
+      - name: Install requirements
+        run: |
+          sudo apt install make
+          sudo snap install go --classic
+          sudo snap install docker
+      - name: Build provider images
+        run: sudo make docker-build-e2e
+      - name: Build images
+        run: |
+          cd templates/docker
+          sudo docker build . -t k8s-snap:dev
+      - name: Run e2e tests
+        run: sudo make test-e2e

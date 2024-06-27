@@ -36,10 +36,11 @@ metadata:
   name: ${CLUSTER_NAME}-control-plane
   namespace: ${NAMESPACE}
 spec:
-  infrastructureTemplate:
-    apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
-    kind: DockerMachineTemplate
-    name: ${CLUSTER_NAME}-control-plane
+  machineTemplate:
+    infrastructureTemplate:
+      apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
+      kind: DockerMachineTemplate
+      name: ${CLUSTER_NAME}-control-plane
   spec:
     airGapped: true
     controlPlane:
@@ -56,7 +57,7 @@ metadata:
 spec:
   template:
     spec:
-      customImage: kindest/node:${KIND_IMAGE_VERSION}
+      customImage: k8s-snap:dev
 ---
 apiVersion: cluster.x-k8s.io/v1beta1
 kind: MachineDeployment
@@ -100,7 +101,7 @@ metadata:
 spec:
   template:
     spec:
-      customImage: kindest/node:${KIND_IMAGE_VERSION}
+      customImage: k8s-snap:dev
 ---
 apiVersion: bootstrap.cluster.x-k8s.io/v1beta2
 kind: CK8sConfigTemplate
@@ -110,6 +111,7 @@ metadata:
 spec:
   template:
     spec:
+      airGapped: true
 ---
 # MachineHealthCheck object with
 # - a selector that targets all the machines with label e2e.remediation.label=""
