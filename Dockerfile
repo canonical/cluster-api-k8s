@@ -29,9 +29,9 @@ FROM ${builder_image} as builder
 WORKDIR /workspace
 
 # Run this with docker build --build-arg goproxy=$(go env GOPROXY) to override the goproxy
-ARG goproxy=https://proxy.golang.org
+ARG goproxy=off
 # Run this with docker build --build-arg package=./controlplane/kubeadm or --build-arg package=./bootstrap/kubeadm
-ENV GOPROXY=direct
+ENV GOPROXY=$goproxy
 
 # Copy the Go Modules manifests
 COPY go.mod go.mod
