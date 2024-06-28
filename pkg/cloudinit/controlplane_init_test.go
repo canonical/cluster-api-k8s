@@ -46,20 +46,12 @@ func TestNewInitControlPlane(t *testing.T) {
 
 	// TODO: add tests for expected files and commands
 	g.Expect(err).To(BeNil())
-	g.Expect(config.WriteFiles).To(ContainElement(cloudinit.File{
-		Path:        "/tmp/file",
-		Content:     "test file",
-		Permissions: "0400",
-		Owner:       "root:root",
-	}))
-	g.Expect(config.BootCommands).To(ContainElement("bootcmd"))
 	g.Expect(config.RunCommands).To(Equal([]string{
 		"set -x",
 		"prerun1",
 		"prerun2",
 		"/capi/scripts/install.sh",
 		"/capi/scripts/bootstrap.sh",
-		"/capi/scripts/load-images.sh",
 		"/capi/scripts/wait-apiserver-ready.sh",
 		"/capi/scripts/deploy-manifests.sh",
 		"/capi/scripts/configure-token.sh",

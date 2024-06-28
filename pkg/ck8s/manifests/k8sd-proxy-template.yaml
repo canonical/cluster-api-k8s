@@ -31,8 +31,7 @@ spec:
         effect: NoSchedule
       containers:
       - name: k8sd-proxy
-        # TODO: change back to ghcr image once this is public
-        image: alpine/socat:1.8.0.0
+        image: ghcr.io/canonical/cluster-api-k8s/socat:1.8.0.0
         env:
         # TODO: Make this more robust by possibly finding/parsing the right IP.
         # This works as a start but might not be sufficient as the kubelet IP might not match microcluster IP.
