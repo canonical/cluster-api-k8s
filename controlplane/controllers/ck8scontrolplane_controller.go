@@ -299,7 +299,7 @@ func (r *CK8sControlPlaneReconciler) SetupWithManager(ctx context.Context, mgr c
 
 	if r.managementClusterUncached == nil {
 		r.managementClusterUncached = &ck8s.Management{
-			Client:          mgr.GetAPIReader(),
+			Client:          mgr.GetClient(),
 			K8sdDialTimeout: r.K8sdDialTimeout,
 		}
 	}
@@ -378,7 +378,8 @@ func (r *CK8sControlPlaneReconciler) updateStatus(ctx context.Context, kcp *cont
 		}
 	}
 
-	workloadCluster, err := r.managementCluster.GetWorkloadCluster(ctx, util.ObjectKey(cluster))
+	microclusterPort := kcp.Spec.CK8sConfigSpec.ControlPlaneConfig.GetMicroclusterPort()
+	workloadCluster, err := r.managementCluster.GetWorkloadCluster(ctx, util.ObjectKey(cluster), microclusterPort)
 	if err != nil {
 		return fmt.Errorf("failed to create remote cluster client: %w", err)
 	}
@@ -665,7 +666,8 @@ func (r *CK8sControlPlaneReconciler) reconcileControlPlaneConditions(ctx context
 		return nil
 	}
 
-	workloadCluster, err := r.managementCluster.GetWorkloadCluster(ctx, util.ObjectKey(controlPlane.Cluster))
+	microclusterPort := controlPlane.KCP.Spec.CK8sConfigSpec.ControlPlaneConfig.GetMicroclusterPort()
+	workloadCluster, err := r.managementCluster.GetWorkloadCluster(ctx, util.ObjectKey(controlPlane.Cluster), microclusterPort)
 	if err != nil {
 		return fmt.Errorf("cannot get remote client to workload cluster: %w", err)
 	}

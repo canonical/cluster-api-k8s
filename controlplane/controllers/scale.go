@@ -159,6 +159,18 @@ func (r *CK8sControlPlaneReconciler) scaleDownControlPlane(
 	}
 	**/
 
+	microclusterPort := controlPlane.KCP.Spec.CK8sConfigSpec.ControlPlaneConfig.GetMicroclusterPort()
+	clusterObjectKey := util.ObjectKey(cluster)
+	workloadCluster, err := r.managementCluster.GetWorkloadCluster(ctx, clusterObjectKey, microclusterPort)
+	if err != nil {
+		logger.Error(err, "failed to create client to workload cluster")
+		return ctrl.Result{}, errors.Wrapf(err, "failed to create client to workload cluster")
+	}
+
+	if err := workloadCluster.RemoveMachineFromCluster(ctx, machineToDelete); err != nil {
+		logger.Error(err, "failed to remove machine from microcluster")
+	}
+
 	logger = logger.WithValues("machine", machineToDelete)
 	if err := r.Client.Delete(ctx, machineToDelete); err != nil && !apierrors.IsNotFound(err) {
 		logger.Error(err, "Failed to delete control plane machine")

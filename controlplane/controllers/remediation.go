@@ -28,6 +28,7 @@ import (
 	kerrors "k8s.io/apimachinery/pkg/util/errors"
 	"k8s.io/klog/v2"
 	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
+	"sigs.k8s.io/cluster-api/util"
 	"sigs.k8s.io/cluster-api/util/annotations"
 	"sigs.k8s.io/cluster-api/util/collections"
 	"sigs.k8s.io/cluster-api/util/conditions"
@@ -234,6 +235,18 @@ func (r *CK8sControlPlaneReconciler) reconcileUnhealthyMachines(ctx context.Cont
 			}
 		}
 		**/
+	}
+
+	microclusterPort := controlPlane.KCP.Spec.CK8sConfigSpec.ControlPlaneConfig.GetMicroclusterPort()
+	clusterObjectKey := util.ObjectKey(controlPlane.Cluster)
+	workloadCluster, err := r.managementCluster.GetWorkloadCluster(ctx, clusterObjectKey, microclusterPort)
+	if err != nil {
+		log.Error(err, "failed to create client to workload cluster")
+		return ctrl.Result{}, errors.Wrapf(err, "failed to create client to workload cluster")
+	}
+
+	if err := workloadCluster.RemoveMachineFromCluster(ctx, machineToBeRemediated); err != nil {
+		log.Error(err, "failed to remove machine from microcluster")
 	}
 
 	// Delete the machine
