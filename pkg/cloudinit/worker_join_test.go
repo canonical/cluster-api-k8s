@@ -109,7 +109,7 @@ func TestNewJoinWorker(t *testing.T) {
 	g.Expect(config.WriteFiles).To(ConsistOf(expectedWriteFiles))
 }
 
-func TestNewJoinWorkerError(t *testing.T) {
+func TestNewJoinWorkerInvalidVersionError(t *testing.T) {
 	g := NewWithT(t)
 
 	_, err := cloudinit.NewJoinWorker(cloudinit.JoinWorkerInput{

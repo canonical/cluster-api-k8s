@@ -109,7 +109,7 @@ func TestNewJoinControlPlane(t *testing.T) {
 	g.Expect(config.WriteFiles).To(ConsistOf(expectedWriteFiles))
 }
 
-func TestNewJoinControlPlaneError(t *testing.T) {
+func TestNewJoinControlPlaneInvalidVersionError(t *testing.T) {
 	g := NewWithT(t)
 
 	_, err := cloudinit.NewJoinControlPlane(cloudinit.JoinControlPlaneInput{

@@ -134,7 +134,7 @@ func TestNewInitControlPlane(t *testing.T) {
 	g.Expect(config.WriteFiles).To(ConsistOf(expectedWriteFiles))
 }
 
-func TestNewInitControlPlaneError(t *testing.T) {
+func TestNewInitControlPlaneInvalidVersionError(t *testing.T) {
 	g := NewWithT(t)
 
 	_, err := cloudinit.NewInitControlPlane(cloudinit.InitControlPlaneInput{
