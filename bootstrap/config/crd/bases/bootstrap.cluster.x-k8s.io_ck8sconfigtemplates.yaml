@@ -162,6 +162,7 @@ spec:
                           type: object
                         type: array
                       initConfig:
+                        default: {}
                         description: CK8sInitConfig is configuration for the initializing
                           the cluster features.
                         properties:

@@ -57,6 +57,7 @@ type CK8sConfigSpec struct {
 
 	// CK8sInitConfig is configuration for the initializing the cluster features.
 	// +optional
+	// +kubebuilder:default={}
 	InitConfig CK8sInitConfiguration `json:"initConfig,omitempty"`
 }
 
