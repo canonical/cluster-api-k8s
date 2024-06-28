@@ -220,7 +220,7 @@ func (r *CK8sConfigReconciler) joinControlplane(ctx context.Context, scope *Scop
 	// injects into config.Version values from top level object
 	r.reconcileTopLevelObjectSettings(scope.Cluster, machine, scope.Config)
 
-	workloadCluster, err := r.managementCluster.GetWorkloadCluster(ctx, util.ObjectKey(scope.Cluster), scope.Config.Spec.ControlPlaneConfig.MicroclusterPort)
+	workloadCluster, err := r.managementCluster.GetWorkloadCluster(ctx, util.ObjectKey(scope.Cluster), scope.Config.Spec.ControlPlaneConfig.GetMicroclusterPort())
 	if err != nil {
 		return fmt.Errorf("failed to create remote cluster client: %w", err)
 	}
@@ -293,7 +293,7 @@ func (r *CK8sConfigReconciler) joinWorker(ctx context.Context, scope *Scope) err
 		return fmt.Errorf("auth token not yet generated")
 	}
 
-	workloadCluster, err := r.managementCluster.GetWorkloadCluster(ctx, util.ObjectKey(scope.Cluster), scope.Config.Spec.ControlPlaneConfig.MicroclusterPort)
+	workloadCluster, err := r.managementCluster.GetWorkloadCluster(ctx, util.ObjectKey(scope.Cluster), scope.Config.Spec.ControlPlaneConfig.GetMicroclusterPort())
 	if err != nil {
 		return fmt.Errorf("failed to create remote cluster client: %w", err)
 	}
@@ -463,12 +463,7 @@ func (r *CK8sConfigReconciler) handleClusterNotInitialized(ctx context.Context, 
 		return ctrl.Result{}, err
 	}
 
-	var microclusterPort int
-	microclusterPort = scope.Config.Spec.ControlPlaneConfig.MicroclusterPort
-	if microclusterPort == 0 {
-		microclusterPort = 2380
-	}
-
+	microclusterPort := scope.Config.Spec.ControlPlaneConfig.GetMicroclusterPort()
 	ds, err := ck8s.RenderK8sdProxyDaemonSetManifest(ck8s.K8sdProxyDaemonSetInput{K8sdPort: microclusterPort})
 	if err != nil {
 		return ctrl.Result{}, fmt.Errorf("failed to render k8sd-proxy daemonset: %w", err)

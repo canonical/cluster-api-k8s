@@ -237,7 +237,7 @@ func (r *CK8sControlPlaneReconciler) reconcileUnhealthyMachines(ctx context.Cont
 		**/
 	}
 
-	microclusterPort := controlPlane.KCP.Spec.CK8sConfigSpec.ControlPlaneConfig.MicroclusterPort
+	microclusterPort := controlPlane.KCP.Spec.CK8sConfigSpec.ControlPlaneConfig.GetMicroclusterPort()
 	clusterObjectKey := util.ObjectKey(controlPlane.Cluster)
 	workloadCluster, err := r.managementCluster.GetWorkloadCluster(ctx, clusterObjectKey, microclusterPort)
 	if err != nil {

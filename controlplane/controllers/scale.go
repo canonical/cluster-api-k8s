@@ -159,7 +159,7 @@ func (r *CK8sControlPlaneReconciler) scaleDownControlPlane(
 	}
 	**/
 
-	microclusterPort := controlPlane.KCP.Spec.CK8sConfigSpec.ControlPlaneConfig.MicroclusterPort
+	microclusterPort := controlPlane.KCP.Spec.CK8sConfigSpec.ControlPlaneConfig.GetMicroclusterPort()
 	clusterObjectKey := util.ObjectKey(cluster)
 	workloadCluster, err := r.managementCluster.GetWorkloadCluster(ctx, clusterObjectKey, microclusterPort)
 	if err != nil {

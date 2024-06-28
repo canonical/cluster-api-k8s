@@ -271,11 +271,6 @@ func (w *Workload) doK8sdRequest(ctx context.Context, method, endpoint string, r
 	}
 	defer res.Body.Close()
 
-	if response == nil {
-		// Nothing to decode
-		return nil
-	}
-
 	var responseBody wrappedResponse
 	if err := json.NewDecoder(res.Body).Decode(&responseBody); err != nil {
 		return fmt.Errorf("failed to parse HTTP response: %w", err)
@@ -285,6 +280,10 @@ func (w *Workload) doK8sdRequest(ctx context.Context, method, endpoint string, r
 	}
 	if responseBody.Error != "" {
 		return fmt.Errorf("k8sd request failed: %s", responseBody.Error)
+	}
+	if responseBody.Metadata == nil {
+		// Nothing to decode
+		return nil
 	}
 	if err := json.Unmarshal(responseBody.Metadata, response); err != nil {
 		return fmt.Errorf("failed to parse HTTP response: %w", err)

@@ -378,7 +378,7 @@ func (r *CK8sControlPlaneReconciler) updateStatus(ctx context.Context, kcp *cont
 		}
 	}
 
-	microclusterPort := kcp.Spec.CK8sConfigSpec.ControlPlaneConfig.MicroclusterPort
+	microclusterPort := kcp.Spec.CK8sConfigSpec.ControlPlaneConfig.GetMicroclusterPort()
 	workloadCluster, err := r.managementCluster.GetWorkloadCluster(ctx, util.ObjectKey(cluster), microclusterPort)
 	if err != nil {
 		return fmt.Errorf("failed to create remote cluster client: %w", err)
@@ -666,7 +666,7 @@ func (r *CK8sControlPlaneReconciler) reconcileControlPlaneConditions(ctx context
 		return nil
 	}
 
-	microclusterPort := controlPlane.KCP.Spec.CK8sConfigSpec.ControlPlaneConfig.MicroclusterPort
+	microclusterPort := controlPlane.KCP.Spec.CK8sConfigSpec.ControlPlaneConfig.GetMicroclusterPort()
 	workloadCluster, err := r.managementCluster.GetWorkloadCluster(ctx, util.ObjectKey(controlPlane.Cluster), microclusterPort)
 	if err != nil {
 		return fmt.Errorf("cannot get remote client to workload cluster: %w", err)

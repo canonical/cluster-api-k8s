@@ -83,8 +83,5 @@ func NewBaseCloudConfig(data BaseUserData) (CloudConfig, error) {
 }
 
 func makeMicroclusterAddress(address string, port int) string {
-	if port == 0 {
-		port = 2380
-	}
 	return net.JoinHostPort(address, strconv.Itoa(port))
 }
