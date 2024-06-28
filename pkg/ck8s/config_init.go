@@ -59,10 +59,11 @@ func GenerateInitControlPlaneConfig(cfg InitControlPlaneConfig) (apiv1.Bootstrap
 	// annotations
 	out.ClusterConfig.Annotations = cfg.ControlPlaneConfig.Annotations
 
-	out.ClusterConfig.DNS.Enabled = cfg.InitConfig.EnableDefaultDNS
-	out.ClusterConfig.Network.Enabled = cfg.InitConfig.EnableDefaultNetwork
-	out.ClusterConfig.MetricsServer.Enabled = cfg.InitConfig.EnableDefaultMetricsServer
-	out.ClusterConfig.LocalStorage.Enabled = cfg.InitConfig.EnableDefaultLocalStorage
+	// features
+	out.ClusterConfig.DNS.Enabled = cfg.InitConfig.GetEnableDefaultDNS()
+	out.ClusterConfig.LocalStorage.Enabled = cfg.InitConfig.GetEnableDefaultLocalStorage()
+	out.ClusterConfig.MetricsServer.Enabled = cfg.InitConfig.GetEnableDefaultMetricsServer()
+	out.ClusterConfig.Network.Enabled = cfg.InitConfig.GetEnableDefaultNetwork()
 
 	// networking
 	if cfg.ClusterNetwork != nil {

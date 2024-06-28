@@ -18,6 +18,7 @@ package v1beta2
 
 import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/utils/ptr"
 	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
 )
 
@@ -122,6 +123,42 @@ type CK8sInitConfiguration struct {
 	// +optional
 	// +kubebuilder:default=true
 	EnableDefaultNetwork *bool `json:"enableDefaultNetwork,omitempty"`
+}
+
+// GetEnableDefaultNetwork returns the EnableDefaultNetwork field.
+// If the field is not set, it returns true.
+func (c *CK8sInitConfiguration) GetEnableDefaultDNS() *bool {
+	if c.EnableDefaultDNS == nil {
+		return ptr.To(true)
+	}
+	return c.EnableDefaultDNS
+}
+
+// GetEnableDefaultLocalStorage returns the EnableDefaultLocalStorage field.
+// If the field is not set, it returns true.
+func (c *CK8sInitConfiguration) GetEnableDefaultLocalStorage() *bool {
+	if c.EnableDefaultLocalStorage == nil {
+		return ptr.To(true)
+	}
+	return c.EnableDefaultLocalStorage
+}
+
+// GetEnableDefaultMetricsServer returns the EnableDefaultMetricsServer field.
+// If the field is not set, it returns true.
+func (c *CK8sInitConfiguration) GetEnableDefaultMetricsServer() *bool {
+	if c.EnableDefaultMetricsServer == nil {
+		return ptr.To(true)
+	}
+	return c.EnableDefaultMetricsServer
+}
+
+// GetEnableDefaultNetwork returns the EnableDefaultNetwork field.
+// If the field is not set, it returns true.
+func (c *CK8sInitConfiguration) GetEnableDefaultNetwork() *bool {
+	if c.EnableDefaultNetwork == nil {
+		return ptr.To(true)
+	}
+	return c.EnableDefaultNetwork
 }
 
 // CK8sConfigStatus defines the observed state of CK8sConfig.
