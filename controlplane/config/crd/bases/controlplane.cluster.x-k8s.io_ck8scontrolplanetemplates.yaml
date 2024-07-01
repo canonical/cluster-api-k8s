@@ -225,12 +225,6 @@ spec:
                             description: CK8sControlPlaneConfig is configuration for
                               the control plane node.
                             properties:
-                              annotations:
-                                additionalProperties:
-                                  type: string
-                                description: Annotations is a map of annotations to
-                                  add to the control plane node.
-                                type: object
                               cloudProvider:
                                 description: CloudProvider is the cloud-provider configuration
                                   option to set.
@@ -330,6 +324,12 @@ spec:
                             description: CK8sInitConfig is configuration for the initializing
                               the cluster features.
                             properties:
+                              annotations:
+                                additionalProperties:
+                                  type: string
+                                description: Annotations is a map of annotations to
+                                  add to the control plane node.
+                                type: object
                               enableDefaultDNS:
                                 description: EnableDefaultDNS specifies whether to
                                   enable the default DNS configuration.

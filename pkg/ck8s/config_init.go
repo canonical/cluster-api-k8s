@@ -57,7 +57,7 @@ func GenerateInitControlPlaneConfig(cfg InitControlPlaneConfig) (apiv1.Bootstrap
 	}
 
 	// annotations
-	out.ClusterConfig.Annotations = cfg.ControlPlaneConfig.Annotations
+	out.ClusterConfig.Annotations = cfg.InitConfig.Annotations
 
 	// features
 	out.ClusterConfig.DNS.Enabled = ptr.To(cfg.InitConfig.GetEnableDefaultDNS())

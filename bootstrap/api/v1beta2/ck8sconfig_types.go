@@ -94,14 +94,14 @@ type CK8sControlPlaneConfig struct {
 	// ExtraKubeAPIServerArgs is extra arguments to add to kube-apiserver.
 	// +optional
 	ExtraKubeAPIServerArgs map[string]*string `json:"extraKubeAPIServerArgs,omitempty"`
-
-	// Annotations is a map of annotations to add to the control plane node.
-	// +optional
-	Annotations map[string]string `json:"annotations,omitempty"`
 }
 
 // CK8sInitConfiguration is configuration for the initializing the cluster features.
 type CK8sInitConfiguration struct {
+	// Annotations is a map of annotations to add to the control plane node.
+	// +optional
+	Annotations map[string]string `json:"annotations,omitempty"`
+
 	// EnableDefaultDNS specifies whether to enable the default DNS configuration.
 	// +optional
 	EnableDefaultDNS *bool `json:"enableDefaultDNS,omitempty"`
