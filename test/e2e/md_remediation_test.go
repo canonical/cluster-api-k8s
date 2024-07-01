@@ -26,10 +26,8 @@ import (
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
-
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/utils/pointer"
-
 	"sigs.k8s.io/cluster-api/test/framework"
 	"sigs.k8s.io/cluster-api/test/framework/clusterctl"
 	"sigs.k8s.io/cluster-api/util"
@@ -110,7 +108,8 @@ var _ = Describe("When testing MachineDeployment remediation", func() {
 			By("Waiting until nodes are ready")
 			workloadProxy := bootstrapClusterProxy.GetWorkloadCluster(ctx, namespace.Name, result.Cluster.Name)
 			workloadClient := workloadProxy.GetClient()
-			framework.WaitForNodesReady(ctx, framework.WaitForNodesReadyInput{
+
+			WaitForNodesReady(ctx, WaitForNodesReadyInput{
 				Lister:            workloadClient,
 				KubernetesVersion: e2eConfig.GetVariable(KubernetesVersion),
 				Count:             int(result.ExpectedTotalNodes()),

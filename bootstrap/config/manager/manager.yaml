@@ -27,6 +27,7 @@ spec:
         - /manager
         args:
         - --enable-leader-election
-        image: controller:latest
+        # TODO: how to only set this for the e2e tests
+        image: controller:dev
         name: manager
       terminationGracePeriodSeconds: 10

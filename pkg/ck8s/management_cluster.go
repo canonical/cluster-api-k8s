@@ -5,12 +5,13 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/canonical/cluster-api-k8s/pkg/token"
 	"k8s.io/client-go/kubernetes/scheme"
 	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
 	"sigs.k8s.io/cluster-api/controllers/remote"
 	"sigs.k8s.io/cluster-api/util/collections"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	"github.com/canonical/cluster-api-k8s/pkg/token"
 )
 
 // ManagementCluster defines all behaviors necessary for something to function as a management cluster.
