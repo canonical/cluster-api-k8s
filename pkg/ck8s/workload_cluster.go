@@ -43,8 +43,10 @@ type WorkloadCluster interface {
 	ClusterStatus(ctx context.Context) (ClusterStatus, error)
 	UpdateAgentConditions(ctx context.Context, controlPlane *ControlPlane)
 	UpdateEtcdConditions(ctx context.Context, controlPlane *ControlPlane)
-	NewControlPlaneJoinToken(ctx context.Context, authToken string, microclusterPort int, name string) (string, error)
-	NewWorkerJoinToken(ctx context.Context, authToken string, microclusterPort int, name string) (string, error)
+	NewControlPlaneJoinToken(ctx context.Context, name string) (string, error)
+	NewWorkerJoinToken(ctx context.Context) (string, error)
+
+	RemoveMachineFromCluster(ctx context.Context, machine *clusterv1.Machine) error
 
 	// NOTE(neoaggelos): See notes in (*CK8sControlPlaneReconciler).reconcileEtcdMembers
 	//
@@ -67,10 +69,11 @@ type WorkloadCluster interface {
 // Workload defines operations on workload clusters.
 type Workload struct {
 	WorkloadCluster
-
+	authToken           string
 	Client              ctrlclient.Client
 	ClientRestConfig    *rest.Config
 	K8sdClientGenerator *k8sdClientGenerator
+	microclusterPort    int
 
 	// NOTE(neoaggelos): CoreDNSMigrator and etcdClientGenerator are used by upstream to reach and manage the services in the workload cluster
 	// TODO(neoaggelos): Replace them with a k8sdProxyClientGenerator.
@@ -172,13 +175,24 @@ func getNodeInternalIP(node *corev1.Node) (string, error) {
 	return "", fmt.Errorf("unable to find internal IP for node %s", node.Name)
 }
 
-func (w *Workload) GetK8sdProxyForControlPlane(ctx context.Context) (*K8sdClient, error) {
+type k8sdProxyOptions struct {
+	// IgnoreNodes is a set of node names that should be ignored when selecting a control plane node to proxy to.
+	// This is useful when a control plane node is being removed and we want to avoid using it
+	IgnoreNodes map[string]struct{}
+}
+
+// GetK8sdProxyForControlPlane returns a k8sd proxy client for the control plane.
+func (w *Workload) GetK8sdProxyForControlPlane(ctx context.Context, options k8sdProxyOptions) (*K8sdClient, error) {
 	cplaneNodes, err := w.getControlPlaneNodes(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get control plane nodes: %w", err)
 	}
 
 	for _, node := range cplaneNodes.Items {
+		if _, ok := options.IgnoreNodes[node.Name]; ok {
+			continue
+		}
+
 		proxy, err := w.K8sdClientGenerator.forNode(ctx, &node)
 		if err != nil {
 			continue
@@ -192,58 +206,90 @@ func (w *Workload) GetK8sdProxyForControlPlane(ctx context.Context) (*K8sdClient
 
 // NewControlPlaneJoinToken creates a new join token for a control plane node.
 // NewControlPlaneJoinToken reaches out to the control-plane of the workload cluster via k8sd-proxy client.
-func (w *Workload) NewControlPlaneJoinToken(ctx context.Context, authToken string, microclusterPort int, name string) (string, error) {
-	return w.requestJoinToken(ctx, microclusterPort, authToken, name, false)
+func (w *Workload) NewControlPlaneJoinToken(ctx context.Context, name string) (string, error) {
+	return w.requestJoinToken(ctx, name, false)
 }
 
 // NewWorkerJoinToken creates a new join token for a worker node.
 // NewWorkerJoinToken reaches out to the control-plane of the workload cluster via k8sd-proxy client.
-func (w *Workload) NewWorkerJoinToken(ctx context.Context, authToken string, microclusterPort int, name string) (string, error) {
-	return w.requestJoinToken(ctx, microclusterPort, authToken, name, true)
+func (w *Workload) NewWorkerJoinToken(ctx context.Context) (string, error) {
+	// Accept any hostname by passing an empty string
+	// Some infrastructures will have machines where hostname and machine name do not match by design (e.g. AWS)
+	return w.requestJoinToken(ctx, "", true)
 }
 
 // requestJoinToken requests a join token from the existing control-plane nodes via the k8sd proxy.
-func (w *Workload) requestJoinToken(ctx context.Context, microclusterPort int, authToken string, name string, worker bool) (string, error) {
-	// FIXME: We need to check the default value for this port in one place, not in multiple places.
-	// See https://github.com/canonical/cluster-api-k8s/pull/8#discussion_r1645536362 for context.
-	if microclusterPort == 0 {
-		microclusterPort = 2380
-	}
-
-	k8sdProxy, err := w.GetK8sdProxyForControlPlane(ctx)
+func (w *Workload) requestJoinToken(ctx context.Context, name string, worker bool) (string, error) {
+	request := apiv1.GetJoinTokenRequest{Name: name, Worker: worker}
+	response := &apiv1.GetJoinTokenResponse{}
+	err := w.doK8sdRequest(ctx, http.MethodPost, "1.0/x/capi/generate-join-token", request, response, k8sdProxyOptions{})
 	if err != nil {
-		return "", fmt.Errorf("failed to create k8sd proxy: %w", err)
+		return "", fmt.Errorf("failed to get join token: %w", err)
 	}
+	return response.EncodedToken, nil
+}
+
+func (w *Workload) RemoveMachineFromCluster(ctx context.Context, machine *clusterv1.Machine) error {
+	request := &apiv1.RemoveNodeRequest{Name: machine.Name, Force: true}
+
+	// If we see that ignoring control-planes is causing issues, let's consider removing it.
+	// It *should* not be necessary as a machine should be able to remove itself from the cluster.
+	err := w.doK8sdRequest(ctx, http.MethodPost, "1.0/x/capi/remove-node", request, nil, k8sdProxyOptions{IgnoreNodes: map[string]struct{}{machine.Name: {}}})
+	if err != nil {
+		return fmt.Errorf("failed to remove %s from cluster: %w", machine.Name, err)
+	}
+	return nil
+}
+
+func (w *Workload) doK8sdRequest(ctx context.Context, method, endpoint string, request any, response any, k8sdProxyOptions k8sdProxyOptions) error {
 	type wrappedResponse struct {
-		Error    string                     `json:"error"`
-		Metadata apiv1.GetJoinTokenResponse `json:"metadata"`
+		Error    string          `json:"error"`
+		Metadata json.RawMessage `json:"metadata"`
 	}
 
-	requestBody, err := json.Marshal(apiv1.GetJoinTokenRequest{Name: name, Worker: worker})
+	k8sdProxy, err := w.GetK8sdProxyForControlPlane(ctx, k8sdProxyOptions)
 	if err != nil {
-		return "", fmt.Errorf("failed to prepare worker info request: %w", err)
+		return fmt.Errorf("failed to create k8sd proxy: %w", err)
 	}
 
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, fmt.Sprintf("https://%s:%v/1.0/x/capi/generate-join-token", k8sdProxy.NodeIP, microclusterPort), bytes.NewBuffer(requestBody))
+	url := fmt.Sprintf("https://%s:%v/%s", k8sdProxy.NodeIP, w.microclusterPort, endpoint)
+
+	requestBody, err := json.Marshal(request)
 	if err != nil {
-		return "", fmt.Errorf("failed to create request: %w", err)
+		return fmt.Errorf("failed to prepare worker info request: %w", err)
 	}
 
-	req.Header.Add("capi-auth-token", authToken)
+	req, err := http.NewRequestWithContext(ctx, method, url, bytes.NewBuffer(requestBody))
+	if err != nil {
+		return fmt.Errorf("failed to create request: %w", err)
+	}
+
+	req.Header.Add("capi-auth-token", w.authToken)
 	res, err := k8sdProxy.Client.Do(req)
 	if err != nil {
-		return "", fmt.Errorf("failed to reach k8sd through proxy client: %w", err)
+		return fmt.Errorf("failed to reach k8sd through proxy client: %w", err)
 	}
 	defer res.Body.Close()
 
-	var wrappedResp wrappedResponse
-	if err := json.NewDecoder(res.Body).Decode(&wrappedResp); err != nil {
-		return "", fmt.Errorf("failed to parse HTTP response: %w", err)
+	var responseBody wrappedResponse
+	if err := json.NewDecoder(res.Body).Decode(&responseBody); err != nil {
+		return fmt.Errorf("failed to parse HTTP response: %w", err)
 	}
-	if res.StatusCode != 200 {
-		return "", fmt.Errorf("request for join token request failed: %s", wrappedResp.Error)
+	if res.StatusCode != http.StatusOK {
+		return fmt.Errorf("HTTP request failed with status code: %d (%s)", res.StatusCode, responseBody.Error)
 	}
-	return wrappedResp.Metadata.EncodedToken, nil
+	if responseBody.Error != "" {
+		return fmt.Errorf("k8sd request failed: %s", responseBody.Error)
+	}
+	if responseBody.Metadata == nil {
+		// Nothing to decode
+		return nil
+	}
+	if err := json.Unmarshal(responseBody.Metadata, response); err != nil {
+		return fmt.Errorf("failed to parse HTTP response: %w", err)
+	}
+
+	return nil
 }
 
 // UpdateAgentConditions is responsible for updating machine conditions reflecting the status of all the control plane

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/canonical/cluster-api-k8s/pkg/token"
 	"k8s.io/client-go/kubernetes/scheme"
 	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
 	"sigs.k8s.io/cluster-api/controllers/remote"
@@ -17,14 +18,14 @@ type ManagementCluster interface {
 	client.Reader
 
 	GetMachinesForCluster(ctx context.Context, cluster client.ObjectKey, filters ...collections.Func) (collections.Machines, error)
-	GetWorkloadCluster(ctx context.Context, clusterKey client.ObjectKey) (*Workload, error)
+	GetWorkloadCluster(ctx context.Context, clusterKey client.ObjectKey, microclusterPort int) (*Workload, error)
 }
 
 // Management holds operations on the management cluster.
 type Management struct {
 	ManagementCluster
 
-	Client client.Reader
+	Client client.Client
 
 	K8sdDialTimeout time.Duration
 }
@@ -70,7 +71,7 @@ const (
 
 // GetWorkloadCluster builds a cluster object.
 // The cluster comes with an etcd client generator to connect to any etcd pod living on a managed machine.
-func (m *Management) GetWorkloadCluster(ctx context.Context, clusterKey client.ObjectKey) (*Workload, error) {
+func (m *Management) GetWorkloadCluster(ctx context.Context, clusterKey client.ObjectKey, microclusterPort int) (*Workload, error) {
 	restConfig, err := remote.RESTConfig(ctx, CK8sControlPlaneControllerName, m.Client, clusterKey)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get config: %w", err)
@@ -87,10 +88,21 @@ func (m *Management) GetWorkloadCluster(ctx context.Context, clusterKey client.O
 		return nil, &RemoteClusterConnectionError{Name: clusterKey.String(), Err: err}
 	}
 
+	authToken, err := token.Lookup(ctx, m.Client, clusterKey)
+	if err != nil {
+		return nil, fmt.Errorf("failed to lookup auth token: %w", err)
+	}
+
+	if authToken == nil {
+		return nil, fmt.Errorf("auth token not yet generated")
+	}
+
 	workload := &Workload{
+		authToken:           *authToken,
 		Client:              c,
 		ClientRestConfig:    restConfig,
 		K8sdClientGenerator: g,
+		microclusterPort:    microclusterPort,
 
 		/**
 		CoreDNSMigrator: &CoreDNSMigrator{},
@@ -155,3 +167,5 @@ func (m *Management) getEtcdCAKeyPair(ctx context.Context, clusterKey client.Obj
 	return crtData, keyData, nil
 }
 **/
+
+var _ ManagementCluster = &Management{}
