@@ -327,27 +327,22 @@ spec:
                               type: object
                             type: array
                           initConfig:
-                            default: {}
                             description: CK8sInitConfig is configuration for the initializing
                               the cluster features.
                             properties:
                               enableDefaultDNS:
-                                default: true
                                 description: EnableDefaultDNS specifies whether to
                                   enable the default DNS configuration.
                                 type: boolean
                               enableDefaultLocalStorage:
-                                default: true
                                 description: EnableDefaultLocalStorage specifies whether
                                   to enable the default local storage.
                                 type: boolean
                               enableDefaultMetricsServer:
-                                default: true
                                 description: EnableDefaultMetricsServer specifies
                                   whether to enable the default metrics server.
                                 type: boolean
                               enableDefaultNetwork:
-                                default: true
                                 description: EnableDefaultNetwork specifies whether
                                   to enable the default CNI.
                                 type: boolean

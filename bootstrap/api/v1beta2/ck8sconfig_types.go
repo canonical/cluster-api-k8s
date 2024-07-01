@@ -18,7 +18,6 @@ package v1beta2
 
 import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/utils/ptr"
 	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
 )
 
@@ -58,7 +57,6 @@ type CK8sConfigSpec struct {
 
 	// CK8sInitConfig is configuration for the initializing the cluster features.
 	// +optional
-	// +kubebuilder:default={}
 	InitConfig CK8sInitConfiguration `json:"initConfig,omitempty"`
 }
 
@@ -106,59 +104,55 @@ type CK8sControlPlaneConfig struct {
 type CK8sInitConfiguration struct {
 	// EnableDefaultDNS specifies whether to enable the default DNS configuration.
 	// +optional
-	// +kubebuilder:default=true
 	EnableDefaultDNS *bool `json:"enableDefaultDNS,omitempty"`
 
 	// EnableDefaultLocalStorage specifies whether to enable the default local storage.
 	// +optional
-	// +kubebuilder:default=true
 	EnableDefaultLocalStorage *bool `json:"enableDefaultLocalStorage,omitempty"`
 
 	// EnableDefaultMetricsServer specifies whether to enable the default metrics server.
 	// +optional
-	// +kubebuilder:default=true
 	EnableDefaultMetricsServer *bool `json:"enableDefaultMetricsServer,omitempty"`
 
 	// EnableDefaultNetwork specifies whether to enable the default CNI.
 	// +optional
-	// +kubebuilder:default=true
 	EnableDefaultNetwork *bool `json:"enableDefaultNetwork,omitempty"`
 }
 
 // GetEnableDefaultNetwork returns the EnableDefaultNetwork field.
 // If the field is not set, it returns true.
-func (c *CK8sInitConfiguration) GetEnableDefaultDNS() *bool {
+func (c *CK8sInitConfiguration) GetEnableDefaultDNS() bool {
 	if c.EnableDefaultDNS == nil {
-		return ptr.To(true)
+		return true
 	}
-	return c.EnableDefaultDNS
+	return *c.EnableDefaultDNS
 }
 
 // GetEnableDefaultLocalStorage returns the EnableDefaultLocalStorage field.
 // If the field is not set, it returns true.
-func (c *CK8sInitConfiguration) GetEnableDefaultLocalStorage() *bool {
+func (c *CK8sInitConfiguration) GetEnableDefaultLocalStorage() bool {
 	if c.EnableDefaultLocalStorage == nil {
-		return ptr.To(true)
+		return true
 	}
-	return c.EnableDefaultLocalStorage
+	return *c.EnableDefaultLocalStorage
 }
 
 // GetEnableDefaultMetricsServer returns the EnableDefaultMetricsServer field.
 // If the field is not set, it returns true.
-func (c *CK8sInitConfiguration) GetEnableDefaultMetricsServer() *bool {
+func (c *CK8sInitConfiguration) GetEnableDefaultMetricsServer() bool {
 	if c.EnableDefaultMetricsServer == nil {
-		return ptr.To(true)
+		return true
 	}
-	return c.EnableDefaultMetricsServer
+	return *c.EnableDefaultMetricsServer
 }
 
 // GetEnableDefaultNetwork returns the EnableDefaultNetwork field.
 // If the field is not set, it returns true.
-func (c *CK8sInitConfiguration) GetEnableDefaultNetwork() *bool {
+func (c *CK8sInitConfiguration) GetEnableDefaultNetwork() bool {
 	if c.EnableDefaultNetwork == nil {
-		return ptr.To(true)
+		return true
 	}
-	return c.EnableDefaultNetwork
+	return *c.EnableDefaultNetwork
 }
 
 // CK8sConfigStatus defines the observed state of CK8sConfig.
