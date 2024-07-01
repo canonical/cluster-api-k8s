@@ -12,17 +12,13 @@ jobs:
     runs-on: ubuntu-22.04
 
     steps:
-      - name: Harden Runner
-        uses: step-security/harden-runner@v2
-        with:
-          egress-policy: audit
       - name: Check out repo
         uses: actions/checkout@v4
       - name: Install requirements
         run: |
           sudo apt install make
           sudo snap install go --classic
-          sudo snap install docker
+          sudo docker network create kind --driver=bridge -o com.docker.network.bridge.enable_ip_masquerade=true
       - name: Build provider images
         run: sudo make docker-build-e2e
       - name: Build images
