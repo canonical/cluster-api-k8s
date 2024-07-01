@@ -9,6 +9,7 @@ type UserFacingClusterConfig struct {
 	Gateway       GatewayConfig       `json:"gateway,omitempty" yaml:"gateway,omitempty"`
 	MetricsServer MetricsServerConfig `json:"metrics-server,omitempty" yaml:"metrics-server,omitempty"`
 	CloudProvider *string             `json:"cloud-provider,omitempty" yaml:"cloud-provider,omitempty"`
+	Annotations   map[string]string   `json:"annotations,omitempty" yaml:"annotations,omitempty"`
 }
 
 type DNSConfig struct {

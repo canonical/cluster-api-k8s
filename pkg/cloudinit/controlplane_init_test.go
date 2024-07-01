@@ -52,6 +52,7 @@ func TestNewInitControlPlane(t *testing.T) {
 		"prerun2",
 		"/capi/scripts/install.sh",
 		"/capi/scripts/bootstrap.sh",
+		"/capi/scripts/load-images.sh",
 		"/capi/scripts/wait-apiserver-ready.sh",
 		"/capi/scripts/deploy-manifests.sh",
 		"/capi/scripts/configure-token.sh",
