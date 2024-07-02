@@ -30,13 +30,10 @@ jobs:
           go-version: "1.22"
 
       - name: go fmt
-        working-directory: src/k8s
         run: make go.fmt
 
       - name: go vet
-        working-directory: src/k8s
         run: make go.vet
 
       - name: go test
-        working-directory: src/k8s
         run: make test-unit
