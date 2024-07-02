@@ -60,10 +60,13 @@ type CK8sConfigSpec struct {
 	InitConfig CK8sInitConfiguration `json:"initConfig,omitempty"`
 }
 
-// TODO
-// Will need extend this func when implementing other database options.
+// IsEtcdManaged returns true if the control plane is using k8s-dqlite
 func (c *CK8sConfigSpec) IsEtcdManaged() bool {
-	return true
+	switch c.ControlPlaneConfig.DatastoreType {
+	case "", "k8s-dqlite":
+		return true
+	}
+	return false
 }
 
 // CK8sControlPlaneConfig is configuration for control plane nodes.
@@ -79,6 +82,14 @@ type CK8sControlPlaneConfig struct {
 	// NodeTaints is taints to add to the control plane kubelet nodes.
 	// +optional
 	NodeTaints []string `json:"nodeTaints,omitempty"`
+
+	// DatastoreType is the type of datastore to use for the control plane.
+	// +optional
+	DatastoreType string `json:"datastoreType,omitempty"`
+
+	// DatastoreServersSecretRef is a reference to a secret containing the datastore servers.
+	// +optional
+	DatastoreServersSecretRef SecretRef `json:"datastoreServersSecretRef,omitempty"`
 
 	// K8sDqlitePort is the port to use for k8s-dqlite. If unset, 2379 (etcd) will be used.
 	// +optional
@@ -279,6 +290,16 @@ type SecretFileSource struct {
 
 	// Key is the key in the secret's data map for this value.
 	Key string `json:"key"`
+}
+
+// SecretRef is a reference to a secret in the CK8sBootstrapConfig's namespace.
+type SecretRef struct {
+	// Name of the secret in the CK8sBootstrapConfig's namespace to use.
+	Name string `json:"name"`
+
+	// Key is the key in the secret's data map for this value.
+	// +optional
+	Key string `json:"key,omitempty"`
 }
 
 func init() {

@@ -17,6 +17,8 @@ type InitControlPlaneConfig struct {
 	ControlPlaneConfig    bootstrapv1.CK8sControlPlaneConfig
 	InitConfig            bootstrapv1.CK8sInitConfiguration
 	PopulatedCertificates secret.Certificates
+	DatastoreType         string
+	DatastoreServers      string
 
 	ClusterNetwork *clusterv1.ClusterNetwork
 }
@@ -41,6 +43,11 @@ func GenerateInitControlPlaneConfig(cfg InitControlPlaneConfig) (apiv1.Bootstrap
 		case secret.FrontProxyCA:
 			out.FrontProxyCACert = ptr.To(string(cert.KeyPair.Cert))
 			out.FrontProxyCAKey = ptr.To(string(cert.KeyPair.Key))
+		case secret.EtcdCA:
+			out.DatastoreCACert = ptr.To(string(cert.KeyPair.Cert))
+		case secret.APIServerEtcdClient:
+			out.DatastoreClientCert = ptr.To(string(cert.KeyPair.Cert))
+			out.DatastoreClientKey = ptr.To(string(cert.KeyPair.Key))
 		}
 	}
 	// ensure required certificates
@@ -54,6 +61,19 @@ func GenerateInitControlPlaneConfig(cfg InitControlPlaneConfig) (apiv1.Bootstrap
 	// cloud provider
 	if v := cfg.ControlPlaneConfig.CloudProvider; v != "" {
 		out.ClusterConfig.CloudProvider = ptr.To(v)
+	}
+
+	// Set default datastore type to k8s-dqlite
+	datastoreType := cfg.DatastoreType
+	if datastoreType == "" {
+		datastoreType = "k8s-dqlite"
+	}
+	out.DatastoreType = ptr.To(datastoreType)
+
+	if datastoreType != "k8s-dqlite" {
+		if v := cfg.DatastoreServers; v != "" {
+			out.DatastoreServers = strings.Split(v, ",")
+		}
 	}
 
 	// annotations
@@ -88,12 +108,13 @@ func GenerateInitControlPlaneConfig(cfg InitControlPlaneConfig) (apiv1.Bootstrap
 	// extra SANs
 	out.ExtraSANs = append(out.ExtraSANs, cfg.ControlPlaneEndpoint)
 
-	// TODO(neoaggelos): datastore configuration with external etcd (?)
-	k8sDqlitePort := cfg.ControlPlaneConfig.K8sDqlitePort
-	if k8sDqlitePort == 0 {
-		k8sDqlitePort = 2379
+	if datastoreType == "k8s-dqlite" {
+		k8sDqlitePort := cfg.ControlPlaneConfig.K8sDqlitePort
+		if k8sDqlitePort == 0 {
+			k8sDqlitePort = 2379
+		}
+		out.K8sDqlitePort = ptr.To(k8sDqlitePort)
 	}
-	out.K8sDqlitePort = ptr.To(k8sDqlitePort)
 
 	if v := cfg.ControlPlaneConfig.NodeTaints; len(v) > 0 {
 		out.ControlPlaneTaints = v

@@ -68,15 +68,17 @@ func NewCertificatesForInitialControlPlane(config *bootstrapv1.CK8sConfigSpec) C
 		},
 	}
 
-	// TODO(neoaggelos): handle the case of required certificates for external datastore here
-	// if config.IsEtcdEmbedded() {
-	// 	etcdCert := &Certificate{
-	// 		Purpose:  EtcdCA,
-	// 		CertFile: filepath.Join(certificatesDir, "etcd", "server-ca.crt"),
-	// 		KeyFile:  filepath.Join(certificatesDir, "etcd", "server-ca.key"),
-	// 	}
-	// 	certificates = append(certificates, etcdCert)
-	// }
+	if !config.IsEtcdManaged() {
+		etcdCA := &Certificate{
+			Purpose:  EtcdCA,
+			External: true,
+		}
+		etcdClient := &Certificate{
+			Purpose:  APIServerEtcdClient,
+			External: true,
+		}
+		certificates = append(certificates, etcdCA, etcdClient)
+	}
 
 	return certificates
 }
@@ -237,8 +239,8 @@ func (c *Certificate) AsSecret(clusterName client.ObjectKey, owner metav1.OwnerR
 }
 
 func (c *Certificate) Generate() error {
-	// Do not generate the APIServerEtcdClient key pair. It is user supplied
-	if c.Purpose == APIServerEtcdClient {
+	// Do not generate external certificates key pair. It is user supplied
+	if c.External {
 		return nil
 	}
 
