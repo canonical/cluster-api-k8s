@@ -239,7 +239,7 @@ generate-bootstrap-conversions: $(CONVERSION_GEN)
 
 .PHONY: docker-build-bootstrap
 docker-build-bootstrap-%:
-	DOCKER_BUILDKIT=1 docker build --build-arg builder_image=$(GO_CONTAINER_IMAGE) --build-arg goproxy=$(GOPROXY) --build-arg ARCH=$* --build-arg package=./bootstrap/main.go --build-arg ldflags="$(LDFLAGS)" . -t ${BOOTSTRAP_IMG}-$*:${BOOTSTRAP_IMG_TAG}
+	DOCKER_BUILDKIT=1 docker build --build-arg builder_image=$(GO_CONTAINER_IMAGE) --build-arg goproxy=$(GOPROXY) --build-arg ARCH=$* --build-arg package=./bootstrap/main.go --build-arg ldflags="$(LDFLAGS)" . -t ${BOOTSTRAP_IMG}:${BOOTSTRAP_IMG_TAG}-$*
 docker-build-bootstrap: manager-bootstrap docker-build-bootstrap-amd64 docker-build-bootstrap-arm64
 
 # Push the bootstrap multiarch image
@@ -323,7 +323,7 @@ generate-controlplane-conversions: $(CONVERSION_GEN)
 
 .PHONY: docker-build-controlplane
 docker-build-controlplane-%:
-	DOCKER_BUILDKIT=1 docker build --build-arg builder_image=$(GO_CONTAINER_IMAGE) --build-arg goproxy=$(GOPROXY) --build-arg ARCH=$* --build-arg package=./controlplane/main.go --build-arg ldflags="$(LDFLAGS)" . -t ${CONTROLPLANE_IMG}-$*:${CONTROLPLANE_IMG_TAG}
+	DOCKER_BUILDKIT=1 docker build --build-arg builder_image=$(GO_CONTAINER_IMAGE) --build-arg goproxy=$(GOPROXY) --build-arg ARCH=$* --build-arg package=./controlplane/main.go --build-arg ldflags="$(LDFLAGS)" . -t ${CONTROLPLANE_IMG}:${CONTROLPLANE_IMG_TAG}-$*
 docker-build-controlplane: manager-controlplane docker-build-controlplane-amd64 docker-build-controlplane-arm64
 
 # Push the controlplane multiarch image
