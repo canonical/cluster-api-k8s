@@ -243,7 +243,7 @@ docker-build-bootstrap-%:
 docker-build-bootstrap: manager-bootstrap docker-build-bootstrap-amd64 docker-build-bootstrap-arm64
 
 # Push the bootstrap multiarch image
-.PHONY: docker-push
+.PHONY: docker-push-bootstrap
 docker-push-bootstrap-%: docker-build-bootstrap-%
 	docker push ${BOOTSTRAP_IMG}-$*:$(BOOTSTRAP_IMG_TAG)
 docker-push-bootstrap: docker-push-bootstrap-amd64 docker-push-bootstrap-arm64
@@ -327,7 +327,7 @@ docker-build-controlplane-%:
 docker-build-controlplane: manager-controlplane docker-build-controlplane-amd64 docker-build-controlplane-arm64
 
 # Push the controlplane multiarch image
-.PHONY: docker-push
+.PHONY: docker-push-controlplane
 docker-push-controlplane-%: docker-build-controlplane-%
 	docker push ${CONTROLPLANE_IMG}-$*:$(CONTROLPLANE_IMG_TAG)
 docker-push-controlplane: docker-push-controlplane-amd64 docker-push-controlplane-arm64
