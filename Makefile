@@ -148,7 +148,8 @@ dev-controlplane:
 ##@ release:
 
 ## latest git tag for the commit, e.g., v0.3.10
-RELEASE_TAG ?= $(shell git describe --abbrev=0 --tags 2>/dev/null)
+## set to v0.0.0 if no tag is found
+RELEASE_TAG ?= $(shell git describe --abbrev=0 --tags 2>/dev/null || echo v0.0.0)
 ifneq (,$(findstring -,$(RELEASE_TAG)))
     PRE_RELEASE=true
 endif
@@ -238,7 +239,7 @@ generate-bootstrap-conversions: $(CONVERSION_GEN)
 
 # Build the docker image
 docker-build-bootstrap: manager-bootstrap ## Build bootstrap
-	DOCKER_BUILDKIT=1 docker build --build-arg builder_image=$(GO_CONTAINER_IMAGE) --build-arg goproxy=$(GOPROXY) --build-arg TARGETARCH=$(ARCH) --build-arg package=./bootstrap/main.go --build-arg ldflags="$(LDFLAGS)" . -t ${BOOTSTRAP_IMG}:${BOOTSTRAP_IMG_TAG}
+	DOCKER_BUILDKIT=1 docker build --build-arg builder_image=$(GO_CONTAINER_IMAGE) --build-arg goproxy=$(GOPROXY) --build-arg ARCH=$(ARCH) --build-arg package=./bootstrap/main.go --build-arg ldflags="$(LDFLAGS)" . -t ${BOOTSTRAP_IMG}:${BOOTSTRAP_IMG_TAG}
 
 # Push the docker image
 docker-push-bootstrap: ## Push bootstrap
@@ -310,7 +311,7 @@ generate-controlplane-conversions: $(CONVERSION_GEN)
 		--go-header-file=./hack/boilerplate.go.txt
 
 docker-build-controlplane: manager-controlplane ## Build control-plane
-	DOCKER_BUILDKIT=1 docker build --build-arg builder_image=$(GO_CONTAINER_IMAGE) --build-arg goproxy=$(GOPROXY) --build-arg TARGETARCH=$(ARCH) --build-arg package=./controlplane/main.go --build-arg ldflags="$(LDFLAGS)" . -t ${CONTROLPLANE_IMG}:$(CONTROLPLANE_IMG_TAG)
+	DOCKER_BUILDKIT=1 docker build --build-arg builder_image=$(GO_CONTAINER_IMAGE) --build-arg goproxy=$(GOPROXY) --build-arg ARCH=$(ARCH) --build-arg package=./controlplane/main.go --build-arg ldflags="$(LDFLAGS)" . -t ${CONTROLPLANE_IMG}:$(CONTROLPLANE_IMG_TAG)
 
 docker-push-controlplane: ## Push control-plane
 	docker push ${CONTROLPLANE_IMG}:$(CONTROLPLANE_IMG_TAG)
