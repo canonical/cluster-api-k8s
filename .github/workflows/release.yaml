@@ -44,10 +44,14 @@ jobs:
         run: make CONTROLPLANE_IMG_TAG=${{ env.VERSION }} docker-build-controlplane
 
       - name: Publish bootstrap provider image
-        run: make BOOTSTRAP_IMG_TAG=${{ env.VERSION }} docker-push-bootstrap
+        run: |
+          make BOOTSTRAP_IMG_TAG=${{ env.VERSION }} docker-push-bootstrap
+          make docker-manifest-bootstrap
 
       - name: Publish controlplane provider image
-        run: make CONTROLPLANE_IMG_TAG=${{ env.VERSION }} docker-push-controlplane
+        run: |
+          make CONTROLPLANE_IMG_TAG=${{ env.VERSION }} docker-push-controlplane
+          make docker-manifest-controlplane
 
       - name: Build manifests
         run: |
@@ -65,5 +69,5 @@ jobs:
             out/control-plane-components.yaml
             out/metadata.yaml
           generate_release_notes: true
-          draft: false
+          draft: ${{ contains(env.VERSION, 'rc') }}
           prerelease: ${{ contains(env.VERSION, 'rc') }}
