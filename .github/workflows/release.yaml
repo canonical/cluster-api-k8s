@@ -5,6 +5,7 @@ on:
     tags:
       - 'v[0-9]+.[0-9]+.[0-9]+'
       - 'v[0-9]+.[0-9]+.[0-9]+-rc[0-9]+'
+  pull_request:
 
 jobs:
   release:
@@ -22,7 +23,7 @@ jobs:
       - name: Retrieve build information
         id: build
         run: |
-          VERSION="${GITHUB_REF#refs/tags/}"
+          VERSION=v0.0.1-rcX #"${GITHUB_REF#refs/tags/}"
           echo "Releasing ${VERSION}"
           echo "VERSION=${VERSION}" >> $GITHUB_ENV
 
