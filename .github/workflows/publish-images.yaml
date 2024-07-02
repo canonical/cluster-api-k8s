@@ -15,7 +15,7 @@ jobs:
   test:
     permissions:
       contents: read  # for actions/checkout to fetch code
-    name: Unit Tests & Code Quality
+    name: Build and Publish Images
     runs-on: ubuntu-latest
 
     steps:
@@ -49,7 +49,7 @@ jobs:
         run: make CONTROLPLANE_IMAGE_TAG=${{ steps.determine.outputs.version }} docker-build-bootstrap
 
       - name: Publish bootstrap provider image
-        run: make BOOTSTRAP_IMAGE_TAG=${{ steps.determine.outputs.version }} docker-publish-bootstrap
+        run: make BOOTSTRAP_IMAGE_TAG=${{ steps.determine.outputs.version }} docker-push-bootstrap
 
       - name: Publish controlplane provider image
-        run: make CONTROLPLANE_IMAGE_TAG=${{ steps.determine.outputs.version }} docker-publish-controlplane
+        run: make CONTROLPLANE_IMAGE_TAG=${{ steps.determine.outputs.version }} docker-push-controlplane
