@@ -177,6 +177,14 @@ BOOTSTRAP_IMG ?= $(REGISTRY)/bootstrap-controller
 CONTROLPLANE_IMG_TAG ?= $(RELEASE_TAG)
 CONTROLPLANE_IMG ?= $(REGISTRY)/controlplane-controller
 
+go-vet:
+	go vet ./...
+
+go-fmt:
+	go fmt ./...
+
+test-unit: test-common test-bootstrap test-controlplane
+
 test-common:
 	go test $(shell pwd)/pkg/... -coverprofile cover.out
 

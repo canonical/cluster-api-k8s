@@ -257,6 +257,11 @@ func (in *CK8sControlPlaneConfig) DeepCopyInto(out *CK8sControlPlaneConfig) {
 		*out = make([]string, len(*in))
 		copy(*out, *in)
 	}
+	if in.MicroclusterPort != nil {
+		in, out := &in.MicroclusterPort, &out.MicroclusterPort
+		*out = new(int)
+		**out = **in
+	}
 	if in.ExtraKubeAPIServerArgs != nil {
 		in, out := &in.ExtraKubeAPIServerArgs, &out.ExtraKubeAPIServerArgs
 		*out = make(map[string]*string, len(*in))
