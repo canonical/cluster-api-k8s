@@ -56,7 +56,7 @@ jobs:
           sed -i "s,ghcr.io/canonical/cluster-api-k8s/controlplane-controller:latest,ghcr.io/canonical/cluster-api-k8s/controlplane-controller:${{ env.VERSION }}," out/control-plane-components.yaml
 
       - name: Create GitHub Release
-        uses: softprops/action-gh-release@v0.1.14
+        uses: softprops/action-gh-release@v2.0.6
         with:
           name: 'Release ${{ env.VERSION }}'
           tag_name: ${{ env.VERSION }}
