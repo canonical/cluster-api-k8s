@@ -245,15 +245,15 @@ docker-build-bootstrap: manager-bootstrap docker-build-bootstrap-amd64 docker-bu
 # Push the bootstrap multiarch image
 .PHONY: docker-push-bootstrap
 docker-push-bootstrap-%: docker-build-bootstrap-%
-	docker push ${BOOTSTRAP_IMG}-$*:$(BOOTSTRAP_IMG_TAG)
+	docker push ${BOOTSTRAP_IMG}:$(BOOTSTRAP_IMG_TAG)-$*
 docker-push-bootstrap: docker-push-bootstrap-amd64 docker-push-bootstrap-arm64
 
 .PHONY: docker-manifest-bootstrap
 docker-manifest-bootstrap: docker-push-bootstrap
 	docker manifest rm ${BOOTSTRAP_IMG}:$(BOOTSTRAP_IMG_TAG) || true
-	docker manifest create ${BOOTSTRAP_IMG}:$(BOOTSTRAP_IMG_TAG) --amend ${BOOTSTRAP_IMG}-amd64:$(BOOTSTRAP_IMG_TAG) --amend ${BOOTSTRAP_IMG}-arm64:$(BOOTSTRAP_IMG_TAG)
-	docker manifest annotate ${BOOTSTRAP_IMG}:$(BOOTSTRAP_IMG_TAG) ${BOOTSTRAP_IMG}-amd64:$(BOOTSTRAP_IMG_TAG) --arch=amd64
-	docker manifest annotate ${BOOTSTRAP_IMG}:$(BOOTSTRAP_IMG_TAG) ${BOOTSTRAP_IMG}-arm64:$(BOOTSTRAP_IMG_TAG) --arch=arm64
+	docker manifest create ${BOOTSTRAP_IMG}:$(BOOTSTRAP_IMG_TAG) --amend ${BOOTSTRAP_IMG}:$(BOOTSTRAP_IMG_TAG)-amd64 --amend ${BOOTSTRAP_IMG}:$(BOOTSTRAP_IMG_TAG)-arm64
+	docker manifest annotate ${BOOTSTRAP_IMG}:$(BOOTSTRAP_IMG_TAG) ${BOOTSTRAP_IMG}:$(BOOTSTRAP_IMG_TAG)-amd64 --arch=amd64
+	docker manifest annotate ${BOOTSTRAP_IMG}:$(BOOTSTRAP_IMG_TAG) ${BOOTSTRAP_IMG}:$(BOOTSTRAP_IMG_TAG)-arm64 --arch=arm64
 	docker manifest push ${BOOTSTRAP_IMG}:$(BOOTSTRAP_IMG_TAG)
 
 all-controlplane: manager-controlplane
@@ -329,15 +329,15 @@ docker-build-controlplane: manager-controlplane docker-build-controlplane-amd64 
 # Push the controlplane multiarch image
 .PHONY: docker-push-controlplane
 docker-push-controlplane-%: docker-build-controlplane-%
-	docker push ${CONTROLPLANE_IMG}-$*:$(CONTROLPLANE_IMG_TAG)
+	docker push ${CONTROLPLANE_IMG}:$(CONTROLPLANE_IMG_TAG)-$*
 docker-push-controlplane: docker-push-controlplane-amd64 docker-push-controlplane-arm64
 
 .PHONY: docker-manifest-controlplane
 docker-manifest-controlplane: docker-push-controlplane
 	docker manifest rm ${CONTROLPLANE_IMG}:$(CONTROLPLANE_IMG_TAG) || true
-	docker manifest create ${CONTROLPLANE_IMG}:$(CONTROLPLANE_IMG_TAG) --amend ${CONTROLPLANE_IMG}-amd64:$(CONTROLPLANE_IMG_TAG) --amend ${CONTROLPLANE_IMG}-arm64:$(CONTROLPLANE_IMG_TAG)
-	docker manifest annotate ${CONTROLPLANE_IMG}:$(CONTROLPLANE_IMG_TAG) ${CONTROLPLANE_IMG}-amd64:$(CONTROLPLANE_IMG_TAG) --arch=amd64
-	docker manifest annotate ${CONTROLPLANE_IMG}:$(CONTROLPLANE_IMG_TAG) ${CONTROLPLANE_IMG}-arm64:$(CONTROLPLANE_IMG_TAG) --arch=arm64
+	docker manifest create ${CONTROLPLANE_IMG}:$(CONTROLPLANE_IMG_TAG) --amend ${CONTROLPLANE_IMG}:$(CONTROLPLANE_IMG_TAG)-amd64 --amend ${CONTROLPLANE_IMG}:$(CONTROLPLANE_IMG_TAG)-arm64
+	docker manifest annotate ${CONTROLPLANE_IMG}:$(CONTROLPLANE_IMG_TAG) ${CONTROLPLANE_IMG}:$(CONTROLPLANE_IMG_TAG)-amd64 --arch=amd64
+	docker manifest annotate ${CONTROLPLANE_IMG}:$(CONTROLPLANE_IMG_TAG) ${CONTROLPLANE_IMG}:$(CONTROLPLANE_IMG_TAG)-arm64 --arch=arm64
 	docker manifest push ${CONTROLPLANE_IMG}:$(CONTROLPLANE_IMG_TAG)
 
 release: release-bootstrap release-controlplane
