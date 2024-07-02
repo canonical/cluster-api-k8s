@@ -35,5 +35,5 @@ jobs:
       - name: go vet
         run: make go-vet
 
-      - name: go test
+      - name: unit tests
         run: make test-unit
