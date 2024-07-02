@@ -33,10 +33,8 @@ jobs:
       - name: go vet
         run: make go-vet
 
-      - name: golangci-lint
-        uses: golangci/golangci-lint-action@v6
-        with:
-          version: v1.59
+      - name: go lint
+        run: make lint
 
       - name: unit tests
         run: make test-unit
