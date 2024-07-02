@@ -52,8 +52,8 @@ jobs:
       - name: Build manifests
         run: |
           make release
-          sed -i "s,ghcr.io/canonical/cluster-api-k8s/bootstrap-controller:latest,ghcr.io/canonical/cluster-api-k8s/bootstrap-controller:${{ env.VERSION//v }}," out/bootstrap-components.yaml
-          sed -i "s,ghcr.io/canonical/cluster-api-k8s/controlplane-controller:latest,ghcr.io/canonical/cluster-api-k8s/controlplane-controller:${{ env.VERSION//v }}," out/control-plane-components.yaml
+          sed -i "s,ghcr.io/canonical/cluster-api-k8s/bootstrap-controller:latest,ghcr.io/canonical/cluster-api-k8s/bootstrap-controller:${{ env.VERSION }}," out/bootstrap-components.yaml
+          sed -i "s,ghcr.io/canonical/cluster-api-k8s/controlplane-controller:latest,ghcr.io/canonical/cluster-api-k8s/controlplane-controller:${{ env.VERSION }}," out/control-plane-components.yaml
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v0.1.14
