@@ -43,13 +43,13 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Build bootstrap provider image
-        run: BOOTSTRAP_IMAGE_TAG=${{ steps.determine.outputs.version }} docker-build-bootstrap
+        run: make BOOTSTRAP_IMAGE_TAG=${{ steps.determine.outputs.version }} docker-build-bootstrap
 
       - name: Build controlplane provider image
-        run: CONTROLPLANE_IMAGE_TAG=${{ steps.determine.outputs.version }} docker-build-bootstrap
+        run: make CONTROLPLANE_IMAGE_TAG=${{ steps.determine.outputs.version }} docker-build-bootstrap
 
       - name: Publish bootstrap provider image
-        run: BOOTSTRAP_IMAGE_TAG=${{ steps.determine.outputs.version }} docker-publish-bootstrap
+        run: make BOOTSTRAP_IMAGE_TAG=${{ steps.determine.outputs.version }} docker-publish-bootstrap
 
       - name: Publish controlplane provider image
-        run: CONTROLPLANE_IMAGE_TAG=${{ steps.determine.outputs.version }} docker-publish-controlplane
+        run: make CONTROLPLANE_IMAGE_TAG=${{ steps.determine.outputs.version }} docker-publish-controlplane
