@@ -36,9 +36,7 @@ jobs:
 
       - name: Build bootstrap provider image
         run: |
-          make -qp |
-    awk -F':' '/^[a-zA-Z0-9][^$#\/\t=]*:([^=]|$)/ {split($1,A,/ /);for(i in A)print A[i]}' |
-    sort -u
+          make -qp | awk -F':' '/^[a-zA-Z0-9][^$#\/\t=]*:([^=]|$)/ {split($1,A,/ /);for(i in A)print A[i]}' | sort -u
           make BOOTSTRAP_IMG_TAG=${{ env.VERSION }} docker-build-bootstrap
 
       - name: Build controlplane provider image
