@@ -251,7 +251,7 @@ docker-push-bootstrap: docker-push-bootstrap-amd64 docker-push-bootstrap-arm64
 .PHONY: docker-manifest-bootstrap
 docker-manifest-bootstrap: docker-push-bootstrap
 	docker manifest rm ${BOOTSTRAP_IMG} || true
-	docker manifest create ${BOOTSTRAP_IMG} --amend ${BOOTSTRAP_IMG}-amd64 --amend ${BOOTSTRAP_IMG}-arm64
+	docker manifest create ${BOOTSTRAP_IMG}--amend ${BOOTSTRAP_IMG}-amd64 --amend ${BOOTSTRAP_IMG}-arm64
 	docker manifest annotate ${BOOTSTRAP_IMG} ${BOOTSTRAP_IMG}-amd64 --arch=amd64
 	docker manifest annotate ${BOOTSTRAP_IMG} ${BOOTSTRAP_IMG}-arm64 --arch=arm64
 	docker manifest push ${BOOTSTRAP_IMG}

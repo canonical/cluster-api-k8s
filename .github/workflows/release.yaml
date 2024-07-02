@@ -46,12 +46,12 @@ jobs:
       - name: Publish bootstrap provider image
         run: |
           make BOOTSTRAP_IMG_TAG=${{ env.VERSION }} docker-push-bootstrap
-          make docker-manifest-bootstrap
+          make BOOTSTRAP_IMG_TAG=${{ env.VERSION }} docker-manifest-bootstrap
 
       - name: Publish controlplane provider image
         run: |
           make CONTROLPLANE_IMG_TAG=${{ env.VERSION }} docker-push-controlplane
-          make docker-manifest-controlplane
+          make CONTROLPLANE_IMG_TAG=${{ env.VERSION }} docker-manifest-controlplane
 
       - name: Build manifests
         run: |
