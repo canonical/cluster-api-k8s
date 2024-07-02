@@ -183,6 +183,9 @@ go-vet:
 go-fmt:
 	go fmt ./...
 
+go-lint:
+	golangci-lint run
+
 test-unit: test-common test-bootstrap test-controlplane
 
 test-common:

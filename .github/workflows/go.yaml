@@ -11,8 +11,6 @@ permissions:
 
 jobs:
   test:
-    permissions:
-      contents: read  # for actions/checkout to fetch code
     name: Unit Tests & Code Quality
     runs-on: ubuntu-latest
 
@@ -34,6 +32,11 @@ jobs:
 
       - name: go vet
         run: make go-vet
+
+      - name: golangci-lint
+        uses: golangci/golangci-lint-action@v6
+        with:
+          version: v1.59
 
       - name: unit tests
         run: make test-unit
