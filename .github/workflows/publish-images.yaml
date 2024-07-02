@@ -31,7 +31,7 @@ jobs:
         run: |
           BRANCH=${BRANCH#refs/heads/}  # strip off refs/heads/ if it exists
           if [[ "${BRANCH}" == "main" ]]; then
-            echo "version=latest" >> "$GITHUB_OUTPUT"
+            echo "version=main" >> "$GITHUB_OUTPUT"
           elif [[ "${BRANCH}" =~ ^release-[0-9]+\.[0-9]+$ ]]; then
             echo "version=v${BRANCH#release-}" >> "$GITHUB_OUTPUT"
           else
@@ -51,10 +51,12 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build bootstrap provider image
-        run: make BOOTSTRAP_IMAGE_TAG=${{ steps.determine.outputs.version }} docker-build-bootstrap
+        run: |
+          echo ${{ steps.determine.outputs.version }}
+          make BOOTSTRAP_IMAGE_TAG=${{ steps.determine.outputs.version }} docker-build-bootstrap
 
       - name: Build controlplane provider image
-        run: make CONTROLPLANE_IMAGE_TAG=${{ steps.determine.outputs.version }} docker-build-bootstrap
+        run: make CONTROLPLANE_IMAGE_TAG=${{ steps.determine.outputs.version }} docker-build-controlplane
 
       - name: Publish bootstrap provider image
         run: make BOOTSTRAP_IMAGE_TAG=${{ steps.determine.outputs.version }} docker-push-bootstrap
