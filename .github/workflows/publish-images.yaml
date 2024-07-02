@@ -51,15 +51,13 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build bootstrap provider image
-        run: |
-          echo ${{ steps.determine.outputs.version }}
-          make BOOTSTRAP_IMAGE_TAG=${{ steps.determine.outputs.version }} docker-build-bootstrap
+        run: make BOOTSTRAP_IMG_TAG=${{ steps.determine.outputs.version }} docker-build-bootstrap
 
       - name: Build controlplane provider image
-        run: make CONTROLPLANE_IMAGE_TAG=${{ steps.determine.outputs.version }} docker-build-controlplane
+        run: make CONTROLPLANE_IMG_TAG=${{ steps.determine.outputs.version }} docker-build-controlplane
 
       - name: Publish bootstrap provider image
-        run: make BOOTSTRAP_IMAGE_TAG=${{ steps.determine.outputs.version }} docker-push-bootstrap
+        run: make BOOTSTRAP_IMG_TAG=${{ steps.determine.outputs.version }} docker-push-bootstrap
 
       - name: Publish controlplane provider image
-        run: make CONTROLPLANE_IMAGE_TAG=${{ steps.determine.outputs.version }} docker-push-controlplane
+        run: make CONTROLPLANE_IMG_TAG=${{ steps.determine.outputs.version }} docker-push-controlplane
