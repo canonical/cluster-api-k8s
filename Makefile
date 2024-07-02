@@ -237,13 +237,24 @@ generate-bootstrap-conversions: $(CONVERSION_GEN)
 		--output-base=./ \
 		--go-header-file=./hack/boilerplate.go.txt
 
-# Build the docker image
-docker-build-bootstrap: manager-bootstrap ## Build bootstrap
-	DOCKER_BUILDKIT=1 docker build --build-arg builder_image=$(GO_CONTAINER_IMAGE) --build-arg goproxy=$(GOPROXY) --build-arg ARCH=$(ARCH) --build-arg package=./bootstrap/main.go --build-arg ldflags="$(LDFLAGS)" . -t ${BOOTSTRAP_IMG}:${BOOTSTRAP_IMG_TAG}
+.PHONY: docker-build-bootstrap
+docker-build-bootstrap-%:
+	DOCKER_BUILDKIT=1 docker build --build-arg builder_image=$(GO_CONTAINER_IMAGE) --build-arg goproxy=$(GOPROXY) --build-arg ARCH=$* --build-arg package=./bootstrap/main.go --build-arg ldflags="$(LDFLAGS)" . -t ${BOOTSTRAP_IMG}-$*:${BOOTSTRAP_IMG_TAG}
+docker-build-bootstrap: manager-bootstrap docker-build-bootstrap-amd64 docker-build-bootstrap-arm64
 
-# Push the docker image
-docker-push-bootstrap: ## Push bootstrap
-	docker push ${BOOTSTRAP_IMG}:${BOOTSTRAP_IMG_TAG}
+# Push the bootstrap multiarch image
+.PHONY: docker-push
+docker-push-bootstrap-%: docker-build-bootstrap-%
+	docker push ${BOOTSTRAP_IMG}-$*:$(BOOTSTRAP_IMG_TAG)
+docker-push-bootstrap: docker-push-bootstrap-amd64 docker-push-bootstrap-arm64
+
+.PHONY: docker-manifest-bootstrap
+docker-manifest-bootstrap: docker-push-bootstrap
+	docker manifest rm ${BOOTSTRAP_IMG} || true
+	docker manifest create ${BOOTSTRAP_IMG} --amend ${BOOTSTRAP_IMG}-amd64 --amend ${BOOTSTRAP_IMG}-arm64
+	docker manifest annotate ${BOOTSTRAP_IMG} ${BOOTSTRAP_IMG}-amd64 --arch=amd64
+	docker manifest annotate ${BOOTSTRAP_IMG} ${BOOTSTRAP_IMG}-arm64 --arch=arm64
+	docker manifest push ${BOOTSTRAP_IMG}
 
 all-controlplane: manager-controlplane
 
@@ -310,11 +321,24 @@ generate-controlplane-conversions: $(CONVERSION_GEN)
 		--output-base=./ \
 		--go-header-file=./hack/boilerplate.go.txt
 
-docker-build-controlplane: manager-controlplane ## Build control-plane
-	DOCKER_BUILDKIT=1 docker build --build-arg builder_image=$(GO_CONTAINER_IMAGE) --build-arg goproxy=$(GOPROXY) --build-arg ARCH=$(ARCH) --build-arg package=./controlplane/main.go --build-arg ldflags="$(LDFLAGS)" . -t ${CONTROLPLANE_IMG}:$(CONTROLPLANE_IMG_TAG)
+.PHONY: docker-build-controlplane
+docker-build-controlplane-%:
+	DOCKER_BUILDKIT=1 docker build --build-arg builder_image=$(GO_CONTAINER_IMAGE) --build-arg goproxy=$(GOPROXY) --build-arg ARCH=$* --build-arg package=./controlplane/main.go --build-arg ldflags="$(LDFLAGS)" . -t ${CONTROLPLANE_IMG}-$*:${CONTROLPLANE_IMG_TAG}
+docker-build-controlplane: manager-controlplane docker-build-controlplane-amd64 docker-build-controlplane-arm64
 
-docker-push-controlplane: ## Push control-plane
-	docker push ${CONTROLPLANE_IMG}:$(CONTROLPLANE_IMG_TAG)
+# Push the controlplane multiarch image
+.PHONY: docker-push
+docker-push-controlplane-%: docker-build-controlplane-%
+	docker push ${CONTROLPLANE_IMG}-$*:$(CONTROLPLANE_IMG_TAG)
+docker-push-controlplane: docker-push-controlplane-amd64 docker-push-controlplane-arm64
+
+.PHONY: docker-manifest-controlplane
+docker-manifest-controlplane: docker-push-controlplane
+	docker manifest rm ${CONTROLPLANE_IMG} || true
+	docker manifest create ${CONTROLPLANE_IMG} --amend ${CONTROLPLANE_IMG}-amd64 --amend ${CONTROLPLANE_IMG}-arm64
+	docker manifest annotate ${CONTROLPLANE_IMG} ${CONTROLPLANE_IMG}-amd64 --arch=amd64
+	docker manifest annotate ${CONTROLPLANE_IMG} ${CONTROLPLANE_IMG}-arm64 --arch=arm64
+	docker manifest push ${CONTROLPLANE_IMG}
 
 release: release-bootstrap release-controlplane
 	cp metadata.yaml $(RELEASE_DIR)/metadata.yaml

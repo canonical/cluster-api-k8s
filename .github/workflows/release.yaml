@@ -1,0 +1,64 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v[0-9]+.[0-9]+.[0-9]+'
+      - 'v[0-9]+.[0-9]+.[0-9]+-rc[0-9]+'
+
+jobs:
+  release:
+    permissions:
+      contents: read  # for actions/checkout to fetch code
+      packages: write # for publishing docker images
+    name: Release
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@v2
+        with:
+          egress-policy: audit
+      - name: Retrieve build information
+        id: build
+        run: |
+          VERSION="${GITHUB_REF#refs/tags/}"
+          echo "Releasing ${VERSION}"
+          echo "VERSION=${VERSION}" >> $GITHUB_ENV
+
+      - name: Log in to the Container registry
+        uses: docker/login-action@v3.2.0
+        with:
+          registry: https://ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build bootstrap provider image
+        run: make BOOTSTRAP_IMG_TAG=${{ env.VERSION }} docker-build-bootstrap
+
+      - name: Build controlplane provider image
+        run: make CONTROLPLANE_IMG_TAG=${{ env.VERSION }} docker-build-controlplane
+
+      - name: Publish bootstrap provider image
+        run: make BOOTSTRAP_IMG_TAG=${{ env.VERSION }} docker-push-bootstrap
+
+      - name: Publish controlplane provider image
+        run: make CONTROLPLANE_IMG_TAG=${{ env.VERSION }} docker-push-controlplane
+
+      - name: Build manifests
+        run: |
+          make release
+          sed -i "s,ghcr.io/canonical/cluster-api-k8s/bootstrap-controller:latest,ghcr.io/canonical/cluster-api-k8s/bootstrap-controller:${VERSION//v}," out/bootstrap-components.yaml
+          sed -i "s,ghcr.io/canonical/cluster-api-k8s/controlplane-controller:latest,ghcr.io/canonical/cluster-api-k8s/controlplane-controller:${VERSION//v}," out/control-plane-components.yaml
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v0.1.14
+        with:
+          name: 'Release ${{ env.VERSION }}'
+          files: |
+            out/bootstrap-components.yaml
+            out/control-plane-components.yaml
+            out/metadata.yaml
+          generate_release_notes: true
+          draft: false
+          prerelease: ${{ contains(env.VERSION, 'rc') }}
