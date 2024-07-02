@@ -4,7 +4,6 @@ import (
 	"context"
 	"time"
 
-	"github.com/canonical/cluster-api-k8s/pkg/ck8s"
 	"github.com/go-logr/logr"
 	"github.com/pkg/errors"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -15,6 +14,8 @@ import (
 	"sigs.k8s.io/cluster-api/util/patch"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	"github.com/canonical/cluster-api-k8s/pkg/ck8s"
 )
 
 // CK8sControlPlaneReconciler reconciles a CK8sControlPlane object.

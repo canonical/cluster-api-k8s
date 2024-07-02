@@ -8,12 +8,13 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/canonical/cluster-api-k8s/pkg/proxy"
 	"github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
+
+	"github.com/canonical/cluster-api-k8s/pkg/proxy"
 )
 
 type K8sdClient struct {
@@ -38,15 +39,6 @@ func NewK8sdClientGenerator(restConfig *rest.Config, proxyClientTimeout time.Dur
 		clientset:          clientset,
 		proxyClientTimeout: proxyClientTimeout,
 	}, nil
-}
-
-func (g *k8sdClientGenerator) forNodeName(ctx context.Context, nodeName string) (*K8sdClient, error) {
-	node, err := g.clientset.CoreV1().Nodes().Get(ctx, nodeName, metav1.GetOptions{})
-	if err != nil {
-		return nil, errors.Wrap(err, "unable to get node in target cluster")
-	}
-
-	return g.forNode(ctx, node)
 }
 
 func (g *k8sdClientGenerator) forNode(ctx context.Context, node *corev1.Node) (*K8sdClient, error) {
@@ -121,7 +113,7 @@ func (g *k8sdClientGenerator) NewHTTPClient(ctx context.Context, podName string)
 			ExpectContinueTimeout: http.DefaultTransport.(*http.Transport).ExpectContinueTimeout,
 			// TODO: Workaround for now, address later on
 			// get the certificate fingerprint from the matching node through a resource in the cluster (TBD), and validate it in the TLSClientConfig
-			TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+			TLSClientConfig: &tls.Config{InsecureSkipVerify: true}, // #nosec G402
 		},
 		Timeout: g.proxyClientTimeout,
 	}, nil
