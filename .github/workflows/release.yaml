@@ -10,7 +10,7 @@ on:
 jobs:
   release:
     permissions:
-      contents: read  # for actions/checkout to fetch code
+      contents: write  # for release
       packages: write # for publishing docker images
     name: Release
     runs-on: ubuntu-latest
@@ -59,6 +59,7 @@ jobs:
         uses: softprops/action-gh-release@v0.1.14
         with:
           name: 'Release ${{ env.VERSION }}'
+          tag_name: ${{ env.VERSION }}
           files: |
             out/bootstrap-components.yaml
             out/control-plane-components.yaml
