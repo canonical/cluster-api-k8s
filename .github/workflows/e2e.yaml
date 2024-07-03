@@ -32,7 +32,7 @@ jobs:
         run: sudo docker builder prune -f
       - name: Save provider image
         run: |
-          sudo docker save -o provider-images.tar $(sudo docker images -q)
+          sudo docker save -o provider-images.tar ghcr.io/canonical/cluster-api-k8s/controlplane-controller:dev ghcr.io/canonical/cluster-api-k8s/bootstrap-controller:dev
           sudo chmod 775 provider-images.tar
       - name: Save k8s-snap image
         run: |
