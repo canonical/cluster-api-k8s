@@ -80,11 +80,15 @@ jobs:
         run: |
           ls
           df -h
-          rm -rf provider-images.tar k8s-snap-image.tar
-          df -h
       - name: Load provider image
-        run: sudo docker load -i provider-images.tar
+        run: |
+          sudo docker load -i provider-images.tar
+          sudo rm -rf provider-images.tar
+          df -h
       - name: Load k8s-snap image
-        run: sudo docker load -i k8s-snap-image.tar
+        run: |
+          sudo docker load -i k8s-snap-image.tar
+          sudo rm -rf k8s-snap-image.tar
+          df -h
       - name: Run e2e tests
         run: sudo make test-e2e
