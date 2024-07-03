@@ -37,8 +37,9 @@ jobs:
       - name: Save k8s-snap image
         run: |
           sudo docker save -o k8s-snap-image.tar k8s-snap:dev
+          ls -la
       - name: Upload artifacts
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: e2e-images
           path: |
@@ -59,7 +60,7 @@ jobs:
           sudo snap install go --classic
           sudo docker network create kind --driver=bridge -o com.docker.network.bridge.enable_ip_masquerade=true
       - name: Download artifacts
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: e2e-images
           path: .
