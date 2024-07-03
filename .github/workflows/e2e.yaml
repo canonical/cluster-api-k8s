@@ -30,29 +30,6 @@ jobs:
       - name: Cleanup space
         # Github runners are tight on space and will fail if we don't clean up before.
         run: sudo docker builder prune -f
-      - name: Save provider image
-        run: |
-          sudo docker save -o provider-images.tar ghcr.io/canonical/cluster-api-k8s/controlplane-controller:dev ghcr.io/canonical/cluster-api-k8s/bootstrap-controller:dev
-          sudo chmod 775 provider-images.tar
-      - name: Save k8s-snap image
-        run: |
-          sudo docker save -o k8s-snap-image.tar k8s-snap:dev
-          sudo chmod 775 k8s-snap-image.tar
-          ls -la
-      - name: Upload artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: e2e-images
-          path: |
-            provider-images.tar
-            k8s-snap-image.tar
-
-  run-e2e-tests:
-    name: Run E2E Tests
-    runs-on: ubuntu-22.04
-    needs: build-e2e-images
-
-    steps:
       - name: Maximize build space
         uses: easimon/maximize-build-space@v10
         with:
@@ -63,33 +40,14 @@ jobs:
           remove-haskell: 'true'
           remove-codeql: 'true'
           remove-docker-images: 'true'
-      - name: Check out repo
-        uses: actions/checkout@v4
-      - name: Install requirements
+      - name: Create docker network
         run: |
-          sudo apt install make
-          sudo snap install go --classic
           sudo docker network create kind --driver=bridge -o com.docker.network.bridge.enable_ip_masquerade=true
           df -h
-      - name: Download artifacts
-        uses: actions/download-artifact@v4
-        with:
-          name: e2e-images
-          path: .
       - name: Space check
         run: |
           ls
           df -h
           pwd
-      - name: Load provider image
-        run: |
-          sudo docker load -i provider-images.tar
-          sudo rm -rf provider-images.tar
-          df -h
-      - name: Load k8s-snap image
-        run: |
-          sudo docker load -i k8s-snap-image.tar
-          sudo rm -rf k8s-snap-image.tar
-          df -h
       - name: Run e2e tests
         run: sudo make test-e2e
