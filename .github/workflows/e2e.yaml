@@ -9,8 +9,7 @@ permissions:
 jobs:
   build-e2e-images:
     name: Build E2E Images
-    runs-on: ubuntu-22.04
-
+    runs-on: [self-hosted, linux, x86]
     steps:
       - name: Check out repo
         uses: actions/checkout@v4
