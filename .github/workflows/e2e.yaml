@@ -49,5 +49,10 @@ jobs:
           ls
           df -h
           pwd
+      - name: Check out repo
+        uses: actions/checkout@v4
       - name: Run e2e tests
-        run: sudo make test-e2e
+        run: |
+          ls
+          pwd
+          sudo make test-e2e
