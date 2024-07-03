@@ -29,7 +29,12 @@ jobs:
           sudo docker build . -t k8s-snap:dev
       - name: Cleanup space
         # Github runners are tight on space and will fail if we don't clean up before.
-        run: sudo docker builder prune -f
+        run: |
+          sudo docker builder prune -f
+          sudo rm -rf /usr/share/dotnet
+          sudo rm -rf /opt/ghc
+          sudo rm -rf "/usr/local/share/boost"
+          sudo rm -rf "$AGENT_TOOLSDIRECTORY"
       - name: Maximize build space
         uses: easimon/maximize-build-space@v10
         with:
