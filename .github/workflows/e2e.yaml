@@ -32,18 +32,19 @@ jobs:
         run: sudo docker builder prune -f
       - name: Save provider image
         run: |
-          sudo docker image ls
-          sudo docker save -o provider-image.tar $(sudo docker images -q)
+          sudo docker save -o provider-images.tar $(sudo docker images -q)
+          sudo chmod 775 provider-images.tar
       - name: Save k8s-snap image
         run: |
           sudo docker save -o k8s-snap-image.tar k8s-snap:dev
+          sudo chmod 775 k8s-snap-image.tar
           ls -la
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
           name: e2e-images
           path: |
-            provider-image.tar
+            provider-images.tar
             k8s-snap-image.tar
 
   run-e2e-tests:
@@ -65,7 +66,7 @@ jobs:
           name: e2e-images
           path: .
       - name: Load provider image
-        run: sudo docker load -i provider-image.tar
+        run: sudo docker load -i provider-images.tar
       - name: Load k8s-snap image
         run: sudo docker load -i k8s-snap-image.tar
       - name: Run e2e tests
