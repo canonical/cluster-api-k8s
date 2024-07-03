@@ -76,14 +76,15 @@ jobs:
         with:
           name: e2e-images
           path: .
+      - name: Space check
+        run: |
+          ls
+          df -h
+          rm -rf provider-images.tar k8s-snap-image.tar
+          df -h
       - name: Load provider image
         run: sudo docker load -i provider-images.tar
       - name: Load k8s-snap image
         run: sudo docker load -i k8s-snap-image.tar
-      - name: Space check
-        run: |
-          df -h
-          rm -rf provider-images.tar k8s-snap-image.tar
-          df -h
       - name: Run e2e tests
         run: sudo make test-e2e
