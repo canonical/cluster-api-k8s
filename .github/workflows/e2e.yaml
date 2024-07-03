@@ -53,6 +53,16 @@ jobs:
     needs: build-e2e-images
 
     steps:
+      - name: Maximize build space
+        uses: easimon/maximize-build-space@v10
+        with:
+          root-reserve-mb: 512
+          swap-size-mb: 1024
+          remove-dotnet: 'true'
+          remove-android: 'true'
+          remove-haskell: 'true'
+          remove-codeql: 'true'
+          remove-docker-images: 'true'
       - name: Check out repo
         uses: actions/checkout@v4
       - name: Install requirements
@@ -60,6 +70,7 @@ jobs:
           sudo apt install make
           sudo snap install go --classic
           sudo docker network create kind --driver=bridge -o com.docker.network.bridge.enable_ip_masquerade=true
+          df -h
       - name: Download artifacts
         uses: actions/download-artifact@v4
         with:
@@ -69,5 +80,10 @@ jobs:
         run: sudo docker load -i provider-images.tar
       - name: Load k8s-snap image
         run: sudo docker load -i k8s-snap-image.tar
+      - name: Space check
+        run: |
+          df -h
+          rm -rf provider-images.tar k8s-snap-image.tar
+          df -h
       - name: Run e2e tests
         run: sudo make test-e2e
