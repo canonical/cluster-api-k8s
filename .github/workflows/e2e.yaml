@@ -7,8 +7,8 @@ permissions:
   contents: read
 
 jobs:
-  e2e-tests:
-    name: Run e2e tests
+  build-e2e-images:
+    name: Build E2E Images
     runs-on: ubuntu-22.04
 
     steps:
@@ -18,18 +18,47 @@ jobs:
         run: |
           sudo apt install make
           sudo snap install go --classic
-          sudo docker network create kind --driver=bridge -o com.docker.network.bridge.enable_ip_masquerade=true
       - name: Build provider images
         run: sudo make docker-build-e2e
       - name: Build images
         run: |
           cd templates/docker
           sudo docker build . -t k8s-snap:dev
-      - name: Free disk space
+      - name: Save provider image
         run: |
-          sudo rm -rf /usr/share/dotnet
-          sudo rm -rf /opt/ghc
-          sudo rm -rf "/usr/local/share/boost"
-          sudo rm -rf "$AGENT_TOOLSDIRECTORY"
+          sudo docker save -o provider-image.tar $(sudo docker images -q)
+      - name: Save k8s-snap image
+        run: |
+          sudo docker save -o k8s-snap-image.tar k8s-snap:dev
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: e2e-images
+          path: |
+            provider-image.tar
+            k8s-snap-image.tar
+
+  run-e2e-tests:
+    name: Run E2E Tests
+    runs-on: ubuntu-22.04
+    needs: build-e2e-images
+
+    steps:
+      - name: Check out repo
+        uses: actions/checkout@v4
+      - name: Install requirements
+        run: |
+          sudo apt install make
+          sudo snap install go --classic
+          sudo docker network create kind --driver=bridge -o com.docker.network.bridge.enable_ip_masquerade=true
+      - name: Download artifacts
+        uses: actions/download-artifact@v3
+        with:
+          name: e2e-images
+          path: .
+      - name: Load provider image
+        run: sudo docker load -i provider-image.tar
+      - name: Load k8s-snap image
+        run: sudo docker load -i k8s-snap-image.tar
       - name: Run e2e tests
         run: sudo make test-e2e
