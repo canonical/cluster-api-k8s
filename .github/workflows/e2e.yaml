@@ -8,7 +8,7 @@ permissions:
 
 jobs:
   e2e-tests:
-    name: Build provider images
+    name: Run e2e tests
     runs-on: ubuntu-22.04
 
     steps:
