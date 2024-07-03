@@ -80,6 +80,7 @@ jobs:
         run: |
           ls
           df -h
+          pwd
       - name: Load provider image
         run: |
           sudo docker load -i provider-images.tar
