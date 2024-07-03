@@ -242,6 +242,9 @@ docker-build-bootstrap-%:
 	DOCKER_BUILDKIT=1 docker build --build-arg builder_image=$(GO_CONTAINER_IMAGE) --build-arg goproxy=$(GOPROXY) --build-arg ARCH=$* --build-arg package=./bootstrap/main.go --build-arg ldflags="$(LDFLAGS)" . -t ${BOOTSTRAP_IMG}:${BOOTSTRAP_IMG_TAG}-$*
 docker-build-bootstrap: manager-bootstrap docker-build-bootstrap-amd64 docker-build-bootstrap-arm64
 
+docker-build-bootstrap-no-arch: manager-bootstrap
+	DOCKER_BUILDKIT=1 docker build --build-arg builder_image=$(GO_CONTAINER_IMAGE) --build-arg goproxy=$(GOPROXY) --build-arg ARCH=$(ARCH) --build-arg package=./bootstrap/main.go --build-arg ldflags="$(LDFLAGS)" . -t ${BOOTSTRAP_IMG}:${BOOTSTRAP_IMG_TAG}
+
 # Push the bootstrap multiarch image
 .PHONY: docker-push-bootstrap
 docker-push-bootstrap-%: docker-build-bootstrap-%
@@ -266,8 +269,8 @@ test-controlplane: envtest generate-controlplane generate-controlplane-conversio
 docker-build-e2e: ## Run docker-build-* targets for all the images with settings to be used for the e2e tests
     # please ensure the generated image name matches image names used in the E2E_CONF_FILE
     # and it also match the image tags in bootstrap/config/default and controlplane/config/default
-	$(MAKE) BOOTSTRAP_IMG_TAG=dev docker-build-bootstrap
-	$(MAKE) CONTROLPLANE_IMG_TAG=dev docker-build-controlplane
+	$(MAKE) BOOTSTRAP_IMG_TAG=dev docker-build-bootstrap-no-arch
+	$(MAKE) CONTROLPLANE_IMG_TAG=dev docker-build-controlplane-no-arch
 
 .PHONY: test-e2e
 test-e2e: $(GINKGO) $(KUSTOMIZE) ## Run the end-to-end tests
@@ -325,6 +328,9 @@ generate-controlplane-conversions: $(CONVERSION_GEN)
 docker-build-controlplane-%:
 	DOCKER_BUILDKIT=1 docker build --build-arg builder_image=$(GO_CONTAINER_IMAGE) --build-arg goproxy=$(GOPROXY) --build-arg ARCH=$* --build-arg package=./controlplane/main.go --build-arg ldflags="$(LDFLAGS)" . -t ${CONTROLPLANE_IMG}:${CONTROLPLANE_IMG_TAG}-$*
 docker-build-controlplane: manager-controlplane docker-build-controlplane-amd64 docker-build-controlplane-arm64
+
+docker-build-controlplane-no-arch: manager-controlplane
+	DOCKER_BUILDKIT=1 docker build --build-arg builder_image=$(GO_CONTAINER_IMAGE) --build-arg goproxy=$(GOPROXY) --build-arg ARCH=${ARCH} --build-arg package=./controlplane/main.go --build-arg ldflags="$(LDFLAGS)" . -t ${CONTROLPLANE_IMG}:${CONTROLPLANE_IMG_TAG}
 
 # Push the controlplane multiarch image
 .PHONY: docker-push-controlplane
