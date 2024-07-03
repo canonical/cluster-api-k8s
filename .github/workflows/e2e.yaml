@@ -20,12 +20,19 @@ jobs:
           sudo snap install go --classic
       - name: Build provider images
         run: sudo make docker-build-e2e
+      - name: Cleanup space
+        # Github runners are tight on space and will fail if we don't clean up before.
+        run: sudo docker builder prune -f
       - name: Build images
         run: |
           cd templates/docker
           sudo docker build . -t k8s-snap:dev
+      - name: Cleanup space
+        # Github runners are tight on space and will fail if we don't clean up before.
+        run: sudo docker builder prune -f
       - name: Save provider image
         run: |
+          sudo docker image ls
           sudo docker save -o provider-image.tar $(sudo docker images -q)
       - name: Save k8s-snap image
         run: |
