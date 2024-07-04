@@ -52,4 +52,4 @@ jobs:
           sudo make test-e2
       - name: Setup tmate session
         if: ${{ failure() }}
-        uses: canonical/action-tmate@maine
+        uses: canonical/action-tmate@main
