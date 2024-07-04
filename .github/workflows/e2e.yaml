@@ -9,7 +9,7 @@ permissions:
 jobs:
   build-e2e-images:
     name: Build E2E Images
-    runs-on: [self-hosted, linux, X64, jammy, xlarge]
+    runs-on: [self-hosted, linux, X64, jammy, large]
     steps:
       - name: Check out repo
         uses: actions/checkout@v4
