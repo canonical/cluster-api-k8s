@@ -49,4 +49,7 @@ jobs:
         run: |
           ls
           pwd
-          sudo make test-e2e
+          sudo make test-e2
+      - name: Setup tmate session
+      if: ${{ failure() }}
+      uses: canonical/action-tmate@maine
