@@ -155,6 +155,33 @@ spec:
                           - path
                           type: object
                         type: array
+                      initConfig:
+                        description: CK8sInitConfig is configuration for the initializing
+                          the cluster features.
+                        properties:
+                          annotations:
+                            additionalProperties:
+                              type: string
+                            description: Annotations are used to configure the behaviour
+                              of the built-in features.
+                            type: object
+                          enableDefaultDNS:
+                            description: EnableDefaultDNS specifies whether to enable
+                              the default DNS configuration.
+                            type: boolean
+                          enableDefaultLocalStorage:
+                            description: EnableDefaultLocalStorage specifies whether
+                              to enable the default local storage.
+                            type: boolean
+                          enableDefaultMetricsServer:
+                            description: EnableDefaultMetricsServer specifies whether
+                              to enable the default metrics server.
+                            type: boolean
+                          enableDefaultNetwork:
+                            description: EnableDefaultNetwork specifies whether to
+                              enable the default CNI.
+                            type: boolean
+                        type: object
                       postRunCommands:
                         description: PostRunCommands specifies extra commands to run
                           in cloud-init after k8s-snap setup runs.
