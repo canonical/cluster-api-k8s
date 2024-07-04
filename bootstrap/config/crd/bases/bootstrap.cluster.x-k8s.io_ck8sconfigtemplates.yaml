@@ -162,8 +162,8 @@ spec:
                           annotations:
                             additionalProperties:
                               type: string
-                            description: Annotations is a map of annotations to add
-                              to the control plane node.
+                            description: Annotations are used to configure the behaviour
+                              of the built-in features.
                             type: object
                           enableDefaultDNS:
                             description: EnableDefaultDNS specifies whether to enable

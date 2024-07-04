@@ -107,7 +107,7 @@ func (c *CK8sControlPlaneConfig) GetMicroclusterPort() int {
 
 // CK8sInitConfiguration is configuration for the initializing the cluster features.
 type CK8sInitConfiguration struct {
-	// Annotations is a map of annotations to add to the control plane node.
+	// Annotations are used to configure the behaviour of the built-in features.
 	// +optional
 	Annotations map[string]string `json:"annotations,omitempty"`
 
