@@ -101,7 +101,6 @@ func (k DockerLogCollector) collectLogsFromNode(ctx context.Context, outputPath 
 	if err != nil {
 		return errors.Wrap(err, "Failed to collect logs from node")
 	}
-
 	execToPathFn := func(outputFileName, command string, args ...string) func() error {
 		return func() error {
 			f, err := fileOnHost(filepath.Join(outputPath, outputFileName))
@@ -147,7 +146,7 @@ func (k DockerLogCollector) collectLogsFromNode(ctx context.Context, outputPath 
 				return err
 			}
 
-			return osExec.Command("tar", "--extract", "--file", tempfileName, "--directory", outputDir).Run() //nolint:gosec // We don't care about command injection here.
+			return osExec.Command("tar", "--extract", "--file", tempfileName, "--directory", outputDir).Run()
 		}
 	}
 	return errors.AggregateConcurrent([]func() error{
@@ -190,5 +189,5 @@ func fileOnHost(path string) (*os.File, error) {
 	if err := os.MkdirAll(filepath.Dir(path), os.ModePerm); err != nil {
 		return nil, err
 	}
-	return os.Create(path) //nolint:gosec // No security issue: path is safe.
+	return os.Create(path)
 }
