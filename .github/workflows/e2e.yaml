@@ -8,7 +8,7 @@ permissions:
 
 jobs:
   build-e2e-images:
-    name: Build E2E Images
+    name: Build & Run E2E Images
     runs-on: [self-hosted, linux, X64, jammy, large]
     steps:
       - name: Check out repo
@@ -17,6 +17,7 @@ jobs:
         run: |
           sudo apt install make
           sudo snap install go --classic
+          sudo snap install docker
       - name: Build provider images
         run: sudo make docker-build-e2e
       - name: Cleanup space
