@@ -17,6 +17,7 @@ jobs:
         run: |
           sudo apt install make
           sudo snap install go --classic
+          sudo apt update
           sudo apt install docker-ce
       - name: Build provider images
         run: sudo make docker-build-e2e
