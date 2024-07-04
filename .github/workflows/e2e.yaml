@@ -51,5 +51,5 @@ jobs:
           pwd
           sudo make test-e2
       - name: Setup tmate session
-      if: ${{ failure() }}
-      uses: canonical/action-tmate@maine
+        if: ${{ failure() }}
+        uses: canonical/action-tmate@maine
