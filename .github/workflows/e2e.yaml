@@ -9,7 +9,7 @@ permissions:
 jobs:
   build-e2e-images:
     name: Build & Run E2E Images
-    runs-on: [self-hosted, linux, X64, jammy, large]
+    runs-on: [self-hosted, linux, X64, jammy, xlarge]
     steps:
       - name: Check out repo
         uses: actions/checkout@v4
@@ -45,9 +45,14 @@ jobs:
           ls
           df -h
           pwd
+      - name: Increase inotify watches
+        run: |
+          # Prevents https://cluster-api.sigs.k8s.io/user/troubleshooting#cluster-api-with-docker----too-many-open-files
+          sysctl fs.inotify.max_user_watches=1048576
+          sysctl fs.inotify.max_user_instances=8192
       - name: Run e2e tests
         run: |
-          sudo GINKGO_FOCUS="Workload cluster scaling" SKIP_RESOURCE_CLEANUP=true make test-e2e
+          sudo make test-e2e
       - name: Setup tmate session
         if: ${{ failure() }}
         uses: canonical/action-tmate@main
