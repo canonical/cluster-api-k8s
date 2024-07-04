@@ -17,8 +17,8 @@ jobs:
         run: |
           sudo apt install make
           sudo snap install go --classic
-          sudo apt update
-          sudo apt install docker-ce
+          curl -fsSL https://get.docker.com -o get-docker.sh
+          sudo sh get-docker.sh
       - name: Build provider images
         run: sudo make docker-build-e2e
       - name: Cleanup space
