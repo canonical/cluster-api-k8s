@@ -1,0 +1,104 @@
+apiVersion: cluster.x-k8s.io/v1beta1
+kind: Cluster
+metadata:
+  name: ${CLUSTER_NAME}
+spec:
+  clusterNetwork:
+    pods:
+      cidrBlocks:
+      - 10.1.0.0/16
+    services:
+      cidrBlocks:
+      - 10.152.0.0/16
+    serviceDomain: cluster.local
+  controlPlaneRef:
+    apiVersion: controlplane.cluster.x-k8s.io/v1beta2
+    kind: CK8sControlPlane
+    name: ${CLUSTER_NAME}-control-plane
+  infrastructureRef:
+    apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
+    kind: MaasCluster
+    name: ${CLUSTER_NAME}
+---
+apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
+kind: MaasCluster
+metadata:
+  name: ${CLUSTER_NAME}
+spec:
+  dnsDomain: ${MAAS_DNS_DOMAIN}
+---
+apiVersion: controlplane.cluster.x-k8s.io/v1beta2
+kind: CK8sControlPlane
+metadata:
+  name: ${CLUSTER_NAME}-control-plane
+  namespace: default
+spec:
+  machineTemplate:
+    infrastructureTemplate:
+      apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
+      kind: MaasMachineTemplate
+      name: ${CLUSTER_NAME}-control-plane
+  spec:
+    controlPlane:
+      extraKubeAPIServerArgs:
+        --anonymous-auth: "true"
+  replicas: ${CONTROL_PLANE_MACHINE_COUNT}
+  version: ${KUBERNETES_VERSION}
+---
+apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
+kind: MaasMachineTemplate
+metadata:
+  name: "${CLUSTER_NAME}-control-plane"
+spec:
+  template:
+    spec:
+      minCPU: ${CONTROL_PLANE_MACHINE_MINCPU}
+      minMemory: ${CONTROL_PLANE_MACHINE_MINMEMORY}
+      image: ${CONTROL_PLANE_MACHINE_IMAGE}
+      resourcePool: ${CONTROL_PLANE_MACHINE_RESOURCEPOOL:= }
+      tags: [ ${CONTROL_PLANE_MACHINE_TAGS:= } ]
+---
+apiVersion: cluster.x-k8s.io/v1beta1
+kind: MachineDeployment
+metadata:
+  name: ${CLUSTER_NAME}-worker-md-0
+spec:
+  clusterName: ${CLUSTER_NAME}
+  replicas: ${WORKER_MACHINE_COUNT}
+  selector:
+    matchLabels:
+      cluster.x-k8s.io/cluster-name: ${CLUSTER_NAME}
+  template:
+    spec:
+      version: ${KUBERNETES_VERSION}
+      clusterName: ${CLUSTER_NAME}
+      bootstrap:
+        configRef:
+          apiVersion: bootstrap.cluster.x-k8s.io/v1beta2
+          kind: CK8sConfigTemplate
+          name: ${CLUSTER_NAME}-md-0
+      infrastructureRef:
+        apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
+        kind: MaasMachineTemplate
+        name: ${CLUSTER_NAME}-md-0
+---
+apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
+kind: MaasMachineTemplate
+metadata:
+  name: "${CLUSTER_NAME}-md-0"
+spec:
+  template:
+    spec:
+      minCPU: ${WORKER_MACHINE_MINCPU}
+      minMemory: ${WORKER_MACHINE_MINMEMORY}
+      image: ${WORKER_MACHINE_IMAGE}
+      resourcePool: ${WORKER_MACHINE_RESOURCEPOOL:= }
+      tags: [ ${WORKER_MACHINE_TAGS:= } ]
+---
+apiVersion: bootstrap.cluster.x-k8s.io/v1beta2
+kind: CK8sConfigTemplate
+metadata:
+  name: ${CLUSTER_NAME}-md-0
+spec:
+  template:
+    spec: {}
