@@ -17,10 +17,7 @@ jobs:
         run: |
           sudo apt install make
           sudo snap install go --classic
-          mkdir -p $HOME/.docker/cli-plugins
-          curl -Lo $HOME/.docker/cli-plugins/docker-buildx https://github.com/docker/buildx/releases/download/v0.15.1/buildx-v0.15.1.linux-amd64
-          sudo chmod +x ~/.docker/cli-plugins/docker-buildx
-          sudo docker buildx install
+          sudo apt install docker-buildx
       - name: Build provider images
         run: sudo make docker-build-e2e
       - name: Cleanup space
