@@ -1,0 +1,40 @@
+name: Go
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: Unit Tests & Code Quality
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@v2
+        with:
+          egress-policy: audit
+      - name: Check out code
+        uses: actions/checkout@v4
+
+      - name: Install Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.22"
+
+      - name: go fmt
+        run: make go-fmt
+
+      - name: go vet
+        run: make go-vet
+
+      - name: go lint
+        run: make lint
+
+      - name: unit tests
+        run: make test-unit

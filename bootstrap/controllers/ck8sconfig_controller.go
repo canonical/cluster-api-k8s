@@ -220,7 +220,8 @@ func (r *CK8sConfigReconciler) joinControlplane(ctx context.Context, scope *Scop
 	// injects into config.Version values from top level object
 	r.reconcileTopLevelObjectSettings(scope.Cluster, machine, scope.Config)
 
-	workloadCluster, err := r.managementCluster.GetWorkloadCluster(ctx, util.ObjectKey(scope.Cluster), scope.Config.Spec.ControlPlaneConfig.GetMicroclusterPort())
+	microclusterPort := scope.Config.Spec.ControlPlaneConfig.GetMicroclusterPort()
+	workloadCluster, err := r.managementCluster.GetWorkloadCluster(ctx, util.ObjectKey(scope.Cluster), microclusterPort)
 	if err != nil {
 		return fmt.Errorf("failed to create remote cluster client: %w", err)
 	}
@@ -254,6 +255,7 @@ func (r *CK8sConfigReconciler) joinControlplane(ctx context.Context, scope *Scop
 			ExtraFiles:          cloudinit.FilesFromAPI(files),
 			ConfigFileContents:  string(joinConfig),
 			MicroclusterAddress: scope.Config.Spec.ControlPlaneConfig.MicroclusterAddress,
+			MicroclusterPort:    microclusterPort,
 			AirGapped:           scope.Config.Spec.AirGapped,
 		},
 		JoinToken: joinToken,
@@ -293,7 +295,8 @@ func (r *CK8sConfigReconciler) joinWorker(ctx context.Context, scope *Scope) err
 		return fmt.Errorf("auth token not yet generated")
 	}
 
-	workloadCluster, err := r.managementCluster.GetWorkloadCluster(ctx, util.ObjectKey(scope.Cluster), scope.Config.Spec.ControlPlaneConfig.GetMicroclusterPort())
+	microclusterPort := scope.Config.Spec.ControlPlaneConfig.GetMicroclusterPort()
+	workloadCluster, err := r.managementCluster.GetWorkloadCluster(ctx, util.ObjectKey(scope.Cluster), microclusterPort)
 	if err != nil {
 		return fmt.Errorf("failed to create remote cluster client: %w", err)
 	}
@@ -324,6 +327,7 @@ func (r *CK8sConfigReconciler) joinWorker(ctx context.Context, scope *Scope) err
 			ExtraFiles:          cloudinit.FilesFromAPI(files),
 			ConfigFileContents:  string(joinConfig),
 			MicroclusterAddress: scope.Config.Spec.ControlPlaneConfig.MicroclusterAddress,
+			MicroclusterPort:    microclusterPort,
 			AirGapped:           scope.Config.Spec.AirGapped,
 		},
 		JoinToken: joinToken,
@@ -479,6 +483,7 @@ func (r *CK8sConfigReconciler) handleClusterNotInitialized(ctx context.Context, 
 			ExtraFiles:          cloudinit.FilesFromAPI(files),
 			ConfigFileContents:  string(initConfig),
 			MicroclusterAddress: scope.Config.Spec.ControlPlaneConfig.MicroclusterAddress,
+			MicroclusterPort:    microclusterPort,
 			AirGapped:           scope.Config.Spec.AirGapped,
 		},
 		Token:              *token,
