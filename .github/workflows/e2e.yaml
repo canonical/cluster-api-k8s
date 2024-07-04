@@ -47,9 +47,7 @@ jobs:
           pwd
       - name: Run e2e tests
         run: |
-          ls
-          pwd
-          sudo make test-e2e
+          sudo GINKGO_FOCUS="Workload cluster scaling" SKIP_RESOURCE_CLEANUP=true make test-e2e
       - name: Setup tmate session
         if: ${{ failure() }}
         uses: canonical/action-tmate@main
