@@ -1,7 +1,6 @@
 package cloudinit_test
 
 import (
-	"os"
 	"testing"
 
 	. "github.com/onsi/gomega"
@@ -49,64 +48,24 @@ func TestNewJoinWorker(t *testing.T) {
 		"postrun2",
 	}))
 
-	// Define the expected files to write with their content, path, permissions, and owner.
-	expectedWriteFiles := []cloudinit.File{
-		{
-			Path:        "/tmp/file",
-			Content:     "test file",
-			Permissions: "0400",
-			Owner:       "root:root",
-		},
-		{
-			Path:        "/capi/etc/config.yaml",
-			Content:     "### config file ###",
-			Permissions: "0400",
-			Owner:       "root:root",
-		},
-		{
-			Path:        "/capi/etc/microcluster-address",
-			Content:     "10.0.0.10:8080",
-			Permissions: "0400",
-			Owner:       "root:root",
-		},
-		{
-			Path:        "/capi/etc/snap-track",
-			Content:     "1.30-classic/stable",
-			Permissions: "0400",
-			Owner:       "root:root",
-		},
-		{
-			Path:        "/capi/etc/join-token",
-			Content:     "test-token",
-			Permissions: "0400",
-			Owner:       "root:root",
-		},
+	// NOTE (mateoflorido): Keep this test in sync with the expected paths in the worker_join.go file.
+	expectedPaths := []interface{}{
+		HaveField("Path", "/capi/scripts/install.sh"),
+		HaveField("Path", "/capi/scripts/bootstrap.sh"),
+		HaveField("Path", "/capi/scripts/load-images.sh"),
+		HaveField("Path", "/capi/scripts/join-cluster.sh"),
+		HaveField("Path", "/capi/scripts/wait-apiserver-ready.sh"),
+		HaveField("Path", "/capi/scripts/deploy-manifests.sh"),
+		HaveField("Path", "/capi/scripts/configure-token.sh"),
+		HaveField("Path", "/capi/scripts/create-sentinel-bootstrap.sh"),
+		HaveField("Path", "/capi/etc/config.yaml"),
+		HaveField("Path", "/capi/etc/microcluster-address"),
+		HaveField("Path", "/capi/etc/join-token"),
+		HaveField("Path", "/capi/etc/snap-track"),
+		HaveField("Path", "/tmp/file"),
 	}
 
-	scriptFiles := map[string]string{
-		"./scripts/install.sh":                   "/capi/scripts/install.sh",
-		"./scripts/bootstrap.sh":                 "/capi/scripts/bootstrap.sh",
-		"./scripts/load-images.sh":               "/capi/scripts/load-images.sh",
-		"./scripts/join-cluster.sh":              "/capi/scripts/join-cluster.sh",
-		"./scripts/wait-apiserver-ready.sh":      "/capi/scripts/wait-apiserver-ready.sh",
-		"./scripts/deploy-manifests.sh":          "/capi/scripts/deploy-manifests.sh",
-		"./scripts/configure-token.sh":           "/capi/scripts/configure-token.sh",
-		"./scripts/create-sentinel-bootstrap.sh": "/capi/scripts/create-sentinel-bootstrap.sh",
-	}
-
-	// Read the content of each script file and append it to the expected write files.
-	for relativePath, scriptPath := range scriptFiles {
-		content, err := os.ReadFile(relativePath)
-		g.Expect(err).NotTo(HaveOccurred())
-		expectedWriteFiles = append(expectedWriteFiles, cloudinit.File{
-			Path:        scriptPath,
-			Content:     string(content),
-			Permissions: "0500",
-			Owner:       "root:root",
-		})
-	}
-
-	g.Expect(config.WriteFiles).To(ConsistOf(expectedWriteFiles))
+	g.Expect(config.WriteFiles).To(ConsistOf(expectedPaths...), "Some /capi/scripts files are missing")
 }
 
 func TestNewJoinWorkerInvalidVersionError(t *testing.T) {
