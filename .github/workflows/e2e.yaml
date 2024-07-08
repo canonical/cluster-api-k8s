@@ -21,30 +21,60 @@ jobs:
           sudo snap install kubectl --classic
       - name: Build provider images
         run: sudo make docker-build-e2e
-      - name: Cleanup space
-        # Github runners are tight on space and will fail if we don't clean up before.
-        run: sudo docker builder prune -f
-      - name: Build images
+      - name: Build k8s-snap image
         run: |
           cd templates/docker
           sudo docker build . -t k8s-snap:dev
-      - name: Cleanup space
-        # Github runners are tight on space and will fail if we don't clean up before.
+      - name: Save provider image
         run: |
-          sudo docker builder prune -f
-          sudo rm -rf /usr/share/dotnet
-          sudo rm -rf /opt/ghc
-          sudo rm -rf "/usr/local/share/boost"
-          sudo rm -rf "$AGENT_TOOLSDIRECTORY"
+          sudo docker save -o provider-images.tar ghcr.io/canonical/cluster-api-k8s/controlplane-controller:dev ghcr.io/canonical/cluster-api-k8s/bootstrap-controller:dev
+          sudo chmod 775 provider-images.tar
+      - name: Save k8s-snap image
+        run: |
+          sudo docker save -o k8s-snap-image.tar k8s-snap:dev
+          sudo chmod 775 k8s-snap-image.tar
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-images
+          path: |
+            provider-images.tar
+            k8s-snap-image.tar
+
+  run-e2e-tests:
+    name: Run E2E Tests
+    runs-on: [self-hosted, linux, X64, jammy, xlarge]
+    needs: build-e2e-images
+    strategy:
+      matrix:
+        ginkgo_focus: [
+          "KCP remediation",
+          "MachineDeployment remediation",
+          "Workload cluster creation",
+          "Workload cluster scaling",
+          "Workload cluster upgrade",
+          ]
+    steps:
+      - name: Check out repo
+        uses: actions/checkout@v4
+      - name: Install requirements
+        run: |
+          sudo apt install make
+          sudo snap install go --classic
+          sudo apt install docker-buildx
+          sudo snap install kubectl --classic
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: e2e-images
+          path: .
+      - name: Load provider image
+        run: sudo docker load -i provider-images.tar
+      - name: Load k8s-snap image
+        run: sudo docker load -i k8s-snap-image.tar
       - name: Create docker network
         run: |
           sudo docker network create kind --driver=bridge -o com.docker.network.bridge.enable_ip_masquerade=true
-          df -h
-      - name: Space check
-        run: |
-          ls
-          df -h
-          pwd
       - name: Increase inotify watches
         run: |
           # Prevents https://cluster-api.sigs.k8s.io/user/troubleshooting#cluster-api-with-docker----too-many-open-files
@@ -52,7 +82,7 @@ jobs:
           sudo sysctl fs.inotify.max_user_instances=8192
       - name: Run e2e tests
         run: |
-          sudo GINKGO_FOCUS="Workload cluster upgrade" SKIP_RESOURCE_CLEANUP=true make test-e2e
+          sudo GINKGO_FOCUS="${{ matrix.ginkgo_focus }}" SKIP_RESOURCE_CLEANUP=true make test-e2e
       - name: Setup tmate session
         if: ${{ failure() }}
         uses: canonical/action-tmate@main
