@@ -68,7 +68,7 @@ func TestNewInitControlPlane(t *testing.T) {
 	}))
 
 	// NOTE (mateoflorido): Keep this test in sync with the expected paths in the controlplane_init.go file.
-	expectedPaths := []interface{}{
+	g.Expect(config.WriteFiles).To(ConsistOf(
 		HaveField("Path", "/capi/scripts/install.sh"),
 		HaveField("Path", "/capi/scripts/bootstrap.sh"),
 		HaveField("Path", "/capi/scripts/load-images.sh"),
@@ -83,9 +83,7 @@ func TestNewInitControlPlane(t *testing.T) {
 		HaveField("Path", "/capi/etc/snap-track"),
 		HaveField("Path", "/capi/manifests/00-k8sd-proxy.yaml"),
 		HaveField("Path", "/tmp/file"),
-	}
-
-	g.Expect(config.WriteFiles).To(ConsistOf(expectedPaths...), "Some /capi/scripts files are missing")
+	), "Some /capi/scripts files are missing")
 }
 
 func TestNewInitControlPlaneInvalidVersionError(t *testing.T) {

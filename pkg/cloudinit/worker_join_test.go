@@ -49,7 +49,7 @@ func TestNewJoinWorker(t *testing.T) {
 	}))
 
 	// NOTE (mateoflorido): Keep this test in sync with the expected paths in the worker_join.go file.
-	expectedPaths := []interface{}{
+	g.Expect(config.WriteFiles).To(ConsistOf(
 		HaveField("Path", "/capi/scripts/install.sh"),
 		HaveField("Path", "/capi/scripts/bootstrap.sh"),
 		HaveField("Path", "/capi/scripts/load-images.sh"),
@@ -63,9 +63,7 @@ func TestNewJoinWorker(t *testing.T) {
 		HaveField("Path", "/capi/etc/join-token"),
 		HaveField("Path", "/capi/etc/snap-track"),
 		HaveField("Path", "/tmp/file"),
-	}
-
-	g.Expect(config.WriteFiles).To(ConsistOf(expectedPaths...), "Some /capi/scripts files are missing")
+	), "Some /capi/scripts files are missing")
 }
 
 func TestNewJoinWorkerInvalidVersionError(t *testing.T) {
