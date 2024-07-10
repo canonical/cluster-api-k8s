@@ -42,7 +42,6 @@ spec:
       kind: AWSMachineTemplate
       name: ${CLUSTER_NAME}-control-plane
   spec:
-    airGapped: true
     controlPlane:
       extraKubeAPIServerArgs:
         --anonymous-auth: "true"
@@ -104,4 +103,3 @@ metadata:
 spec:
   template:
     spec:
-      airGapped: true
