@@ -7,6 +7,7 @@ import (
 	"google.golang.org/protobuf/proto"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/utils/ptr"
 	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
 
 	bootstrapv1 "github.com/canonical/cluster-api-k8s/bootstrap/api/v1beta2"
@@ -281,5 +282,61 @@ func TestMatchesCK8sBootstrapConfig(t *testing.T) {
 			match := MatchesCK8sBootstrapConfig(machineConfigs, kcp)(m)
 			g.Expect(match).To(BeTrue())
 		})
+	})
+}
+func TestMatchesKubernetesVersion(t *testing.T) {
+	t.Run("returns true if machine's version matches", func(t *testing.T) {
+		g := NewWithT(t)
+		kubernetesVersion := "v1.30.0"
+		machine := &clusterv1.Machine{
+			Spec: clusterv1.MachineSpec{
+				Version: ptr.To("v1.30.0"),
+			},
+		}
+		match := MatchesKubernetesVersion(kubernetesVersion)(machine)
+		g.Expect(match).To(BeTrue())
+	})
+
+	t.Run("ignores 'v' prefix", func(t *testing.T) {
+		g := NewWithT(t)
+		kubernetesVersion := "1.30.0"
+		machine := &clusterv1.Machine{
+			Spec: clusterv1.MachineSpec{
+				Version: ptr.To("v1.30.0"),
+			},
+		}
+		match := MatchesKubernetesVersion(kubernetesVersion)(machine)
+		g.Expect(match).To(BeTrue())
+	})
+
+	t.Run("returns false if machine's version does not match", func(t *testing.T) {
+		g := NewWithT(t)
+		kubernetesVersion := "v1.30.0"
+		machine := &clusterv1.Machine{
+			Spec: clusterv1.MachineSpec{
+				Version: ptr.To("v1.29.0"),
+			},
+		}
+		match := MatchesKubernetesVersion(kubernetesVersion)(machine)
+		g.Expect(match).To(BeFalse())
+	})
+
+	t.Run("returns false if machine's version is nil", func(t *testing.T) {
+		g := NewWithT(t)
+		kubernetesVersion := "v1.30.0"
+		machine := &clusterv1.Machine{
+			Spec: clusterv1.MachineSpec{
+				Version: nil,
+			},
+		}
+		match := MatchesKubernetesVersion(kubernetesVersion)(machine)
+		g.Expect(match).To(BeFalse())
+	})
+
+	t.Run("returns false if machine is nil", func(t *testing.T) {
+		g := NewWithT(t)
+		kubernetesVersion := "v1.30.0"
+		match := MatchesKubernetesVersion(kubernetesVersion)(nil)
+		g.Expect(match).To(BeFalse())
 	})
 }
