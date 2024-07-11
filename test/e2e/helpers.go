@@ -608,7 +608,6 @@ func WaitForNodesReady(ctx context.Context, input WaitForNodesReadyInput) {
 		}
 		nodeReadyCount := 0
 		for _, node := range nodeList.Items {
-			n := node
 			match, err := CompareVersions(node.Status.NodeInfo.KubeletVersion, input.KubernetesVersion, "minor")
 			if err != nil {
 				return false, fmt.Errorf("failed to compare versions: %w", err)
@@ -616,7 +615,7 @@ func WaitForNodesReady(ctx context.Context, input WaitForNodesReadyInput) {
 			if !match {
 				return false, nil
 			}
-			if !noderefutil.IsNodeReady(&n) {
+			if !noderefutil.IsNodeReady(&node) {
 				return false, nil
 			}
 			nodeReadyCount++
