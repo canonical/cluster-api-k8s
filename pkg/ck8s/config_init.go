@@ -63,14 +63,18 @@ func GenerateInitControlPlaneConfig(cfg InitControlPlaneConfig) (apiv1.Bootstrap
 		out.ClusterConfig.CloudProvider = ptr.To(v)
 	}
 
-	// Set default datastore type to k8s-dqlite
-	datastoreType := cfg.DatastoreType
-	if datastoreType == "" {
-		datastoreType = "k8s-dqlite"
-	}
-	out.DatastoreType = ptr.To(datastoreType)
+	switch cfg.DatastoreType {
+	case "", "k8s-dqlite":
+		// Set default datastore type to k8s-dqlite
+		out.DatastoreType = ptr.To("k8s-dqlite")
 
-	if datastoreType != "k8s-dqlite" {
+		k8sDqlitePort := cfg.ControlPlaneConfig.K8sDqlitePort
+		if k8sDqlitePort == 0 {
+			k8sDqlitePort = 2379
+		}
+		out.K8sDqlitePort = ptr.To(k8sDqlitePort)
+	default:
+		out.DatastoreType = ptr.To("external")
 		if v := cfg.DatastoreServers; v != "" {
 			out.DatastoreServers = strings.Split(v, ",")
 		}
@@ -107,14 +111,6 @@ func GenerateInitControlPlaneConfig(cfg InitControlPlaneConfig) (apiv1.Bootstrap
 
 	// extra SANs
 	out.ExtraSANs = append(out.ExtraSANs, cfg.ControlPlaneEndpoint)
-
-	if datastoreType == "k8s-dqlite" {
-		k8sDqlitePort := cfg.ControlPlaneConfig.K8sDqlitePort
-		if k8sDqlitePort == 0 {
-			k8sDqlitePort = 2379
-		}
-		out.K8sDqlitePort = ptr.To(k8sDqlitePort)
-	}
 
 	if v := cfg.ControlPlaneConfig.NodeTaints; len(v) > 0 {
 		out.ControlPlaneTaints = v

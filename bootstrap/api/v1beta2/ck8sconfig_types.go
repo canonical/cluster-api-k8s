@@ -60,7 +60,7 @@ type CK8sConfigSpec struct {
 	InitConfig CK8sInitConfiguration `json:"initConfig,omitempty"`
 }
 
-// IsEtcdManaged returns true if the control plane is using k8s-dqlite
+// IsEtcdManaged returns true if the control plane is using k8s-dqlite.
 func (c *CK8sConfigSpec) IsEtcdManaged() bool {
 	switch c.ControlPlaneConfig.DatastoreType {
 	case "", "k8s-dqlite":
