@@ -117,6 +117,10 @@ spec:
             name: kube-vip
             namespace: kube-system
           spec:
+            tolerations:
+              - key: "node.cloudprovider.kubernetes.io/uninitialized"
+                operator: "Exists"
+                effect: "NoSchedule"
             containers:
             - args:
               - manager
@@ -896,6 +900,10 @@ data:
           - effect: NoSchedule
             key: node-role.kubernetes.io/control-plane
             operator: Exists
+          #https://github.com/kubernetes-sigs/vsphere-csi-driver/issues/2284
+          - key: node.cloudprovider.kubernetes.io/uninitialized
+            value: "true"
+            effect: NoSchedule
           volumes:
           - name: vsphere-config-volume
             secret:
