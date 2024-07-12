@@ -26,7 +26,7 @@ metadata:
   namespace: default
 spec:
   controlPlaneEndpoint:
-    host: 10.246.154.67
+    host: ${CONTROL_PLANE_ENDPOINT_IP}
     port: 6443
   identityRef:
     kind: Secret
@@ -93,17 +93,22 @@ kind: CK8sControlPlane
 metadata:
   name: ${CLUSTER_NAME}
   namespace: default
-    #ownerReferences:
-    #  - apiVersion: cluster.x-k8s.io/v1beta1
-    #    controller: true
-    #    kind: Cluster
-    #    name: ${CLUSTER_NAME}
-    #    uid: 6d61fb96-ea11-4456-8ff7-b9fa9f807637
 spec:
   spec:
     controlPlane:
       cloudProvider: external
     files:
+      - content: |
+          [Service]
+          Environment="HTTPS_PROXY=http://squid.internal:3128"
+          Environment="HTTP_PROXY=http://squid.internal:3128"
+          Environment="https_proxy=http://squid.internal:3128"
+          Environment="http_proxy=http://squid.internal:3128"
+          Environment="NO_PROXY=10.0.0.0/8,192.168.0.0/16,127.0.0.1,localhost,0.0.0.0"
+          Environment="no_proxy=10.0.0.0/8,192.168.0.0/16,127.0.0.1,localhost,0.0.0.0"
+        owner: root:root
+        path: /etc/systemd/system/snap.k8s.containerd.service.d/http-proxy.conf
+        permissions: "0644"
       - content: |
           apiVersion: v1
           kind: Pod
@@ -121,7 +126,7 @@ spec:
               - name: port
                 value: "6443"
               - name: vip_interface
-                value: ""
+                value: "${VIP_NETWORK_INTERFACE}"
               - name: vip_cidr
                 value: "32"
               - name: cp_enable
@@ -147,7 +152,7 @@ spec:
               - name: vip_retryperiod
                 value: "2"
               - name: vip_address
-                value: "10.246.154.67"
+                value: "${CONTROL_PLANE_ENDPOINT_IP}"
               - name: prometheus_server
                 value: :2112
               image: ghcr.io/kube-vip/kube-vip:v0.6.4
@@ -204,8 +209,8 @@ spec:
           # xref: https://github.com/kube-vip/kube-vip/issues/684
 
           # Nothing to do for kubernetes < v1.29
-          sed -i 's#path: /etc/kubernetes/admin.conf#path: /etc/kubernetes/super-admin.conf#' \
-            /etc/kubernetes/manifests/kube-vip.yaml
+          #sed -i 's#path: /etc/kubernetes/admin.conf#path: /etc/kubernetes/super-admin.conf#' \
+          #/etc/kubernetes/manifests/kube-vip.yaml
         owner: root:root
         path: /etc/pre-kubeadm-commands/50-kube-vip-prepare.sh
         permissions: "0700"
@@ -222,13 +227,16 @@ spec:
       - chmod 700 /root/.ssh
       - chmod 600 /root/.ssh/authorized_keys
       - sudo systemctl restart sshd
+      - mkdir -p /etc/systemd/system/snap.k8s.containerd.service.d
+      - sudo snap install k8s --classic --edge
+
   machineTemplate:
     infrastructureTemplate:
       apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
       kind: VSphereMachineTemplate
       name: ${CLUSTER_NAME}
-  replicas: 1
-  version: v1.30.0
+  replicas: 3
+  version: ${K8S_VERSION}
 ---
 apiVersion: bootstrap.cluster.x-k8s.io/v1beta2
 kind: CK8sConfigTemplate
@@ -277,7 +285,7 @@ spec:
         apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
         kind: VSphereMachineTemplate
         name: ${CLUSTER_NAME}-worker
-      version: v1.30.0
+      version: ${K8S_VERSION}
 ---
 apiVersion: addons.cluster.x-k8s.io/v1beta1
 kind: ClusterResourceSet
@@ -1375,7 +1383,7 @@ data:
           priorityClassName: system-node-critical
           containers:
           - name: vsphere-cpi
-            image: gcr.io/cloud-provider-vsphere/cpi/release/manager:v1.27.13
+            image: gcr.io/cloud-provider-vsphere/cpi/release/manager:${CPI_IMAGE_K8S_VERSION}
             imagePullPolicy: IfNotPresent
             args:
               - --cloud-provider=vsphere
