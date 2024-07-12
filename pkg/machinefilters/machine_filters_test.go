@@ -285,58 +285,48 @@ func TestMatchesCK8sBootstrapConfig(t *testing.T) {
 	})
 }
 func TestMatchesKubernetesVersion(t *testing.T) {
-	t.Run("returns true if machine's version matches", func(t *testing.T) {
-		g := NewWithT(t)
-		kubernetesVersion := "v1.30.0"
-		machine := &clusterv1.Machine{
-			Spec: clusterv1.MachineSpec{
-				Version: ptr.To("v1.30.0"),
-			},
-		}
-		match := MatchesKubernetesVersion(kubernetesVersion)(machine)
-		g.Expect(match).To(BeTrue())
-	})
+	tests := []struct {
+		name              string
+		kubernetesVersion string
+		expectedMatch     bool
+		machine           *clusterv1.Machine
+	}{
+		{
+			name:              "returns true if machine's version matches",
+			kubernetesVersion: "v1.30.0",
+			expectedMatch:     true,
+			machine:           &clusterv1.Machine{Spec: clusterv1.MachineSpec{Version: ptr.To("v1.30.0")}},
+		},
+		{
+			name:              "ignores 'v' prefix",
+			kubernetesVersion: "1.30.0",
+			expectedMatch:     true,
+			machine:           &clusterv1.Machine{Spec: clusterv1.MachineSpec{Version: ptr.To("v1.30.0")}},
+		},
+		{
+			name:              "returns false if machine's version does not match",
+			kubernetesVersion: "v1.30.0",
+			expectedMatch:     false,
+			machine:           &clusterv1.Machine{Spec: clusterv1.MachineSpec{Version: ptr.To("v1.29.0")}},
+		},
+		{
+			name:              "returns false if machine's version is nil",
+			kubernetesVersion: "v1.30.0",
+			expectedMatch:     false,
+			machine:           &clusterv1.Machine{Spec: clusterv1.MachineSpec{Version: nil}},
+		},
+		{
+			name:          "returns false if machine is nil",
+			expectedMatch: false,
+			machine:       nil,
+		},
+	}
 
-	t.Run("ignores 'v' prefix", func(t *testing.T) {
-		g := NewWithT(t)
-		kubernetesVersion := "1.30.0"
-		machine := &clusterv1.Machine{
-			Spec: clusterv1.MachineSpec{
-				Version: ptr.To("v1.30.0"),
-			},
-		}
-		match := MatchesKubernetesVersion(kubernetesVersion)(machine)
-		g.Expect(match).To(BeTrue())
-	})
-
-	t.Run("returns false if machine's version does not match", func(t *testing.T) {
-		g := NewWithT(t)
-		kubernetesVersion := "v1.30.0"
-		machine := &clusterv1.Machine{
-			Spec: clusterv1.MachineSpec{
-				Version: ptr.To("v1.29.0"),
-			},
-		}
-		match := MatchesKubernetesVersion(kubernetesVersion)(machine)
-		g.Expect(match).To(BeFalse())
-	})
-
-	t.Run("returns false if machine's version is nil", func(t *testing.T) {
-		g := NewWithT(t)
-		kubernetesVersion := "v1.30.0"
-		machine := &clusterv1.Machine{
-			Spec: clusterv1.MachineSpec{
-				Version: nil,
-			},
-		}
-		match := MatchesKubernetesVersion(kubernetesVersion)(machine)
-		g.Expect(match).To(BeFalse())
-	})
-
-	t.Run("returns false if machine is nil", func(t *testing.T) {
-		g := NewWithT(t)
-		kubernetesVersion := "v1.30.0"
-		match := MatchesKubernetesVersion(kubernetesVersion)(nil)
-		g.Expect(match).To(BeFalse())
-	})
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			g := NewWithT(t)
+			match := MatchesKubernetesVersion(test.kubernetesVersion)(test.machine)
+			g.Expect(match).To(Equal(test.expectedMatch))
+		})
+	}
 }
