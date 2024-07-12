@@ -7,6 +7,7 @@ import (
 	"google.golang.org/protobuf/proto"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/utils/ptr"
 	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
 
 	bootstrapv1 "github.com/canonical/cluster-api-k8s/bootstrap/api/v1beta2"
@@ -282,4 +283,50 @@ func TestMatchesCK8sBootstrapConfig(t *testing.T) {
 			g.Expect(match).To(BeTrue())
 		})
 	})
+}
+func TestMatchesKubernetesVersion(t *testing.T) {
+	tests := []struct {
+		name              string
+		kubernetesVersion string
+		expectedMatch     bool
+		machine           *clusterv1.Machine
+	}{
+		{
+			name:              "returns true if machine's version matches",
+			kubernetesVersion: "v1.30.0",
+			expectedMatch:     true,
+			machine:           &clusterv1.Machine{Spec: clusterv1.MachineSpec{Version: ptr.To("v1.30.0")}},
+		},
+		{
+			name:              "ignores 'v' prefix",
+			kubernetesVersion: "1.30.0",
+			expectedMatch:     true,
+			machine:           &clusterv1.Machine{Spec: clusterv1.MachineSpec{Version: ptr.To("v1.30.0")}},
+		},
+		{
+			name:              "returns false if machine's version does not match",
+			kubernetesVersion: "v1.30.0",
+			expectedMatch:     false,
+			machine:           &clusterv1.Machine{Spec: clusterv1.MachineSpec{Version: ptr.To("v1.29.0")}},
+		},
+		{
+			name:              "returns false if machine's version is nil",
+			kubernetesVersion: "v1.30.0",
+			expectedMatch:     false,
+			machine:           &clusterv1.Machine{Spec: clusterv1.MachineSpec{Version: nil}},
+		},
+		{
+			name:          "returns false if machine is nil",
+			expectedMatch: false,
+			machine:       nil,
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			g := NewWithT(t)
+			match := MatchesKubernetesVersion(test.kubernetesVersion)(test.machine)
+			g.Expect(match).To(Equal(test.expectedMatch))
+		})
+	}
 }

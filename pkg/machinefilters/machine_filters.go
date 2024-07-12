@@ -18,6 +18,7 @@ package machinefilters
 
 import (
 	"reflect"
+	"strings"
 
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
@@ -78,7 +79,7 @@ func MatchesKubernetesVersion(kubernetesVersion string) Func {
 		if machine.Spec.Version == nil {
 			return false
 		}
-		return *machine.Spec.Version == kubernetesVersion
+		return strings.TrimPrefix(*machine.Spec.Version, "v") == strings.TrimPrefix(kubernetesVersion, "v")
 	}
 }
 
