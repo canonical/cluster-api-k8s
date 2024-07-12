@@ -199,9 +199,10 @@ spec:
       - echo "${VSPHERE_SSH_AUTHORIZED_KEY}" >> /root/.ssh/authorized_keys
       - chmod 700 /root/.ssh
       - chmod 600 /root/.ssh/authorized_keys
-      - sudo systemctl restart sshd
       - mkdir -p /etc/systemd/system/snap.k8s.containerd.service.d
-      - sudo snap install k8s --classic --edge
+      - snap install k8s --classic --edge # todo why not installed automatically?
+    postRunCommands:
+      - k8s kubectl apply -f /etc/kubernetes/manifests/kube-vip.yaml # todo how to apply this properly
 
   machineTemplate:
     infrastructureTemplate:
