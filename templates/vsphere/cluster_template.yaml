@@ -190,44 +190,13 @@ spec:
         owner: root:root
         path: /etc/kube-vip.hosts
         permissions: "0644"
-      - content: |
-          #!/bin/bash
-
-          # Copyright 2020 The Kubernetes Authors.
-          #
-          # Licensed under the Apache License, Version 2.0 (the "License");
-          # you may not use this file except in compliance with the License.
-          # You may obtain a copy of the License at
-          #
-          #     http://www.apache.org/licenses/LICENSE-2.0
-          #
-          # Unless required by applicable law or agreed to in writing, software
-          # distributed under the License is distributed on an "AS IS" BASIS,
-          # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-          # See the License for the specific language governing permissions and
-          # limitations under the License.
-
-          set -e
-
-          # Configure the workaround required for kubeadm init with kube-vip:
-          # xref: https://github.com/kube-vip/kube-vip/issues/684
-
-          # Nothing to do for kubernetes < v1.29
-          #sed -i 's#path: /etc/kubernetes/admin.conf#path: /etc/kubernetes/super-admin.conf#' \
-          #/etc/kubernetes/manifests/kube-vip.yaml
-        owner: root:root
-        path: /etc/pre-kubeadm-commands/50-kube-vip-prepare.sh
-        permissions: "0700"
     preRunCommands:
       - hostnamectl set-hostname "{{ ds.meta_data.hostname }}"
       - echo "::1         ipv6-localhost ipv6-loopback localhost6 localhost6.localdomain6"
         >/etc/hosts
       - echo "127.0.0.1   {{ ds.meta_data.hostname }} {{ local_hostname }} localhost
         localhost.localdomain localhost4 localhost4.localdomain4" >>/etc/hosts
-      - mkdir -p /etc/pre-kubeadm-commands
-      - for script in $(find /etc/pre-kubeadm-commands/ -name '*.sh' -type f | sort);
-        do echo "Running script $script"; "$script"; done
-      - echo "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAACAQCt+HE0lC4j6JInF/KrGgoE/bzYpCYXFeC1xB+F4glA3xplYSJb6S+ua7lKR8jQpvOIj0Ju3mTVFea7/dT3esrEX8whWdOCkcX4ct8gYNRiS0veV9x8GqhS8TE1/Pnnx8yi+wd7J87Yd6ThiuDzraIijsNdP7ETOdMu3DEIN+HNU626TVl5HD/4mBP5Bj6MDm3f3saG07EFv+PYb9AtkHGrwU0lEiY3aatU4v2oJqWCUUmv4XxzfdWKG6ewoMhL7iQx4fsERcTUNsZhdfddQnfHmfcp2ttEbqUX4UWu4ol4H4MIJ8Rdt2Xh0o2DgIUZRf2UD9SCZuMRXjvhsVG2jHKwuXCnalvWJsKQK7KahYDLNyU+cWFP5NweRlYPF/VOxfcB+e+u4vQfll/IrfTDf5ohQzfJtk+h8DdRwg0dz4BMUOBqn3n04AxC7aYSljmeWeM5rdY+GzOzDu64Lhz3kkqH4FW3F2rHnRtPvOYid9I7zums3Hb80ODQd3BnBRmkRD/bFAOpnfEW0cWxF7WsWT0Xl2BCDOmG33N0IuTY0Z848xdU2iNZBXQuCFy/lIxY+ZeK5DRlhURJId8OoRS7HlL2+BvAi3fecOc2gYPld88QmyThtfYnGuuEHKRFY5IHEvhKJ8B5sy9QFNIM0XiWEuDL3/b3NfZrYUBMJXgtM/AGLw==" >> /root/.ssh/authorized_keys
+      - echo "${VSPHERE_SSH_AUTHORIZED_KEY}" >> /root/.ssh/authorized_keys
       - chmod 700 /root/.ssh
       - chmod 600 /root/.ssh/authorized_keys
       - sudo systemctl restart sshd
@@ -258,9 +227,6 @@ spec:
           >/etc/hosts
         - echo "127.0.0.1   {{ ds.meta_data.hostname }} {{ local_hostname }} localhost
           localhost.localdomain localhost4 localhost4.localdomain4" >>/etc/hosts
-        - mkdir -p /etc/pre-kubeadm-commands
-        - for script in $(find /etc/pre-kubeadm-commands/ -name '*.sh' -type f | sort);
-          do echo "Running script $script"; "$script"; done
 ---
 apiVersion: cluster.x-k8s.io/v1beta1
 kind: MachineDeployment
