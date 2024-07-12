@@ -19,5 +19,6 @@ EXP_CLUSTER_RESOURCE_SET: "true"                              # This enables the
 VSPHERE_SSH_AUTHORIZED_KEY: "ssh-rsa AAAAB3N..."              # The public ssh authorized key on all machines in this cluster.
                                                               #  Set to "" if you don't want to enable SSH, or are using another solution.
 VSPHERE_STORAGE_POLICY: ""                                    # This is the vSphere storage policy. Set it to "" if you don't want to use a storage policy.
-"CPI_IMAGE_K8S_VERSION": "v1.25.0"                            # The version of the vSphere CPI image to be used by the CPI workloads
+"CPI_IMAGE_K8S_VERSION": "v1.28.0"                            # The version of the vSphere CPI image to be used by the CPI workloads
                                                               #  Keep this close to the minimum Kubernetes version of the cluster being created.
+K8S_VERSION: "v1.28.0"
