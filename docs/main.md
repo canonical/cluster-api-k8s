@@ -21,7 +21,7 @@ metadata:
   namespace: default
 spec:
   spec:
-    extraFiles:
+    files:
       - path: /capi/scripts/install.sh
         permissions: "0500"
         owner: "root:root"
