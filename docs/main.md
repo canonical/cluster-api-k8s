@@ -54,7 +54,7 @@ metadata:
   namespace: default
 spec:
   spec:
-    extraFiles:
+    files:
       - path: /capi/manifests/00-cm.yaml
         mode: "0400"
         owner: "root:root"
