@@ -48,13 +48,12 @@ jobs:
     needs: build-e2e-images
     strategy:
       matrix:
-        ginkgo_focus: [
-          "KCP remediation",
-          "MachineDeployment remediation",
-          "Workload cluster creation",
-          "Workload cluster scaling",
-          "Workload cluster upgrade",
-          ]
+        ginkgo_focus:
+          - "KCP remediation"
+          - "MachineDeployment remediation"
+          - "Workload cluster creation"
+          - "Workload cluster scaling"
+          - "Workload cluster upgrade"
     steps:
       - name: Check out repo
         uses: actions/checkout@v4
