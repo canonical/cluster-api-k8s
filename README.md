@@ -5,20 +5,3 @@ This repository contains bootstrap and control plane providers to deploy Canonic
 CABPCK (Cluster API bootstrap provider for Canonical Kubernetes) is responsible for generate cloud-init scripts for generate Machines such that they run Kubernetes nodes. This implementation uses [Canonical Kubernetes](https://github.com/canonical/k8s-snap) to deliver Kubernetes.
 
 CACPCK (Cluster API control plane provider for Canonical Kubernetes) is responsible for managing the lifecycle of machines that host the control plane nodes of a Canonical Kubernetes cluster.
-
-## Tests
-
-Run the unittests with
-
-```shell
-make test-unit
-```
-
-For the e2e tests, run:
-
-```shell
-make docker-build-e2e  # run only once to build the images
-make test-e2e
-```
-
-Visit the [tests README](./test/e2e/README.md) for more information.
