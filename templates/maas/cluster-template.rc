@@ -1,0 +1,25 @@
+# Kubernetes cluster configuration
+export KUBERNETES_VERSION=v1.30.2
+export CONTROL_PLANE_MACHINE_COUNT=1
+export WORKER_MACHINE_COUNT=1
+
+# MaaS domain to use
+export MAAS_DNS_DOMAIN="maas"
+
+# Control plane machine configuration
+export CONTROL_PLANE_MACHINE_MINCPU="2"
+export CONTROL_PLANE_MACHINE_MINMEMORY="4096"
+export CONTROL_PLANE_MACHINE_IMAGE="ubuntu"
+
+# Worker machine configuration
+export WORKER_MACHINE_MINCPU="2"
+export WORKER_MACHINE_MINMEMORY="4096"
+export WORKER_MACHINE_IMAGE="ubuntu"
+
+# (optional) Configure resource pools for control plane and worker machines
+# export CONTROL_PLANE_MACHINE_RESOURCEPOOL="kvm-pool"
+# export WORKER_MACHINE_RESOURCEPOOL="bare-metal-pool"
+
+# (optional) Configure (comma-separated) tags for control plane and worker machines
+# export CONTROL_PLANE_MACHINE_TAGS="control-plane,controller"
+# export WORKER_MACHINE_TAGS="worker,compute"
