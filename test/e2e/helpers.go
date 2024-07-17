@@ -22,13 +22,12 @@ import (
 	"context"
 	"fmt"
 	"os"
-	"strconv"
-	"strings"
 	"time"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/pkg/errors"
+	"golang.org/x/mod/semver"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/sets"
@@ -608,11 +607,7 @@ func WaitForNodesReady(ctx context.Context, input WaitForNodesReadyInput) {
 		}
 		nodeReadyCount := 0
 		for _, node := range nodeList.Items {
-			match, err := CompareVersions(node.Status.NodeInfo.KubeletVersion, input.KubernetesVersion, "minor")
-			if err != nil {
-				return false, fmt.Errorf("failed to compare versions: %w", err)
-			}
-			if !match {
+			if !(semver.MajorMinor(node.Status.NodeInfo.KubeletVersion) == semver.MajorMinor(input.KubernetesVersion)) {
 				return false, nil
 			}
 			if !noderefutil.IsNodeReady(&node) {
@@ -632,57 +627,4 @@ func byClusterOptions(name, namespace string) []client.ListOption {
 			clusterv1.ClusterNameLabel: name,
 		},
 	}
-}
-
-func parseVersion(version string) ([]int, error) {
-	// Remove the leading "v" if it exists
-	if strings.HasPrefix(version, "v") {
-		version = version[1:]
-	}
-
-	parts := strings.Split(version, ".")
-	if len(parts) != 3 {
-		return nil, fmt.Errorf("invalid version format")
-	}
-
-	intParts := make([]int, len(parts))
-	for i, part := range parts {
-		num, err := strconv.Atoi(part)
-		if err != nil {
-			return nil, fmt.Errorf("invalid version part: %w", err)
-		}
-		intParts[i] = num
-	}
-
-	return intParts, nil
-}
-
-func compareVersionParts(v1, v2 []int, level string) bool {
-	switch strings.ToLower(level) {
-	case "major":
-		return v1[0] == v2[0]
-	case "minor":
-		return v1[0] == v2[0] && v1[1] == v2[1]
-	case "patch":
-		return v1[0] == v2[0] && v1[1] == v2[1] && v1[2] == v2[2]
-	default:
-		return v1[0] == v2[0] && v1[1] == v2[1] && v1[2] == v2[2]
-	}
-}
-
-// CompareVersions compares two versions and returns true if they are equal at the specified level.
-// The level can be "major", "minor", "patch" or an empty string to compare the full version.
-// Returns an error if the versions are not in the correct format.
-// Example: CompareVersions("1.19.0", "1.19.1", "patch") returns false
-func CompareVersions(version1, version2, level string) (bool, error) {
-	v1, err := parseVersion(version1)
-	if err != nil {
-		return false, fmt.Errorf("failed to parse version1: %w", err)
-	}
-
-	v2, err := parseVersion(version2)
-	if err != nil {
-		return false, fmt.Errorf("failed to parse version2: %w", err)
-	}
-	return compareVersionParts(v1, v2, level), nil
 }
