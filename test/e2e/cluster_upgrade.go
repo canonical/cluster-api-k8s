@@ -139,7 +139,7 @@ func ClusterUpgradeSpec(ctx context.Context, inputGetter func() ClusterUpgradeSp
 				ClusterctlConfigPath:     input.ClusterctlConfigPath,
 				KubeconfigPath:           input.BootstrapClusterProxy.GetKubeconfigPath(),
 				InfrastructureProvider:   *input.InfrastructureProvider,
-				Flavor:                   ptr.Deref(input.Flavor, ""),
+				Flavor:                   ptr.Deref(input.Flavor, "upgrades"),
 				Namespace:                namespace.Name,
 				ClusterName:              clusterName,
 				KubernetesVersion:        input.E2EConfig.GetVariable(KubernetesVersion),
@@ -157,6 +157,7 @@ func ClusterUpgradeSpec(ctx context.Context, inputGetter func() ClusterUpgradeSp
 			ClusterProxy:                input.BootstrapClusterProxy,
 			Cluster:                     result.Cluster,
 			ControlPlane:                result.ControlPlane,
+			UpgradeMachineTemplate:      ptr.To(fmt.Sprintf("%s-control-plane-1.30", clusterName)),
 			KubernetesUpgradeVersion:    input.E2EConfig.GetVariable(KubernetesVersionUpgradeTo),
 			WaitForMachinesToBeUpgraded: input.E2EConfig.GetIntervals(specName, "wait-machine-upgrade"),
 		})
@@ -167,6 +168,7 @@ func ClusterUpgradeSpec(ctx context.Context, inputGetter func() ClusterUpgradeSp
 			Cluster:                     result.Cluster,
 			UpgradeVersion:              input.E2EConfig.GetVariable(KubernetesVersionUpgradeTo),
 			MachineDeployments:          result.MachineDeployments,
+			UpgradeMachineTemplate:      ptr.To(fmt.Sprintf("%s-md-1.30-0", clusterName)),
 			WaitForMachinesToBeUpgraded: input.E2EConfig.GetIntervals(specName, "wait-worker-nodes"),
 		})
 
