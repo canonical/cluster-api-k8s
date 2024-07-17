@@ -20,6 +20,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/go-logr/logr"
@@ -387,6 +388,23 @@ func (r *CK8sConfigReconciler) resolveSecretFileContent(ctx context.Context, ns 
 	return data, nil
 }
 
+// resolveSecretFileContent returns file content fetched from a referenced secret object.
+func (r *CK8sConfigReconciler) resolveSecretReference(ctx context.Context, ns string, secretRef bootstrapv1.SecretRef) ([]byte, error) {
+	secret := &corev1.Secret{}
+	key := types.NamespacedName{Namespace: ns, Name: secretRef.Name}
+	if err := r.Client.Get(ctx, key, secret); err != nil {
+		if apierrors.IsNotFound(err) {
+			return nil, fmt.Errorf("secret not found %s: %w", key, err)
+		}
+		return nil, fmt.Errorf("failed to retrieve Secret %q: %w", key, err)
+	}
+	data, ok := secret.Data[secretRef.Key]
+	if !ok {
+		return nil, fmt.Errorf("secret references non-existent secret key %q: %w", secretRef.Key, ErrInvalidRef)
+	}
+	return data, nil
+}
+
 func (r *CK8sConfigReconciler) handleClusterNotInitialized(ctx context.Context, scope *Scope) (_ ctrl.Result, reterr error) {
 	// initialize the DataSecretAvailableCondition if missing.
 	// this is required in order to avoid the condition's LastTransitionTime to flicker in case of errors surfacing
@@ -445,14 +463,26 @@ func (r *CK8sConfigReconciler) handleClusterNotInitialized(ctx context.Context, 
 		return ctrl.Result{}, err
 	}
 
-	configStruct, err := ck8s.GenerateInitControlPlaneConfig(ck8s.InitControlPlaneConfig{
+	clusterInitConfig := ck8s.InitControlPlaneConfig{
 		ControlPlaneEndpoint:  scope.Cluster.Spec.ControlPlaneEndpoint.Host,
 		ControlPlaneConfig:    scope.Config.Spec.ControlPlaneConfig,
 		PopulatedCertificates: certificates,
 		InitConfig:            scope.Config.Spec.InitConfig,
 
 		ClusterNetwork: scope.Cluster.Spec.ClusterNetwork,
-	})
+	}
+
+	if !scope.Config.Spec.IsEtcdManaged() {
+		clusterInitConfig.DatastoreType = scope.Config.Spec.ControlPlaneConfig.DatastoreType
+
+		datastoreServers, err := r.resolveSecretReference(ctx, scope.Config.Namespace, scope.Config.Spec.ControlPlaneConfig.DatastoreServersSecretRef)
+		if err != nil {
+			return ctrl.Result{}, err
+		}
+		clusterInitConfig.DatastoreServers = strings.Split(string(datastoreServers), ",")
+	}
+
+	configStruct, err := ck8s.GenerateInitControlPlaneConfig(clusterInitConfig)
 	if err != nil {
 		return ctrl.Result{}, err
 	}
