@@ -37,6 +37,7 @@ import (
 	expv1 "sigs.k8s.io/cluster-api/exp/api/v1beta1"
 	"sigs.k8s.io/cluster-api/test/framework"
 	"sigs.k8s.io/cluster-api/test/framework/clusterctl"
+	"sigs.k8s.io/cluster-api/util/conditions"
 	"sigs.k8s.io/cluster-api/util/patch"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -558,6 +559,7 @@ type UpgradeControlPlaneAndWaitForUpgradeInput struct {
 	Cluster                     *clusterv1.Cluster
 	ControlPlane                *controlplanev1.CK8sControlPlane
 	KubernetesUpgradeVersion    string
+	UpgradeMachineTemplate      *string
 	WaitForMachinesToBeUpgraded []interface{}
 }
 
@@ -577,17 +579,105 @@ func UpgradeControlPlaneAndWaitForUpgrade(ctx context.Context, input UpgradeCont
 
 	input.ControlPlane.Spec.Version = input.KubernetesUpgradeVersion
 
+	// Create a new ObjectReference for the infrastructure provider
+	newInfrastructureRef := corev1.ObjectReference{
+		APIVersion: "infrastructure.cluster.x-k8s.io/v1beta1", // Adjust based on your infrastructure API version
+		Kind:       "DockerMachineTemplate",
+		Name:       fmt.Sprintf("%s-control-plane-1.30", input.Cluster.Name),
+		Namespace:  input.ControlPlane.Spec.MachineTemplate.InfrastructureRef.Namespace,
+	}
+
+	// Update the infrastructureRef
+	input.ControlPlane.Spec.MachineTemplate.InfrastructureRef = newInfrastructureRef
+
 	Eventually(func() error {
 		return patchHelper.Patch(ctx, input.ControlPlane)
 	}, retryableOperationTimeout, retryableOperationInterval).Should(Succeed(), "Failed to patch the new kubernetes version to KCP %s", klog.KObj(input.ControlPlane))
 
 	Byf("Waiting for control-plane machines to have the upgraded kubernetes version")
-	framework.WaitForControlPlaneMachinesToBeUpgraded(ctx, framework.WaitForControlPlaneMachinesToBeUpgradedInput{
+	WaitForControlPlaneMachinesToBeUpgraded(ctx, framework.WaitForControlPlaneMachinesToBeUpgradedInput{
 		Lister:                   mgmtClient,
 		Cluster:                  input.Cluster,
 		MachineCount:             int(*input.ControlPlane.Spec.Replicas),
 		KubernetesUpgradeVersion: input.KubernetesUpgradeVersion,
 	}, input.WaitForMachinesToBeUpgraded...)
+}
+
+// WaitForControlPlaneMachinesToBeUpgraded waits until all machines are upgraded to the correct Kubernetes version.
+func WaitForControlPlaneMachinesToBeUpgraded(ctx context.Context, input framework.WaitForControlPlaneMachinesToBeUpgradedInput, intervals ...interface{}) {
+	Expect(ctx).NotTo(BeNil(), "ctx is required for WaitForControlPlaneMachinesToBeUpgraded")
+	Expect(input.Lister).ToNot(BeNil(), "Invalid argument. input.Lister can't be nil when calling WaitForControlPlaneMachinesToBeUpgraded")
+	Expect(input.KubernetesUpgradeVersion).ToNot(BeEmpty(), "Invalid argument. input.KubernetesUpgradeVersion can't be empty when calling WaitForControlPlaneMachinesToBeUpgraded")
+	Expect(input.MachineCount).To(BeNumerically(">", 0), "Invalid argument. input.MachineCount can't be smaller than 1 when calling WaitForControlPlaneMachinesToBeUpgraded")
+
+	Byf("Ensuring all control-plane machines have upgraded kubernetes version %s", input.KubernetesUpgradeVersion)
+
+	Eventually(func() (int, error) {
+		machines := framework.GetControlPlaneMachinesByCluster(ctx, framework.GetControlPlaneMachinesByClusterInput{
+			Lister:      input.Lister,
+			ClusterName: input.Cluster.Name,
+			Namespace:   input.Cluster.Namespace,
+		})
+
+		upgraded := 0
+		Byf("Checking %d Machines", len(machines))
+		for _, machine := range machines {
+			m := machine
+			Byf("Checking Machine %s/%s", m.Namespace, m.Name)
+			Byf("m.Spec.Version %s == %s input.KubernetesUpgradeVersion = %v", *m.Spec.Version, input.KubernetesUpgradeVersion, *m.Spec.Version == input.KubernetesUpgradeVersion)
+			Byf("conditions.IsTrue(&m, clusterv1.MachineNodeHealthyCondition) %v", conditions.IsTrue(&m, clusterv1.MachineNodeHealthyCondition))
+			if *m.Spec.Version == input.KubernetesUpgradeVersion && conditions.IsTrue(&m, clusterv1.MachineNodeHealthyCondition) {
+				upgraded++
+			}
+		}
+		if len(machines) > upgraded {
+			Byf("old Machines remain")
+			return 0, errors.New("old Machines remain")
+		}
+		return upgraded, nil
+	}, intervals...).Should(Equal(input.MachineCount), "Timed out waiting for all control-plane machines in Cluster %s to be upgraded to kubernetes version %s", klog.KObj(input.Cluster), input.KubernetesUpgradeVersion)
+}
+
+// UpgradeMachineDeploymentsAndWait upgrades a machine deployment and waits for its machines to be upgraded.
+func UpgradeMachineDeploymentsAndWait(ctx context.Context, input framework.UpgradeMachineDeploymentsAndWaitInput) {
+	Expect(ctx).NotTo(BeNil(), "ctx is required for UpgradeMachineDeploymentsAndWait")
+	Expect(input.ClusterProxy).ToNot(BeNil(), "Invalid argument. input.ClusterProxy can't be nil when calling UpgradeMachineDeploymentsAndWait")
+	Expect(input.Cluster).ToNot(BeNil(), "Invalid argument. input.Cluster can't be nil when calling UpgradeMachineDeploymentsAndWait")
+	Expect(input.UpgradeVersion).ToNot(BeNil(), "Invalid argument. input.UpgradeVersion can't be nil when calling UpgradeMachineDeploymentsAndWait")
+	Expect(input.MachineDeployments).ToNot(BeEmpty(), "Invalid argument. input.MachineDeployments can't be empty when calling UpgradeMachineDeploymentsAndWait")
+
+	mgmtClient := input.ClusterProxy.GetClient()
+
+	for _, deployment := range input.MachineDeployments {
+		patchHelper, err := patch.NewHelper(deployment, mgmtClient)
+		Expect(err).ToNot(HaveOccurred())
+
+		oldVersion := deployment.Spec.Template.Spec.Version
+		deployment.Spec.Template.Spec.Version = &input.UpgradeVersion
+		// Create a new ObjectReference for the infrastructure provider
+		newInfrastructureRef := corev1.ObjectReference{
+			APIVersion: "infrastructure.cluster.x-k8s.io/v1beta1", // Adjust based on your infrastructure API version
+			Kind:       "DockerMachineTemplate",
+			Name:       fmt.Sprintf("%s-md-1.30-0", input.Cluster.Name),
+			Namespace:  deployment.Spec.Template.Spec.InfrastructureRef.Namespace,
+		}
+
+		// Update the infrastructureRef
+		deployment.Spec.Template.Spec.InfrastructureRef = newInfrastructureRef
+		Eventually(func() error {
+			return patchHelper.Patch(ctx, deployment)
+		}, retryableOperationTimeout, retryableOperationInterval).Should(Succeed(), "Failed to patch Kubernetes version on MachineDeployment %s", klog.KObj(deployment))
+
+		Byf("Waiting for Kubernetes versions of machines in MachineDeployment %s to be upgraded from %s to %s",
+			klog.KObj(deployment), *oldVersion, input.UpgradeVersion)
+		framework.WaitForMachineDeploymentMachinesToBeUpgraded(ctx, framework.WaitForMachineDeploymentMachinesToBeUpgradedInput{
+			Lister:                   mgmtClient,
+			Cluster:                  input.Cluster,
+			MachineCount:             int(*deployment.Spec.Replicas),
+			KubernetesUpgradeVersion: input.UpgradeVersion,
+			MachineDeployment:        *deployment,
+		}, input.WaitForMachinesToBeUpgraded...)
+	}
 }
 
 type WaitForNodesReadyInput struct {
