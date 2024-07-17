@@ -25,7 +25,11 @@ import (
 )
 
 var _ = Describe("Workload cluster upgrade [CK8s-Upgrade]", func() {
-	/* 	Context("Upgrading a cluster with 1 control plane", func() {
+	Context("Upgrading a cluster with 1 control plane", func() {
+		It("Non-HA upgrades require in-place upgrades which are not supported yet.",
+			// TODO(ben): Enable this test once we have support for in-place upgrades.
+			func() { Skip("") },
+		)
 		ClusterUpgradeSpec(ctx, func() ClusterUpgradeSpecInput {
 			return ClusterUpgradeSpecInput{
 				E2EConfig:                e2eConfig,
@@ -38,7 +42,7 @@ var _ = Describe("Workload cluster upgrade [CK8s-Upgrade]", func() {
 				WorkerMachineCount:       ptr.To[int64](2),
 			}
 		})
-	}) */
+	})
 
 	Context("Upgrading a cluster with HA control plane", func() {
 		ClusterUpgradeSpec(ctx, func() ClusterUpgradeSpecInput {
@@ -49,7 +53,7 @@ var _ = Describe("Workload cluster upgrade [CK8s-Upgrade]", func() {
 				ArtifactFolder:           artifactFolder,
 				SkipCleanup:              skipCleanup,
 				InfrastructureProvider:   ptr.To("docker"),
-				ControlPlaneMachineCount: ptr.To[int64](4),
+				ControlPlaneMachineCount: ptr.To[int64](3),
 				WorkerMachineCount:       ptr.To[int64](1),
 			}
 		})
