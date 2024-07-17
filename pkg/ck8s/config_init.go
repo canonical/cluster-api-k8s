@@ -18,7 +18,7 @@ type InitControlPlaneConfig struct {
 	InitConfig            bootstrapv1.CK8sInitConfiguration
 	PopulatedCertificates secret.Certificates
 	DatastoreType         string
-	DatastoreServers      string
+	DatastoreServers      []string
 
 	ClusterNetwork *clusterv1.ClusterNetwork
 }
@@ -75,9 +75,7 @@ func GenerateInitControlPlaneConfig(cfg InitControlPlaneConfig) (apiv1.Bootstrap
 		out.K8sDqlitePort = ptr.To(k8sDqlitePort)
 	default:
 		out.DatastoreType = ptr.To("external")
-		if v := cfg.DatastoreServers; v != "" {
-			out.DatastoreServers = strings.Split(v, ",")
-		}
+		out.DatastoreServers = cfg.DatastoreServers
 	}
 
 	// annotations

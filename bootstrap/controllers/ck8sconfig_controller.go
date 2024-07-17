@@ -20,6 +20,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/go-logr/logr"
@@ -478,7 +479,7 @@ func (r *CK8sConfigReconciler) handleClusterNotInitialized(ctx context.Context, 
 		if err != nil {
 			return ctrl.Result{}, err
 		}
-		clusterInitConfig.DatastoreServers = string(datastoreServers)
+		clusterInitConfig.DatastoreServers = strings.Split(string(datastoreServers), ",")
 	}
 
 	configStruct, err := ck8s.GenerateInitControlPlaneConfig(clusterInitConfig)
