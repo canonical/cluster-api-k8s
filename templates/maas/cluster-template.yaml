@@ -38,10 +38,6 @@ spec:
       apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
       kind: MaasMachineTemplate
       name: ${CLUSTER_NAME}-control-plane
-  spec:
-    controlPlane:
-      extraKubeAPIServerArgs:
-        --anonymous-auth: "true"
   replicas: ${CONTROL_PLANE_MACHINE_COUNT}
   version: ${KUBERNETES_VERSION}
 ---
