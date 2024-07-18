@@ -13,7 +13,7 @@ spec:
       - 10.46.0.0/16
     serviceDomain: cluster.local
   controlPlaneRef:
-    apiVersion: controlplane.cluster.x-k8s.io/v1beta1
+    apiVersion: controlplane.cluster.x-k8s.io/v1beta2
     kind: CK8sControlPlane
     name: ${CLUSTER_NAME}-control-plane
   infrastructureRef:
@@ -27,19 +27,24 @@ metadata:
   name: ${CLUSTER_NAME}
 spec: {}
 ---
-apiVersion: controlplane.cluster.x-k8s.io/v1beta1
+apiVersion: controlplane.cluster.x-k8s.io/v1beta2
 kind: CK8sControlPlane
 metadata:
   name: ${CLUSTER_NAME}-control-plane
   namespace: ${NAMESPACE}
 spec:
-  infrastructureTemplate:
-    apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
-    kind: DockerMachineTemplate
-    name: ${CLUSTER_NAME}-control-plane
   replicas: ${CONTROL_PLANE_MACHINE_COUNT}
   version: ${KUBERNETES_VERSION}
+  machineTemplate:
+    infrastructureTemplate:
+      apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
+      kind: DockerMachineTemplate
+      name: ${CLUSTER_NAME}-control-plane
   spec:
+    airGapped: true
+    controlPlane:
+      extraKubeAPIServerArgs:
+        --anonymous-auth: "true"
     files:
     - path: /wait-signal.sh
       content: |
@@ -62,19 +67,14 @@ spec:
           echo "signal $signal"
 
           if [ "$signal" == "pass" ]; then
-             curl -k -s --header "Authorization: Bearer $TOKEN" -XPATCH -H "Content-Type: application/strategic-merge-patch+json" --data '{"data": {"signal": "ack-pass"}}' $SERVER/api/v1/namespaces/$NAMESPACE/configmaps/mhc-test
-             exit 0
+            curl -k -s --header "Authorization: Bearer $TOKEN" -XPATCH -H "Content-Type: application/strategic-merge-patch+json" --data '{"data": {"signal": "ack-pass"}}' $SERVER/api/v1/namespaces/$NAMESPACE/configmaps/mhc-test
+            exit 0
           fi
         done
       permissions: "0777"
-    preK3sCommands:
+      owner: root:root
+    preRunCommands:
     - ./wait-signal.sh "${TOKEN}" "${SERVER}" "${NAMESPACE}"
-    serverConfig:
-      tlsSan:
-        - localhost
-        - 127.0.0.1
-        - 0.0.0.0
-        - host.docker.internal
 ---
 apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
 kind: DockerMachineTemplate
@@ -84,7 +84,7 @@ metadata:
 spec:
   template:
     spec:
-      customImage: kindest/node:${KIND_IMAGE_VERSION}
+      customImage: k8s-snap:dev
 ---
 apiVersion: cluster.x-k8s.io/v1beta1
 kind: MachineDeployment
@@ -111,7 +111,7 @@ spec:
       clusterName: ${CLUSTER_NAME}
       bootstrap:
         configRef:
-          apiVersion: bootstrap.cluster.x-k8s.io/v1beta1
+          apiVersion: bootstrap.cluster.x-k8s.io/v1beta2
           kind: CK8sConfigTemplate
           name: ${CLUSTER_NAME}-md-0
       infrastructureRef:
@@ -127,9 +127,9 @@ metadata:
 spec:
   template:
     spec:
-      customImage: kindest/node:${KIND_IMAGE_VERSION}
+      customImage: k8s-snap:dev
 ---
-apiVersion: bootstrap.cluster.x-k8s.io/v1beta1
+apiVersion: bootstrap.cluster.x-k8s.io/v1beta2
 kind: CK8sConfigTemplate
 metadata:
   name: ${CLUSTER_NAME}-md-0

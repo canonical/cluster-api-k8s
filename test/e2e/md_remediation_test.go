@@ -108,7 +108,8 @@ var _ = Describe("When testing MachineDeployment remediation", func() {
 			By("Waiting until nodes are ready")
 			workloadProxy := bootstrapClusterProxy.GetWorkloadCluster(ctx, namespace.Name, result.Cluster.Name)
 			workloadClient := workloadProxy.GetClient()
-			framework.WaitForNodesReady(ctx, framework.WaitForNodesReadyInput{
+
+			WaitForNodesReady(ctx, WaitForNodesReadyInput{
 				Lister:            workloadClient,
 				KubernetesVersion: e2eConfig.GetVariable(KubernetesVersion),
 				Count:             int(result.ExpectedTotalNodes()),

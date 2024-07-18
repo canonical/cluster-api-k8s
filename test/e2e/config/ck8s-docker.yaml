@@ -64,6 +64,9 @@ providers:
       # is modified
       - name: v0.1.99 # next; use manifest from source files
         value: "../../../bootstrap/config/default"
+        replacements:
+          - old: "ghcr.io/canonical/cluster-api-k8s/bootstrap-controller:latest"
+            new: "ghcr.io/canonical/cluster-api-k8s/bootstrap-controller:dev"
     files:
       - sourcePath: "../../../metadata.yaml"
         targetName: "metadata.yaml"
@@ -72,6 +75,9 @@ providers:
     versions:
       - name: v0.1.99 # next; use manifest from source files
         value: "../../../controlplane/config/default"
+        replacements:
+          - old: "ghcr.io/canonical/cluster-api-k8s/controlplane-controller:latest"
+            new: "ghcr.io/canonical/cluster-api-k8s/controlplane-controller:dev"
     files:
       - sourcePath: "../../../metadata.yaml"
         targetName: "metadata.yaml"

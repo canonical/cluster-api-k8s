@@ -27,10 +27,13 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/pkg/errors"
+	"golang.org/x/mod/semver"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/klog/v2"
 	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
+	"sigs.k8s.io/cluster-api/controllers/noderefutil"
 	expv1 "sigs.k8s.io/cluster-api/exp/api/v1beta1"
 	"sigs.k8s.io/cluster-api/test/framework"
 	"sigs.k8s.io/cluster-api/test/framework/clusterctl"
@@ -585,6 +588,35 @@ func UpgradeControlPlaneAndWaitForUpgrade(ctx context.Context, input UpgradeCont
 		MachineCount:             int(*input.ControlPlane.Spec.Replicas),
 		KubernetesUpgradeVersion: input.KubernetesUpgradeVersion,
 	}, input.WaitForMachinesToBeUpgraded...)
+}
+
+type WaitForNodesReadyInput struct {
+	Lister            framework.Lister
+	KubernetesVersion string
+	Count             int
+	WaitForNodesReady []interface{}
+}
+
+// WaitForNodesReady waits until there are exactly the given count nodes and they have the correct Kubernetes minor version
+// and are ready.
+func WaitForNodesReady(ctx context.Context, input WaitForNodesReadyInput) {
+	Eventually(func() (bool, error) {
+		nodeList := &corev1.NodeList{}
+		if err := input.Lister.List(ctx, nodeList); err != nil {
+			return false, err
+		}
+		nodeReadyCount := 0
+		for _, node := range nodeList.Items {
+			if !(semver.MajorMinor(node.Status.NodeInfo.KubeletVersion) == semver.MajorMinor(input.KubernetesVersion)) {
+				return false, nil
+			}
+			if !noderefutil.IsNodeReady(&node) {
+				return false, nil
+			}
+			nodeReadyCount++
+		}
+		return input.Count == nodeReadyCount, nil
+	}, input.WaitForNodesReady...).Should(BeTrue())
 }
 
 // byClusterOptions returns a set of ListOptions that allows to identify all the objects belonging to a Cluster.
