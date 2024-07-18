@@ -48,13 +48,6 @@ RUN wget https://go.dev/dl/go1.22.4.linux-amd64.tar.gz \
     && tar -C /usr/local/go122 -xzf go1.22.4.linux-amd64.tar.gz \
     && ln -s /usr/local/go122/go/bin/go /usr/local/bin/go
 
-## NOTE(neoaggelos): runc needs Go 1.21 to build
-## !!!IMPORTANT!!! Drop this after runc 1.1.13 is released https://github.com/opencontainers/runc/issues/4233#issuecomment-2155883159
-RUN wget https://go.dev/dl/go1.21.11.linux-amd64.tar.gz \
-    && mkdir -p /usr/local/go121 \
-    && tar -C /usr/local/go121 -xzf go1.21.11.linux-amd64.tar.gz \
-    && ln -s /usr/local/go121/go/bin/go /usr/local/bin/go_121
-
 ## Prepare build environment
 ENV SNAPCRAFT_PART_INSTALL=/out
 RUN mkdir /out /build -p
