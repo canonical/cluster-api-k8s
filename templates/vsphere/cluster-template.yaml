@@ -243,6 +243,22 @@ spec:
           >/etc/hosts
         - echo "127.0.0.1   {{ ds.meta_data.hostname }} {{ local_hostname }} localhost
           localhost.localdomain localhost4 localhost4.localdomain4" >>/etc/hosts
+        - echo "${VSPHERE_SSH_AUTHORIZED_KEY}" >> /root/.ssh/authorized_keys
+        - chmod 700 /root/.ssh
+        - chmod 600 /root/.ssh/authorized_keys
+        - snap install k8s --classic --edge
+      files:
+        - content: |
+            [Service]
+            Environment="HTTPS_PROXY=http://squid.internal:3128"
+            Environment="HTTP_PROXY=http://squid.internal:3128"
+            Environment="https_proxy=http://squid.internal:3128"
+            Environment="http_proxy=http://squid.internal:3128"
+            Environment="NO_PROXY=10.0.0.0/8,192.168.0.0/16,127.0.0.1,localhost,0.0.0.0"
+            Environment="no_proxy=10.0.0.0/8,192.168.0.0/16,127.0.0.1,localhost,0.0.0.0"
+          owner: root:root
+          path: /etc/systemd/system/snap.k8s.containerd.service.d/http-proxy.conf
+          permissions: "0644"
 ---
 apiVersion: cluster.x-k8s.io/v1beta1
 kind: MachineDeployment
@@ -330,7 +346,6 @@ stringData:
 
         [Network]
         public-network = "${VSPHERE_NETWORK}"
-
     type: Opaque
 type: addons.cluster.x-k8s.io/resource-set
 ---
@@ -823,7 +838,7 @@ data:
               valueFrom:
                 fieldRef:
                   fieldPath: metadata.namespace
-            image: gcr.io/cloud-provider-vsphere/csi/release/syncer:v3.1.0
+            image: gcr.io/cloud-provider-vsphere/csi/release/syncer:v3.3.0
             imagePullPolicy: Always
             name: vsphere-syncer
             ports:
@@ -884,8 +899,8 @@ data:
             operator: Exists
           #https://github.com/kubernetes-sigs/vsphere-csi-driver/issues/2284
           - key: node.cloudprovider.kubernetes.io/uninitialized
-            value: "true"
             effect: NoSchedule
+            value: "true"
           volumes:
           - name: vsphere-config-volume
             secret:
@@ -1352,7 +1367,6 @@ data:
           - key: node.cloudprovider.kubernetes.io/uninitialized
             value: "true"
             effect: NoSchedule
-            operator: Exists
           - key: node-role.kubernetes.io/control-plane
             effect: NoSchedule
             operator: Exists
@@ -1442,6 +1456,7 @@ data:
           secretName: cloud-provider-vsphere-credentials
           secretNamespace: kube-system
           thumbprint: '${VSPHERE_TLS_THUMBPRINT}'
+          insecure-flag: 'true'
         vcenter:
           ${VSPHERE_SERVER}:
             datacenters:
