@@ -1,4 +1,18 @@
 apiVersion: v1
+kind: Secret
+metadata:
+  name: ${CLUSTER_NAME}-vsphere-proxy-config
+stringData:
+  proxy-config: |
+    ${VSPHERE_PROXY_DISABLE}[Service]
+    ${VSPHERE_PROXY_DISABLE}Environment="HTTPS_PROXY=http://squid.internal:3128"
+    ${VSPHERE_PROXY_DISABLE}Environment="HTTP_PROXY=http://squid.internal:3128"
+    ${VSPHERE_PROXY_DISABLE}Environment="https_proxy=http://squid.internal:3128"
+    ${VSPHERE_PROXY_DISABLE}Environment="http_proxy=http://squid.internal:3128"
+    ${VSPHERE_PROXY_DISABLE}Environment="NO_PROXY=10.0.0.0/8,192.168.0.0/16,127.0.0.1,localhost,0.0.0.0"
+    ${VSPHERE_PROXY_DISABLE}Environment="no_proxy=10.0.0.0/8,192.168.0.0/16,127.0.0.1,localhost,0.0.0.0"
+---
+apiVersion: v1
 kind: ServiceAccount
 metadata:
   name: kube-vip
@@ -143,14 +157,10 @@ spec:
     controlPlane:
       cloudProvider: external
     files:
-      - content: |
-          [Service]
-          Environment="HTTPS_PROXY=http://squid.internal:3128"
-          Environment="HTTP_PROXY=http://squid.internal:3128"
-          Environment="https_proxy=http://squid.internal:3128"
-          Environment="http_proxy=http://squid.internal:3128"
-          Environment="NO_PROXY=10.0.0.0/8,192.168.0.0/16,127.0.0.1,localhost,0.0.0.0"
-          Environment="no_proxy=10.0.0.0/8,192.168.0.0/16,127.0.0.1,localhost,0.0.0.0"
+      - contentFrom:
+          secret:
+            key: proxy-config
+            name: ${CLUSTER_NAME}-vsphere-proxy-config
         owner: root:root
         path: /etc/systemd/system/snap.k8s.containerd.service.d/http-proxy.conf
         permissions: "0644"
@@ -289,14 +299,10 @@ spec:
         - chmod 600 /root/.ssh/authorized_keys
         - snap install k8s --classic --edge
       files:
-        - content: |
-            [Service]
-            Environment="HTTPS_PROXY=http://squid.internal:3128"
-            Environment="HTTP_PROXY=http://squid.internal:3128"
-            Environment="https_proxy=http://squid.internal:3128"
-            Environment="http_proxy=http://squid.internal:3128"
-            Environment="NO_PROXY=10.0.0.0/8,192.168.0.0/16,127.0.0.1,localhost,0.0.0.0"
-            Environment="no_proxy=10.0.0.0/8,192.168.0.0/16,127.0.0.1,localhost,0.0.0.0"
+        - contentFrom:
+            secret:
+              key: proxy-config
+              name: ${CLUSTER_NAME}-vsphere-proxy-config
           owner: root:root
           path: /etc/systemd/system/snap.k8s.containerd.service.d/http-proxy.conf
           permissions: "0644"

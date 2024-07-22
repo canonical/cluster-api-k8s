@@ -19,4 +19,4 @@ export VSPHERE_SSH_AUTHORIZED_KEY="ssh-rsa AAAAB3N..."              # The public
 export VSPHERE_STORAGE_POLICY=""                                    # This is the vSphere storage policy. Set it to "" if you don't want to use a storage policy.
 export "CPI_IMAGE_K8S_VERSION"="v1.28.0"                            # The version of the vSphere CPI image to be used by the CPI workloads
 
-export K8S_VERSION="v1.28.0"
+export VSPHERE_PROXY_DISABLE="#"                                     # Set to "#" to disable, or "" to enable the proxy configuration
