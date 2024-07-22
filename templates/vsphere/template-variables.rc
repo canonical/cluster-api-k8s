@@ -1,7 +1,7 @@
 # Source: https://github.com/kubernetes-sigs/cluster-api-provider-vsphere/blob/main/docs/getting_started.md
 
-export VSPHERE_USERNAME="vi-admin@vsphere.local"                    # The username used to access the remote vSphere endpoint
-export VSPHERE_PASSWORD="admin!23"                                  # The password used to access the remote vSphere endpoint
+export VSPHERE_USERNAME=""                                          # The username used to access the remote vSphere endpoint
+export VSPHERE_PASSWORD=""                                          # The password used to access the remote vSphere endpoint
 
 export VSPHERE_SERVER="10.0.0.1"                                    # The vCenter server IP or FQDN
 export VSPHERE_DATACENTER="SDDC-Datacenter"                         # The vSphere datacenter to deploy the management cluster on
@@ -15,8 +15,10 @@ export VIP_NETWORK_INTERFACE="ens192"                               # The interf
 export VSPHERE_TLS_THUMBPRINT="..."                                 # sha1 thumbprint of the vcenter certificate: openssl x509 -sha1 -fingerprint -in ca.crt -noout
 export EXP_CLUSTER_RESOURCE_SET="true"                              # This enables the ClusterResourceSet feature that we are using to deploy CSI
 export VSPHERE_SSH_AUTHORIZED_KEY="ssh-rsa AAAAB3N..."              # The public ssh authorized key on all machines in this cluster.
-                                                                    #  Set to "" if you don't want to enable SSH, or are using another solution.
+                                                                    # Set to "" if you don't want to enable SSH, or are using another solution.
 export VSPHERE_STORAGE_POLICY=""                                    # This is the vSphere storage policy. Set it to "" if you don't want to use a storage policy.
-export "CPI_IMAGE_K8S_VERSION"="v1.28.0"                            # The version of the vSphere CPI image to be used by the CPI workloads
+export "CPI_IMAGE_K8S_VERSION"="v1.30.0"                            # The version of the vSphere CPI image to be used by the CPI workloads
+
+export CK8S_VERSION="v1.30.0"
 
 export VSPHERE_PROXY_DISABLE="#"                                     # Set to "#" to disable, or "" to enable the proxy configuration

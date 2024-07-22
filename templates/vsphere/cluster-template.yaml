@@ -268,15 +268,14 @@ spec:
       - echo "${VSPHERE_SSH_AUTHORIZED_KEY}" >> /root/.ssh/authorized_keys
       - chmod 700 /root/.ssh
       - chmod 600 /root/.ssh/authorized_keys
-      - mkdir -p /etc/systemd/system/snap.k8s.containerd.service.d
-      - sudo snap install k8s --classic --edge
+      - snap install k8s --classic --edge
   machineTemplate:
     infrastructureTemplate:
       apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
       kind: VSphereMachineTemplate
       name: ${CLUSTER_NAME}
   replicas: 3
-  version: ${K8S_VERSION}
+  version: ${CK8S_VERSION}
 ---
 apiVersion: bootstrap.cluster.x-k8s.io/v1beta2
 kind: CK8sConfigTemplate
@@ -334,7 +333,7 @@ spec:
         apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
         kind: VSphereMachineTemplate
         name: ${CLUSTER_NAME}-worker
-      version: ${K8S_VERSION}
+      version: ${CK8S_VERSION}
 ---
 apiVersion: addons.cluster.x-k8s.io/v1beta1
 kind: ClusterResourceSet
