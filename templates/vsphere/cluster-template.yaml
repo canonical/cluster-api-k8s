@@ -274,7 +274,7 @@ spec:
       apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
       kind: VSphereMachineTemplate
       name: ${CLUSTER_NAME}
-  replicas: 3
+  replicas: ${CONTROL_PLANE_MACHINE_COUNT}
   version: ${CK8S_VERSION}
 ---
 apiVersion: bootstrap.cluster.x-k8s.io/v1beta2
@@ -315,7 +315,7 @@ metadata:
   namespace: default
 spec:
   clusterName: ${CLUSTER_NAME}
-  replicas: 3
+  replicas: ${WORKER_MACHINE_COUNT}
   selector:
     matchLabels: {}
   template:

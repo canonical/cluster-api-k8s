@@ -1,5 +1,4 @@
-# Source: https://github.com/kubernetes-sigs/cluster-api-provider-vsphere/blob/main/docs/getting_started.md
-
+# <--- Source: https://github.com/kubernetes-sigs/cluster-api-provider-vsphere/blob/main/docs/getting_started.md
 export VSPHERE_USERNAME=""                                          # The username used to access the remote vSphere endpoint
 export VSPHERE_PASSWORD=""                                          # The password used to access the remote vSphere endpoint
 
@@ -18,7 +17,11 @@ export VSPHERE_SSH_AUTHORIZED_KEY="ssh-rsa AAAAB3N..."              # The public
                                                                     # Set to "" if you don't want to enable SSH, or are using another solution.
 export VSPHERE_STORAGE_POLICY=""                                    # This is the vSphere storage policy. Set it to "" if you don't want to use a storage policy.
 export "CPI_IMAGE_K8S_VERSION"="v1.30.0"                            # The version of the vSphere CPI image to be used by the CPI workloads
+# --->
 
-export CK8S_VERSION="v1.30.0"
+export CK8S_VERSION="v1.30.0"                                       # K8s Version of the cluster
 
-export VSPHERE_PROXY_DISABLE="#"                                     # Set to "#" to disable, or "" to enable the proxy configuration
+export VSPHERE_PROXY_DISABLE="#"                                    # Set to "#" to disable, or "" to enable the proxy configuration
+
+export CONTROL_PLANE_MACHINE_COUNT=3
+export WORKER_MACHINE_COUNT=1
