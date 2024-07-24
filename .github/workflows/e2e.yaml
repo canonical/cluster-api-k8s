@@ -75,7 +75,7 @@ jobs:
       - name: Load provider image
         run: sudo docker load -i provider-images.tar
       - name: Load k8s-snap 1.29 image
-        if: matrix.ginkgo_focus == "Workload cluster upgrade"
+        if: matrix.ginkgo_focus == 'Workload cluster upgrade'
         run: |
           sudo docker load -i k8s-snap-image-1.29.tar
       - name: Load k8s-snap 1.30 image
