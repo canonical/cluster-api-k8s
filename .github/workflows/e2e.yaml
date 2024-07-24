@@ -36,14 +36,16 @@ jobs:
         run: |
           sudo docker save -o k8s-snap-image-1.29.tar k8s-snap:dev-1.29
           sudo docker save -o k8s-snap-image-1.30.tar k8s-snap:dev-1.30
-          sudo chmod 775 k8s-snap-image.tar
+          sudo chmod 775 k8s-snap-image-1.29.tar
+          sudo chmod 775 k8s-snap-image-1.30.tar
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
           name: e2e-images
           path: |
             provider-images.tar
-            k8s-snap-image.tar
+            k8s-snap-image-1.29.tar
+            k8s-snap-image-1.30.tar
 
   run-e2e-tests:
     name: Run E2E Tests
