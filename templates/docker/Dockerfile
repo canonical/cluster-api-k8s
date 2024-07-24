@@ -36,6 +36,12 @@ FROM $BUILD_BASE AS builder
 ARG REPO=https://github.com/canonical/k8s-snap
 ARG BRANCH=main
 
+## Override the Kubernetes version from the branch.
+## Note(ben): We only have 1.30-release branches for k8s-snap right now.
+## For the rollout upgrades, we need to have a different minor version.
+## This is a temporary solution until we have a 1.31 release branch.
+ARG KUBERNETES_VERSION_OVERRIDE=""
+
 ## NOTE(neoaggelos): install dependencies needed to build the tools
 ## !!!IMPORTANT!!! Keep up to date with "snapcraft.yaml:parts.build-deps.build-packages"
 RUN apt-get update \
@@ -86,6 +92,12 @@ RUN /src/k8s-snap/build-scripts/build-component.sh helm
 
 ## kubernetes build
 FROM builder AS build-kubernetes
+ENV KUBERNETES_VERSION_OVERRIDE=${KUBERNETES_VERSION_OVERRIDE}
+RUN if [ -n "$KUBERNETES_VERSION_OVERRIDE" ]; then \
+      echo "Overwriting Kubernetes version with $KUBERNETES_VERSION_OVERRIDE"; \
+      echo "$KUBERNETES_VERSION_OVERRIDE" > /src/k8s-snap/build-scripts/components/kubernetes/version; \
+      cat /src/k8s-snap/build-scripts/components/kubernetes/version; \
+    fi
 RUN /src/k8s-snap/build-scripts/build-component.sh kubernetes
 
 ## runc build

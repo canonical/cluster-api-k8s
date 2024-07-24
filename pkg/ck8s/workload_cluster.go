@@ -290,7 +290,7 @@ func (w *Workload) doK8sdRequest(ctx context.Context, method, endpoint string, r
 		return fmt.Errorf("k8sd request failed: %s", responseBody.Error)
 	}
 	if responseBody.Metadata == nil || response == nil {
-		// Nothing to decode
+		// No response expected.
 		return nil
 	}
 	if err := json.Unmarshal(responseBody.Metadata, response); err != nil {
