@@ -70,7 +70,7 @@ metadata:
 spec:
   template:
     spec:
-      customImage: k8s-snap:dev-latest
+      customImage: k8s-snap:dev-1.30
 ---
 apiVersion: cluster.x-k8s.io/v1beta1
 kind: MachineDeployment
@@ -123,7 +123,7 @@ metadata:
 spec:
   template:
     spec:
-      customImage: k8s-snap:dev-latest
+      customImage: k8s-snap:dev-1.30
 ---
 apiVersion: bootstrap.cluster.x-k8s.io/v1beta2
 kind: CK8sConfigTemplate

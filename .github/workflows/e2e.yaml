@@ -27,7 +27,7 @@ jobs:
           cd templates/docker
           # TODO(ben): required for the rollout upgrade test. Remove KUBERNETES_VERSION_OVERRIDE once we have a 1.31 release.
           sudo docker build . -t k8s-snap:dev-1.29 --build-args BRANCH=main --build-args KUBERNETES_VERSION_OVERRIDE=v1.29.6
-          sudo docker build . -t k8s-snap:dev-latest --build-args BRANCH=main
+          sudo docker build . -t k8s-snap:dev-1.30 --build-args BRANCH=release-1.30
       - name: Save provider image
         run: |
           sudo docker save -o provider-images.tar ghcr.io/canonical/cluster-api-k8s/controlplane-controller:dev ghcr.io/canonical/cluster-api-k8s/bootstrap-controller:dev
@@ -35,7 +35,7 @@ jobs:
       - name: Save k8s-snap image
         run: |
           sudo docker save -o k8s-snap-image-1.29.tar k8s-snap:dev-1.29
-          sudo docker save -o k8s-snap-image-1.30.tar k8s-snap:dev-latest
+          sudo docker save -o k8s-snap-image-1.30.tar k8s-snap:dev-1.30
           sudo chmod 775 k8s-snap-image.tar
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
