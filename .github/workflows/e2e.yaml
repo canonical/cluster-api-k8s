@@ -25,14 +25,17 @@ jobs:
       - name: Build k8s-snap image
         run: |
           cd templates/docker
-          sudo docker build . -t k8s-snap:dev
+          # TODO(ben): required for the rollout upgrade test. Remove KUBERNETES_VERSION_OVERRIDE once we have a 1.31 release.
+          sudo docker build . -t k8s-snap:dev-1.29 --build-args BRANCH=main --build-args KUBERNETES_VERSION_OVERRIDE=v1.29.6
+          sudo docker build . -t k8s-snap:dev-latest --build-args BRANCH=main
       - name: Save provider image
         run: |
           sudo docker save -o provider-images.tar ghcr.io/canonical/cluster-api-k8s/controlplane-controller:dev ghcr.io/canonical/cluster-api-k8s/bootstrap-controller:dev
           sudo chmod 775 provider-images.tar
       - name: Save k8s-snap image
         run: |
-          sudo docker save -o k8s-snap-image.tar k8s-snap:dev
+          sudo docker save -o k8s-snap-image-1.29.tar k8s-snap:dev-1.29
+          sudo docker save -o k8s-snap-image-1.30.tar k8s-snap:dev-latest
           sudo chmod 775 k8s-snap-image.tar
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
@@ -71,8 +74,13 @@ jobs:
           path: .
       - name: Load provider image
         run: sudo docker load -i provider-images.tar
-      - name: Load k8s-snap image
-        run: sudo docker load -i k8s-snap-image.tar
+      - name: Load k8s-snap 1.29 image
+        if: matrix.ginkgo_focus == "Workload cluster upgrade"
+        run: |
+          sudo docker load -i k8s-snap-image-1.29.tar
+      - name: Load k8s-snap 1.30 image
+        run: |
+          sudo docker load -i k8s-snap-image-1.30.tar
       - name: Create docker network
         run: |
           sudo docker network create kind --driver=bridge -o com.docker.network.bridge.enable_ip_masquerade=true
