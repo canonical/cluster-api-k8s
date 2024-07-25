@@ -12,55 +12,12 @@ stringData:
     ${VSPHERE_PROXY_DISABLE}Environment="NO_PROXY=10.0.0.0/8,192.168.0.0/16,127.0.0.1,localhost,0.0.0.0"
     ${VSPHERE_PROXY_DISABLE}Environment="no_proxy=10.0.0.0/8,192.168.0.0/16,127.0.0.1,localhost,0.0.0.0"
 ---
-apiVersion: v1
-kind: ServiceAccount
-metadata:
-  name: kube-vip
-  namespace: kube-system
----
-apiVersion: rbac.authorization.k8s.io/v1
-kind: ClusterRole
-metadata:
-  annotations:
-    rbac.authorization.kubernetes.io/autoupdate: "true"
-  name: system:kube-vip-role
-rules:
-  - apiGroups: [""]
-    resources: ["services/status"]
-    verbs: ["update"]
-  - apiGroups: [""]
-    resources: ["services", "endpoints"]
-    verbs: ["list","get","watch", "update"]
-  - apiGroups: [""]
-    resources: ["nodes"]
-    verbs: ["list","get","watch", "update", "patch"]
-  - apiGroups: ["coordination.k8s.io"]
-    resources: ["leases"]
-    verbs: ["list", "get", "watch", "update", "create"]
-  - apiGroups: ["discovery.k8s.io"]
-    resources: ["endpointslices"]
-    verbs: ["list","get","watch", "update"]
----
-kind: ClusterRoleBinding
-apiVersion: rbac.authorization.k8s.io/v1
-metadata:
-  name: system:kube-vip-binding
-roleRef:
-  apiGroup: rbac.authorization.k8s.io
-  kind: ClusterRole
-  name: system:kube-vip-role
-subjects:
-- kind: ServiceAccount
-  name: kube-vip
-  namespace: kube-system
----
 apiVersion: cluster.x-k8s.io/v1beta1
 kind: Cluster
 metadata:
   labels:
     cluster.x-k8s.io/cluster-name: ${CLUSTER_NAME}
   name: ${CLUSTER_NAME}
-  namespace: default
 spec:
   clusterNetwork:
     pods:
@@ -151,7 +108,6 @@ apiVersion: controlplane.cluster.x-k8s.io/v1beta2
 kind: CK8sControlPlane
 metadata:
   name: ${CLUSTER_NAME}
-  namespace: default
 spec:
   spec:
     controlPlane:
@@ -163,6 +119,51 @@ spec:
             name: ${CLUSTER_NAME}-vsphere-proxy-config
         owner: root:root
         path: /etc/systemd/system/snap.k8s.containerd.service.d/http-proxy.conf
+        permissions: "0644"
+      - content: |
+          apiVersion: v1
+          kind: ServiceAccount
+          metadata:
+            name: kube-vip
+            namespace: kube-system
+          ---
+          apiVersion: rbac.authorization.k8s.io/v1
+          kind: ClusterRole
+          metadata:
+            annotations:
+              rbac.authorization.kubernetes.io/autoupdate: "true"
+            name: system:kube-vip-role
+          rules:
+            - apiGroups: [""]
+              resources: ["services/status"]
+              verbs: ["update"]
+            - apiGroups: [""]
+              resources: ["services", "endpoints"]
+              verbs: ["list","get","watch", "update"]
+            - apiGroups: [""]
+              resources: ["nodes"]
+              verbs: ["list","get","watch", "update", "patch"]
+            - apiGroups: ["coordination.k8s.io"]
+              resources: ["leases"]
+              verbs: ["list", "get", "watch", "update", "create"]
+            - apiGroups: ["discovery.k8s.io"]
+              resources: ["endpointslices"]
+              verbs: ["list","get","watch", "update"]
+          ---
+          kind: ClusterRoleBinding
+          apiVersion: rbac.authorization.k8s.io/v1
+          metadata:
+            name: system:kube-vip-binding
+          roleRef:
+            apiGroup: rbac.authorization.k8s.io
+            kind: ClusterRole
+            name: system:kube-vip-role
+          subjects:
+          - kind: ServiceAccount
+            name: kube-vip
+            namespace: kube-system
+        owner: root:root
+        path: /capi/manifests/kube-vip-rbac.yaml
         permissions: "0644"
       - content: |
           apiVersion: apps/v1
@@ -281,7 +282,6 @@ apiVersion: bootstrap.cluster.x-k8s.io/v1beta2
 kind: CK8sConfigTemplate
 metadata:
   name: ${CLUSTER_NAME}-md-0
-  namespace: default
 spec:
   template:
     spec:
@@ -312,7 +312,6 @@ metadata:
   labels:
     cluster.x-k8s.io/cluster-name: ${CLUSTER_NAME}
   name: ${CLUSTER_NAME}-md-0
-  namespace: default
 spec:
   clusterName: ${CLUSTER_NAME}
   replicas: ${WORKER_MACHINE_COUNT}
@@ -341,7 +340,6 @@ metadata:
   labels:
     cluster.x-k8s.io/cluster-name: ${CLUSTER_NAME}
   name: ${CLUSTER_NAME}-crs-0
-  namespace: default
 spec:
   clusterSelector:
     matchLabels:
@@ -360,7 +358,6 @@ apiVersion: v1
 kind: Secret
 metadata:
   name: ${CLUSTER_NAME}
-  namespace: default
 stringData:
   password: ${VSPHERE_PASSWORD}
   username: ${VSPHERE_USERNAME}
@@ -369,7 +366,6 @@ apiVersion: v1
 kind: Secret
 metadata:
   name: vsphere-config-secret
-  namespace: default
 stringData:
   data: |
     apiVersion: v1
