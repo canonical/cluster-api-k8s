@@ -67,6 +67,7 @@ jobs:
           - "Workload cluster creation"
           - "Workload cluster scaling"
           - "Workload cluster upgrade"
+      fail-fast: false
     steps:
       -
         name: Login to GitHub Container Registry
