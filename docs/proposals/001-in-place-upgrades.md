@@ -27,7 +27,7 @@ it is attempting to solve.
 
 Canonical Kubernetes CAPI providers should reconcile workload clusters and perform in-place upgrades based on the metadata in the cluster manifest.
 
-This can be used in environments where rolling upgrades are not a viable option such as edge deployments.
+This can be used in environments where rolling upgrades are not a viable option such as edge deployments and non-HA clusters.
 
 ## Rationale
 <!--
@@ -58,19 +58,19 @@ clear example of "before" and "after".
 
 Users will be able to perform in-place upgrades per machine basis by running:
 ```sh
-kubectl annotate machine <machine-name> k8sd.io/in-place-upgrade={upgrade-option}
+kubectl annotate machine <machine-name> k8sd.io/in-place-upgrade-to={upgrade-option}
 ```
 
 Users can also perform in-place upgrades on the entire cluster by running:
 ```sh
-kubectl annotate cluster <cluster-name> k8sd.io/in-place-upgrade={upgrade-option}
+kubectl annotate cluster <cluster-name> k8sd.io/in-place-upgrade-to={upgrade-option}
 ```
 This would upgrade machines belonging to `<cluster-name>` one by one.
 
 `{upgrade-option}` can be one of:
 * `channel=<channel>` which would refresh the machine to the provided channel e.g. `channel=1.31-classic/stable`
 * `revision=<revision>` which would refresh the machine to the provided revision e.g. `revision=640`
-* `localPath=<path-to-file>` which would refresh the machine to the provided local `*.snap` file e.g. `localPath=/path/to/k8s.snap`
+* `localPath=<absolute-path-to-file>` which would refresh the machine to the provided local `*.snap` file e.g. `localPath=/path/to/k8s.snap`
 
 ## Alternative solutions
 <!--
@@ -98,7 +98,7 @@ This section is very useful to help guide the implementation details section
 below, or serve as reference for future proposals.
 -->
 
-none
+The in-place upgrades only address the upgrades of Canonical Kubernetes and it's respective dependencies. Which means changes on the OS front/image would not be handled since the underlying machine image stays the same. This would be handled by a rolling upgrade as usual.
 
 # Implementation Details
 
@@ -124,7 +124,9 @@ type SnapRefreshRequest struct {
 }
 ```
 
-`POST /x/capi/snap-refresh` performs the in-place upgrade with the given options. The upgrade can be either done with a `Channel`, `Revision` or a local `*.snap` file provided via `LocalPath`.
+`POST /x/capi/snap-refresh` performs the in-place upgrade with the given options.
+
+The upgrade can be either done with a `Channel`, `Revision` or a local `*.snap` file provided via `LocalPath`. The value of `LocalPath` should be an absolute path.
 
 This endpoint should use `ValidateCAPIAuthTokenAccessHandler("capi-auth-token")` for authentication.
 
@@ -133,18 +135,49 @@ This endpoint should use `ValidateCAPIAuthTokenAccessHandler("capi-auth-token")`
 This section MUST mention any changes to the bootstrap provider.
 -->
 
-A machine controller called `MachineReconciler` is added which would perform the in-place upgrade if `k8sd.io/in-place-upgrade` annotation is set on the machine.
+A machine controller called `MachineReconciler` is added which would perform the in-place upgrade if `k8sd.io/in-place-upgrade-to` annotation is set on the machine.
 
 The controller would use the value of this annotation to make an endpoint call to the `/x/capi/snap-refresh` through `k8sd-proxy`. 
 
 The result of this operation will be communicated back to the user via the `k8sd.io/in-place-upgrade-status` annotation. Values being:
 
+* `in-progress` for an upgrade currently in progress
 * `done` for a successful upgrade
 * `failed` for a failed upgrade
 
-A failed upgrade could be re-triggered by removing the `k8sd.io/in-place-upgrade` annotation and re-adding it to the machine.
+After an upgrade process begins:
+* `k8sd.io/in-place-upgrade-status` annotation on the `Machine` would be added/updated with `in-progress`
 
-The `ck8sconfig_controller` should check for the `k8sd.io/in-place-upgrade` annotation both on the `Machine` and on the owner `Cluster` object. The value of one of these annotations should be used instead of the `version` field while generating a cloud-init script for a new machine. The annotation on the `Machine` object should take precedence.
+After a successfull upgrade:
+* `k8sd.io/in-place-upgrade-to` annotation on the `Machine` would be removed
+* `k8sd.io/in-place-upgrade-current` annotation on the `Machine` would be added/updated with the used `{upgrade-option}`.
+* `k8sd.io/in-place-upgrade-status` annotation on the `Machine` would be added/updated with `done`
+
+After a failed upgrade:
+* `k8sd.io/in-place-upgrade-failure` annotation on the `Machine` would be added/updated with the failure message
+* `k8sd.io/in-place-upgrade-status` annotation on the `Machine` would be added/updated with `failed`
+
+The reconciler should ignore the upgrade if `k8sd.io/in-place-upgrade-status` is already set to `in-progress` on the machine. 
+
+#### Changes for Rolling Upgrades and Creating New Machines
+In case of a rolling upgrade or when creating new machines the `CK8sConfigReconciler` should check for the `k8sd.io/in-place-upgrade-current` annotation both on the `Machine` and on the owner `Cluster` object.
+
+The value of one of these annotations should be used instead of the `version` field while generating a cloud-init script for a machine. The precedence of version fields are:
+1. Annotation on the `Machine`
+2. Annotation on the `Cluster`
+3. The `version` field
+
+Which means the value from the annotation on the `Machine` would be used first if found.
+
+Using an annotation value requires changing the `install.sh` file to perform the relevant snap operation based on the option.
+* `snap install k8s --classic --channel <channel>` for `Channel`
+* `snap install k8s --classic --revision <revision>` for `Revision`
+* `snap install <path-to-snap> --classic --dangerous --name k8s` for `LocalPath`
+
+When a rolling upgrade is triggered the `LocalPath` option requires the newly created machine to contain the local `*.snap` file. This usually means the machine image used by the infrastructure provider should be updated to contain this image. This file could possibly be sideloaded in the cloud-init script before installation.
+
+This operation should not be performed if `install.sh` script is overridden by the user in the manifests.
+
 This would prevent adding nodes with an outdated version and possibly breaking the cluster due to a version mismatch.
 
 ## ControlPlane Provider Changes
@@ -153,10 +186,15 @@ This section MUST mention any changes to the controlplane provider.
 -->
 A cluster controller called `ClusterReconciler` is added which would perform the one-by-one in-place upgrade of the entire workload cluster. 
 
-The controller would propagate the `k8sd.io/in-place-upgrade` annotation on the `Cluster` object by adding this annotation one-by-one to all the machines that is owned by this cluster. 
+The controller would propagate the `k8sd.io/in-place-upgrade-to` annotation on the `Cluster` object by adding this annotation one-by-one to all the machines that is owned by this cluster. 
 
 A Kubernetes API call listing the objects of type `Machine` and filtering with `ownerRef` would produce the list of machines owned by the cluster. The controller then would iterate over this list, annotating machines and waiting for the operation to complete on each iteration.
 
+The reconciler should ignore a machine if `k8sd.io/in-place-upgrade-status` is already set to `in-progress`. 
+
+Once upgrades of the underlying machines are finished:
+* `k8sd.io/in-place-upgrade-to` annotation on the `Cluster` would be removed
+* `k8sd.io/in-place-upgrade-current` annotation on the `Cluster` would be added/updated with the used `{upgrade-option}`.
 
 ## Configuration Changes
 <!--
@@ -184,7 +222,7 @@ This section MUST explain how the new feature will be tested.
 -->
 The new feature can be tested manually by applying an annotation on the machine/node, waiting for the process to finish by checking for the `k8sd.io/in-place-upgrade-status` annotation and then checking for the version of the node through the Kubernetes API e.g. `kubectl get node`. A timeout should be set for waiting on the upgrade process.
 
-The tests can be integrated into the CI with the CAPD infrastructure provider.
+The tests can be integrated into the CI the same way with the CAPD infrastructure provider.
 
 The upgrade should be performed with the `localPath` option. Under Pebble the process would replace the `kubernetes` binary with the binary provided in the annotation value.
 
@@ -214,8 +252,6 @@ implements it.
 
 The annotation method is chosen due to the "immutable infrastructure" assumption CAPI currently has. Which means updates are always done by creating new machines and fields are immutable. This might also pose some challenges on displaying accurate Kubernetes version information through CAPI.
 
-We should be aware of the [metadata propagation](https://cluster-api.sigs.k8s.io/developer/architecture/controllers/metadata-propagation) performed by the upstream controllers. Some meetadata is propagated in-place, which can ultimately propagate all the way down to the `Machine` objects. This could potentially flood the cluster with upgrades if machines get annotated at the same time. The cluster wide upgrade is handled through the annotation on the actual Cluster object due to this reason.
+We should be aware of the [metadata propagation](https://cluster-api.sigs.k8s.io/developer/architecture/controllers/metadata-propagation) performed by the upstream controllers. Some metadata is propagated in-place, which can ultimately propagate all the way down to the `Machine` objects. This could potentially flood the cluster with upgrades if machines get annotated at the same time. The cluster wide upgrade is handled through the annotation on the actual Cluster object due to this reason.
 
 Updating the `version` field would trigger rolling updates by default, with the only difference than upstream being the precedence of the version value provided in the annotations. 
-
-The in-place upgrades only address the upgrades of Canonical Kubernetes and it's respective dependencies. Which means changes on the OS front/image would not be handled since the underlying machine image stays the same. This would be handled by a rolling upgrade as usual.
