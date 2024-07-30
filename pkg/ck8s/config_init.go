@@ -78,6 +78,10 @@ func GenerateInitControlPlaneConfig(cfg InitControlPlaneConfig) (apiv1.Bootstrap
 		out.DatastoreServers = cfg.DatastoreServers
 	}
 
+	// CAPI manages the lifecycle of the Kubernetes node.
+	// Hence, k8s-snap should only clean up microcluster and files on upgrades.
+	out.ShouldRemoveK8sNode = ptr.To(false)
+
 	// annotations
 	out.ClusterConfig.Annotations = cfg.InitConfig.Annotations
 
