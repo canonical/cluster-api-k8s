@@ -150,17 +150,18 @@ After an upgrade process begins:
 
 After a successfull upgrade:
 * `k8sd.io/in-place-upgrade-to` annotation on the `Machine` would be removed
-* `k8sd.io/in-place-upgrade-current` annotation on the `Machine` would be added/updated with the used `{upgrade-option}`.
+* `k8sd.io/in-place-upgrade-release` annotation on the `Machine` would be added/updated with the used `{upgrade-option}`.
+* `k8sd.io/in-place-upgrade-status-message` annotation on the `Machine` would be added/updated with the success message
 * `k8sd.io/in-place-upgrade-status` annotation on the `Machine` would be added/updated with `done`
 
 After a failed upgrade:
-* `k8sd.io/in-place-upgrade-failure` annotation on the `Machine` would be added/updated with the failure message
+* `k8sd.io/in-place-upgrade-status-message` annotation on the `Machine` would be added/updated with the failure message
 * `k8sd.io/in-place-upgrade-status` annotation on the `Machine` would be added/updated with `failed`
 
 The reconciler should ignore the upgrade if `k8sd.io/in-place-upgrade-status` is already set to `in-progress` on the machine. 
 
-#### Changes for Rolling Upgrades and Creating New Machines
-In case of a rolling upgrade or when creating new machines the `CK8sConfigReconciler` should check for the `k8sd.io/in-place-upgrade-current` annotation both on the `Machine` and on the owner `Cluster` object.
+#### Changes for Rolling Upgrades, Scaling Up and Creating New Machines
+In case of a rolling upgrade or when creating new machines the `CK8sConfigReconciler` should check for the `k8sd.io/in-place-upgrade-release` annotation both on the `Machine` and on the owner `Cluster` object.
 
 The value of one of these annotations should be used instead of the `version` field while generating a cloud-init script for a machine. The precedence of version fields are:
 1. Annotation on the `Machine`
@@ -194,7 +195,7 @@ The reconciler should ignore a machine if `k8sd.io/in-place-upgrade-status` is a
 
 Once upgrades of the underlying machines are finished:
 * `k8sd.io/in-place-upgrade-to` annotation on the `Cluster` would be removed
-* `k8sd.io/in-place-upgrade-current` annotation on the `Cluster` would be added/updated with the used `{upgrade-option}`.
+* `k8sd.io/in-place-upgrade-release` annotation on the `Cluster` would be added/updated with the used `{upgrade-option}`.
 
 ## Configuration Changes
 <!--
