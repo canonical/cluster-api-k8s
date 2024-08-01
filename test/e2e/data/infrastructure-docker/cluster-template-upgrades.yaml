@@ -40,7 +40,7 @@ spec:
     infrastructureTemplate:
       apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
       kind: DockerMachineTemplate
-      name: ${CLUSTER_NAME}-control-plane-1.29
+      name: ${CLUSTER_NAME}-control-plane-old
   spec:
     airGapped: true
     controlPlane:
@@ -53,13 +53,23 @@ spec:
 apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
 kind: DockerMachineTemplate
 metadata:
-  name: ${CLUSTER_NAME}-control-plane-1.29
+  name: ${CLUSTER_NAME}-control-plane-old
   namespace: ${NAMESPACE}
 spec:
   template:
     spec:
-      customImage: k8s-snap:dev-1.29
-
+      customImage: k8s-snap:dev-old
+# After upgrade template for the machine deployment
+---
+apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
+kind: DockerMachineTemplate
+metadata:
+  name: ${CLUSTER_NAME}-control-plane-new
+  namespace: ${NAMESPACE}
+spec:
+  template:
+    spec:
+      customImage: k8s-snap:dev-new
 ---
 apiVersion: cluster.x-k8s.io/v1beta1
 kind: MachineDeployment
@@ -92,27 +102,27 @@ spec:
       infrastructureRef:
         apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
         kind: DockerMachineTemplate
-        name: ${CLUSTER_NAME}-md-1.29-0
+        name: ${CLUSTER_NAME}-md-old-0
 ---
 apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
 kind: DockerMachineTemplate
 metadata:
-  name: ${CLUSTER_NAME}-md-1.29-0
+  name: ${CLUSTER_NAME}-md-old-0
   namespace: ${NAMESPACE}
 spec:
   template:
     spec:
-      customImage: k8s-snap:dev-1.29
+      customImage: k8s-snap:dev-old
 ---
 apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
 kind: DockerMachineTemplate
 metadata:
-  name: ${CLUSTER_NAME}-md-1.30-0
+  name: ${CLUSTER_NAME}-md-new-0
   namespace: ${NAMESPACE}
 spec:
   template:
     spec:
-      customImage: k8s-snap:dev-1.30
+      customImage: k8s-snap:dev-new
 ---
 apiVersion: bootstrap.cluster.x-k8s.io/v1beta2
 kind: CK8sConfigTemplate
