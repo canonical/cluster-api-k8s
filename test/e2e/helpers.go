@@ -37,6 +37,7 @@ import (
 	expv1 "sigs.k8s.io/cluster-api/exp/api/v1beta1"
 	"sigs.k8s.io/cluster-api/test/framework"
 	"sigs.k8s.io/cluster-api/test/framework/clusterctl"
+	dockerv1beta1 "sigs.k8s.io/cluster-api/test/infrastructure/docker/api/v1beta1"
 	"sigs.k8s.io/cluster-api/util/patch"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -552,13 +553,40 @@ func WaitForControlPlaneAndMachinesReady(ctx context.Context, input WaitForContr
 	})
 }
 
+// UpgradeDockerMachineAndWaitForUpgradeInput is the input type for UpgradeDockerMachineAndWaitForUpgrade.
+type UpgradeDockerMachineTemplateAndWaitForUpgradeInput struct {
+	ClusterProxy framework.ClusterProxy
+	ControlPlane *controlplanev1.CK8sControlPlane
+	CustomImage  string
+}
+
+// UpgradeDockerMachineTemplateAndWaitForUpgrade upgrades a DockerMachineTemplate custom image and waits for it to be upgraded.
+func UpgradeDockerMachineTemplateAndWaitForUpgrade(ctx context.Context, input UpgradeDockerMachineTemplateAndWaitForUpgradeInput) {
+	Byf("Patching the DockerMachineTemplate image to use the updated custom image")
+	mgmtClient := input.ClusterProxy.GetClient()
+
+	dockerMachineTemplate := &dockerv1beta1.DockerMachineTemplate{}
+	err := mgmtClient.Get(ctx, client.ObjectKey{Name: input.ControlPlane.Spec.MachineTemplate.InfrastructureRef.Name, Namespace: input.ControlPlane.Namespace}, dockerMachineTemplate)
+	Expect(err).ToNot(HaveOccurred())
+
+	patchHelperDocker, err := patch.NewHelper(dockerMachineTemplate, mgmtClient)
+	Expect(err).ToNot(HaveOccurred())
+	dockerMachineTemplate.Spec.Template.Spec.CustomImage = input.CustomImage
+	Eventually(func() error {
+		err := patchHelperDocker.Patch(ctx, dockerMachineTemplate)
+		if err != nil {
+			Byf("Failed to patch the DockerMachineTemplate: %v", err)
+		}
+		return err
+	}, retryableOperationTimeout, retryableOperationInterval).Should(Succeed(), "Failed to patch the DockerMachineTemplate")
+}
+
 // UpgradeControlPlaneAndWaitForUpgradeInput is the input type for UpgradeControlPlaneAndWaitForUpgrade.
 type UpgradeControlPlaneAndWaitForUpgradeInput struct {
 	ClusterProxy                framework.ClusterProxy
 	Cluster                     *clusterv1.Cluster
 	ControlPlane                *controlplanev1.CK8sControlPlane
 	KubernetesUpgradeVersion    string
-	UpgradeMachineTemplate      *string
 	WaitForMachinesToBeUpgraded []interface{}
 }
 
@@ -577,17 +605,6 @@ func UpgradeControlPlaneAndWaitForUpgrade(ctx context.Context, input UpgradeCont
 	Expect(err).ToNot(HaveOccurred())
 
 	input.ControlPlane.Spec.Version = input.KubernetesUpgradeVersion
-
-	// Create a new ObjectReference for the infrastructure provider
-	newInfrastructureRef := corev1.ObjectReference{
-		APIVersion: "infrastructure.cluster.x-k8s.io/v1beta1", // Adjust based on your infrastructure API version
-		Kind:       "DockerMachineTemplate",
-		Name:       fmt.Sprintf("%s-control-plane-1.30", input.Cluster.Name),
-		Namespace:  input.ControlPlane.Spec.MachineTemplate.InfrastructureRef.Namespace,
-	}
-
-	// Update the infrastructureRef
-	input.ControlPlane.Spec.MachineTemplate.InfrastructureRef = newInfrastructureRef
 
 	Eventually(func() error {
 		return patchHelper.Patch(ctx, input.ControlPlane)
@@ -618,16 +635,6 @@ func UpgradeMachineDeploymentsAndWait(ctx context.Context, input framework.Upgra
 
 		oldVersion := deployment.Spec.Template.Spec.Version
 		deployment.Spec.Template.Spec.Version = &input.UpgradeVersion
-		// Create a new ObjectReference for the infrastructure provider
-		newInfrastructureRef := corev1.ObjectReference{
-			APIVersion: "infrastructure.cluster.x-k8s.io/v1beta1",
-			Kind:       "DockerMachineTemplate",
-			Name:       fmt.Sprintf("%s-md-1.30-0", input.Cluster.Name),
-			Namespace:  deployment.Spec.Template.Spec.InfrastructureRef.Namespace,
-		}
-
-		// Update the infrastructureRef
-		deployment.Spec.Template.Spec.InfrastructureRef = newInfrastructureRef
 		Eventually(func() error {
 			return patchHelper.Patch(ctx, deployment)
 		}, retryableOperationTimeout, retryableOperationInterval).Should(Succeed(), "Failed to patch Kubernetes version on MachineDeployment %s", klog.KObj(deployment))

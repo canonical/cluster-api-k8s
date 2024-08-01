@@ -152,12 +152,18 @@ func ClusterUpgradeSpec(ctx context.Context, inputGetter func() ClusterUpgradeSp
 			WaitForMachineDeployments:    input.E2EConfig.GetIntervals(specName, "wait-worker-nodes"),
 		}, result)
 
+		By("Upgrading the DockerMachineTemplate")
+		UpgradeDockerMachineTemplateAndWaitForUpgrade(ctx, UpgradeDockerMachineTemplateAndWaitForUpgradeInput{
+			ClusterProxy: input.BootstrapClusterProxy,
+			ControlPlane: result.ControlPlane,
+			CustomImage:  "k8s-snap:dev-1.30",
+		})
+
 		By("Upgrading the Kubernetes control-plane")
 		UpgradeControlPlaneAndWaitForUpgrade(ctx, UpgradeControlPlaneAndWaitForUpgradeInput{
 			ClusterProxy:                input.BootstrapClusterProxy,
 			Cluster:                     result.Cluster,
 			ControlPlane:                result.ControlPlane,
-			UpgradeMachineTemplate:      ptr.To(fmt.Sprintf("%s-control-plane-1.30", clusterName)),
 			KubernetesUpgradeVersion:    input.E2EConfig.GetVariable(KubernetesVersionUpgradeTo),
 			WaitForMachinesToBeUpgraded: input.E2EConfig.GetIntervals(specName, "wait-machine-upgrade"),
 		})
