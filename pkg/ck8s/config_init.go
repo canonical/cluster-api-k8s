@@ -81,6 +81,12 @@ func GenerateInitControlPlaneConfig(cfg InitControlPlaneConfig) (apiv1.Bootstrap
 	// annotations
 	out.ClusterConfig.Annotations = cfg.InitConfig.Annotations
 
+	// Since CAPI handles the lifecycle management of Kubernetes nodes, k8s-snap should only focus on
+	// cleaning up microcluster and files during upgrades.
+	if _, ok := out.ClusterConfig.Annotations[apiv1.AnnotationSkipCleanupKubernetesNodeOnRemove]; !ok {
+		out.ClusterConfig.Annotations[apiv1.AnnotationSkipCleanupKubernetesNodeOnRemove] = "true"
+	}
+
 	// features
 	out.ClusterConfig.DNS.Enabled = ptr.To(cfg.InitConfig.GetEnableDefaultDNS())
 	out.ClusterConfig.LocalStorage.Enabled = ptr.To(cfg.InitConfig.GetEnableDefaultLocalStorage())
