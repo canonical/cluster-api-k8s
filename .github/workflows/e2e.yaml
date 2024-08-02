@@ -33,9 +33,7 @@ jobs:
       - name: Build k8s-snap image
         run: |
           cd templates/docker
-          # TODO(ben): required for the rollout upgrade test. Remove KUBERNETES_VERSION_OVERRIDE once we have a 1.31 release.
-          sudo docker build . -t k8s-snap:dev-old --build-arg BRANCH=main --build-arg KUBERNETES_VERSION_OVERRIDE=v1.29.6
-          # TODO(ben): release-1.30 is missing extra-node-args hence we need to use main branch for now.
+          sudo docker build . -t k8s-snap:dev-old --build-arg BRANCH=main --build-arg KUBERNETES_VERSION=v1.29.6
           sudo docker build . -t k8s-snap:dev-new --build-arg BRANCH=main
       - name: Save provider image
         run: |
