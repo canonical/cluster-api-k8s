@@ -90,6 +90,9 @@ RUN /src/k8s-snap/build-scripts/build-component.sh helm
 FROM builder AS build-kubernetes
 ENV KUBERNETES_VERSION=${KUBERNETES_VERSION}
 RUN [ -n "$KUBERNETES_VERSION" ] && echo "$KUBERNETES_VERSION" > /src/k8s-snap/build-scripts/components/kubernetes/version
+RUN if [ -n "$KUBERNETES_VERSION" ]; then \
+      echo "$KUBERNETES_VERSION" > /src/k8s-snap/build-scripts/components/kubernetes/version; \
+    fi
 RUN /src/k8s-snap/build-scripts/build-component.sh kubernetes
 
 ## runc build
