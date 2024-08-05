@@ -84,6 +84,11 @@ RUN /src/k8s-snap/build-scripts/build-component.sh containerd
 FROM builder AS build-helm
 RUN /src/k8s-snap/build-scripts/build-component.sh helm
 
+# # kubernetes build with older version for in place upgrade testing
+# FROM builder AS build-kubernetes-old
+# RUN echo "$(cat /src/k8s-snap/build-scripts/components/kubernetes/version | cut -f-2 -d'.').0" > /src/k8s-snap/build-scripts/components/kubernetes/version
+# RUN /src/k8s-snap/build-scripts/build-component.sh kubernetes
+
 ## kubernetes build
 FROM builder AS build-kubernetes
 RUN /src/k8s-snap/build-scripts/build-component.sh kubernetes
@@ -133,6 +138,8 @@ COPY --from=build-runc /out /snap/k8s/current
 COPY --from=build-helm /out /snap/k8s/current
 COPY --from=build-containerd /out /snap/k8s/current
 COPY --from=build-cni /out /snap/k8s/current
+# COPY --from=build-kubernetes-old /out /snap/k8s/current
+# COPY --from=build-kubernetes /out /k8s/upgrade
 COPY --from=build-kubernetes /out /snap/k8s/current
 COPY --from=build-k8sd /out /snap/k8s/current
 COPY --from=build-pebble /out /snap/k8s/current
