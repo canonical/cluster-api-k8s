@@ -263,9 +263,12 @@ spec:
         >/etc/hosts
       - echo "127.0.0.1   {{ ds.meta_data.hostname }} {{ local_hostname }} localhost
         localhost.localdomain localhost4 localhost4.localdomain4" >>/etc/hosts
-      - echo "${VSPHERE_SSH_AUTHORIZED_KEY}" >> /root/.ssh/authorized_keys
-      - chmod 700 /root/.ssh
-      - chmod 600 /root/.ssh/authorized_keys
+      - |
+        if [ -n "${VSPHERE_SSH_AUTHORIZED_KEY}" ]; then
+          echo "${VSPHERE_SSH_AUTHORIZED_KEY}" >> /root/.ssh/authorized_keys
+          chmod 700 /root/.ssh
+          chmod 600 /root/.ssh/authorized_keys
+        fi
       - snap install k8s --classic --edge
   machineTemplate:
     infrastructureTemplate:
@@ -290,9 +293,12 @@ spec:
           >/etc/hosts
         - echo "127.0.0.1   {{ ds.meta_data.hostname }} {{ local_hostname }} localhost
           localhost.localdomain localhost4 localhost4.localdomain4" >>/etc/hosts
-        - echo "${VSPHERE_SSH_AUTHORIZED_KEY}" >> /root/.ssh/authorized_keys
-        - chmod 700 /root/.ssh
-        - chmod 600 /root/.ssh/authorized_keys
+        - |
+          if [ -n "${VSPHERE_SSH_AUTHORIZED_KEY}" ]; then
+            echo "${VSPHERE_SSH_AUTHORIZED_KEY}" >> /root/.ssh/authorized_keys
+            chmod 700 /root/.ssh
+            chmod 600 /root/.ssh/authorized_keys
+          fi
         - snap install k8s --classic --edge
       files:
         - contentFrom:
