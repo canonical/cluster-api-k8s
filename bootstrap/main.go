@@ -53,6 +53,7 @@ func main() {
 	var metricsAddr string
 	var enableLeaderElection bool
 	var syncPeriod time.Duration
+	var k8sdDialTimeout time.Duration
 
 	flag.StringVar(&metricsAddr, "metrics-addr", ":8080", "The address the metric endpoint binds to.")
 	flag.BoolVar(&enableLeaderElection, "enable-leader-election", false,
@@ -62,9 +63,14 @@ func main() {
 	flag.DurationVar(&syncPeriod, "sync-period", 10*time.Minute,
 		"The minimum interval at which watched resources are reconciled (e.g. 15m)")
 
+	flag.DurationVar(&k8sdDialTimeout, "k8sd-dial-timeout-duration", 60*time.Second,
+		"Duration that the proxy client waits at most to establish a connection with k8sd")
+
 	flag.Parse()
 
 	ctrl.SetLogger(zap.New(zap.UseDevMode(true)))
+
+	ctx := ctrl.SetupSignalHandler()
 
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
 		Scheme: scheme,
@@ -94,6 +100,17 @@ func main() {
 		os.Exit(1)
 	}
 
+	ctrMachineLogger := ctrl.Log.WithName("controllers").WithName("Machine")
+	if err = (&controllers.InPlaceUpgradeReconciler{
+		Client:          mgr.GetClient(),
+		Log:             ctrMachineLogger,
+		Scheme:          mgr.GetScheme(),
+		K8sdDialTimeout: k8sdDialTimeout,
+	}).SetupWithManager(mgr); err != nil {
+		setupLog.Error(err, "unable to create controller", "controller", "Machine")
+		os.Exit(1)
+	}
+
 	if os.Getenv("ENABLE_WEBHOOKS") != "false" {
 		if err = (&bootstrapv1.CK8sConfig{}).SetupWebhookWithManager(mgr); err != nil {
 			setupLog.Error(err, "unable to create webhook", "webhook", "CK8sConfig")
@@ -107,7 +124,7 @@ func main() {
 	// +kubebuilder:scaffold:builder
 
 	setupLog.Info("starting manager")
-	if err := mgr.Start(ctrl.SetupSignalHandler()); err != nil {
+	if err := mgr.Start(ctx); err != nil {
 		setupLog.Error(err, "problem running manager")
 		os.Exit(1)
 	}
