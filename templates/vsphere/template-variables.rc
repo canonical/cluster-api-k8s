@@ -30,7 +30,7 @@ export CSI_REGISTRAR_IMAGE="registry.k8s.io/sig-storage/csi-node-driver-registra
 
 export KUBERNETES_VERSION=""                    # K8s Version of the cluster, e.g. "v1.30.0"
 
-export PROXY_DISABLE="#"                # Set to "#" to disable, or "" to enable the proxy configuration
+export PROXY_DISABLE="#"                        # Set to "#" to disable, or "" to enable the proxy configuration
 
 export CONTROL_PLANE_MACHINE_COUNT=1
 export WORKER_MACHINE_COUNT=1
