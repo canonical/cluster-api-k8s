@@ -1,22 +1,22 @@
 # Source: https://github.com/kubernetes-sigs/cluster-api-provider-vsphere/blob/main/docs/getting_started.md
 
-export VSPHERE_USERNAME=""                                                      # The username used to access the remote vSphere endpoint
-export VSPHERE_PASSWORD=""                                                      # The password used to access the remote vSphere endpoint
+export VSPHERE_USERNAME=""                      # The username used to access the remote vSphere endpoint
+export VSPHERE_PASSWORD=""                      # The password used to access the remote vSphere endpoint
 
-export VSPHERE_SERVER="10.0.0.1"                                                # The vCenter server IP or FQDN
-export VSPHERE_DATACENTER="SDDC-Datacenter"                                     # The vSphere datacenter to deploy the management cluster on
-export VSPHERE_DATASTORE="DefaultDatastore"                                     # The vSphere datastore to deploy the management cluster on
-export VSPHERE_NETWORK="VM Network"                                             # The VM network to deploy the management cluster on
-export VSPHERE_RESOURCE_POOL="*/Resources"                                      # The vSphere resource pool for your VMs
-export VSPHERE_FOLDER="vm"                                                      # The VM folder for your VMs. Set to "" to use the root vSphere folder
-export VSPHERE_TEMPLATE="ubuntu-1804-kube-v1.17.3"                              # The VM template to use for your management cluster.
-export CONTROL_PLANE_ENDPOINT_IP="192.168.9.230"                                # the IP that kube-vip is going to use as a control plane endpoint
-export VIP_NETWORK_INTERFACE="ens192"                                           # The interface that kube-vip should apply the IP to. Omit to tell kube-vip to autodetect the interface.
-export VSPHERE_TLS_THUMBPRINT="..."                                             # sha1 thumbprint of the vcenter certificate: openssl x509 -sha1 -fingerprint -in ca.crt -noout
-export EXP_CLUSTER_RESOURCE_SET="true"                                          # This enables the ClusterResourceSet feature that we are using to deploy CSI
-export VSPHERE_SSH_AUTHORIZED_KEY="ssh-rsa AAAAB3N..."                          # The public ssh authorized key on all machines in this cluster.
-                                                                                # Set to "" if you don't want to enable SSH, or are using another solution.
-export VSPHERE_STORAGE_POLICY=""                                                # This is the vSphere storage policy. Set it to "" if you don't want to use a storage policy.
+export VSPHERE_SERVER=""                        # The vCenter server IP or FQDN, e.g. "10.0.0.1"
+export VSPHERE_DATACENTER=""                    # The vSphere datacenter to deploy the management cluster on, e.g. "SDDC-Datacenter"
+export VSPHERE_DATASTORE=""                     # The vSphere datastore to deploy the management cluster on, e.g. "DefaultDatastore"
+export VSPHERE_NETWORK=""                       # The VM network to deploy the management cluster on, e.g. "VM Network"
+export VSPHERE_RESOURCE_POOL=""                 # The vSphere resource pool for your VMs, e.g. "*/Resources"
+export VSPHERE_FOLDER=""                        # The VM folder for your VMs. Set to "" to use the root vSphere folder, e.g. "vm"
+export VSPHERE_TEMPLATE=""                      # The VM template to use for your management cluster, e.g. "ubuntu-1804-kube-v1.17.3"
+export CONTROL_PLANE_ENDPOINT_IP=""             # The IP that kube-vip is going to use as a control plane endpoint, e.g. "192.168.1.130"
+export VIP_NETWORK_INTERFACE=""                 # The interface that kube-vip should apply the IP to. Omit to autodetect the interface, e.g. "ens192"
+export VSPHERE_TLS_THUMBPRINT=""                # SHA1 thumbprint of the vCenter certificate: openssl x509 -sha1 -fingerprint -in ca.crt -noout
+export EXP_CLUSTER_RESOURCE_SET="true"          # Enables the ClusterResourceSet feature used to deploy CSI
+export VSPHERE_SSH_AUTHORIZED_KEY=""            # The public SSH authorized key on all machines in this cluster.
+                                                # Set to "" if you don't want to enable SSH or are using another solution.
+export VSPHERE_STORAGE_POLICY=""                # The vSphere storage policy. Set to "" if you don't want to use a storage policy.
 
 export CPI_MANAGER_IMAGE="gcr.io/cloud-provider-vsphere/cpi/release/manager:v1.30.0"    # The version of the vSphere CPI image to be used by the CPI workloads
 export CSI_DRIVER_IMAGE="gcr.io/cloud-provider-vsphere/csi/release/driver:v3.3.0"
@@ -28,9 +28,9 @@ export CSI_PROVISIONER_IMAGE="registry.k8s.io/sig-storage/csi-provisioner:v3.5.0
 export CSI_SNAPSHOTTER_IMAGE="registry.k8s.io/sig-storage/csi-snapshotter:v6.2.2"
 export CSI_REGISTRAR_IMAGE="registry.k8s.io/sig-storage/csi-node-driver-registrar:v2.8.0"
 
-export CK8S_VERSION="v1.30.0"                                                   # K8s Version of the cluster
+export KUBERNETES_VERSION=""                    # K8s Version of the cluster, e.g. "v1.30.0"
 
-export VSPHERE_PROXY_DISABLE="#"                                                # Set to "#" to disable, or "" to enable the proxy configuration
+export PROXY_DISABLE="#"                # Set to "#" to disable, or "" to enable the proxy configuration
 
-export CONTROL_PLANE_MACHINE_COUNT=3
+export CONTROL_PLANE_MACHINE_COUNT=1
 export WORKER_MACHINE_COUNT=1

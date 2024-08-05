@@ -4,13 +4,13 @@ metadata:
   name: ${CLUSTER_NAME}-vsphere-proxy-config
 stringData:
   proxy-config: |
-    ${VSPHERE_PROXY_DISABLE}[Service]
-    ${VSPHERE_PROXY_DISABLE}Environment="HTTPS_PROXY=http://squid.internal:3128"
-    ${VSPHERE_PROXY_DISABLE}Environment="HTTP_PROXY=http://squid.internal:3128"
-    ${VSPHERE_PROXY_DISABLE}Environment="https_proxy=http://squid.internal:3128"
-    ${VSPHERE_PROXY_DISABLE}Environment="http_proxy=http://squid.internal:3128"
-    ${VSPHERE_PROXY_DISABLE}Environment="NO_PROXY=10.0.0.0/8,192.168.0.0/16,127.0.0.1,localhost,0.0.0.0"
-    ${VSPHERE_PROXY_DISABLE}Environment="no_proxy=10.0.0.0/8,192.168.0.0/16,127.0.0.1,localhost,0.0.0.0"
+    ${PROXY_DISABLE}[Service]
+    ${PROXY_DISABLE}Environment="HTTPS_PROXY=http://squid.internal:3128"
+    ${PROXY_DISABLE}Environment="HTTP_PROXY=http://squid.internal:3128"
+    ${PROXY_DISABLE}Environment="https_proxy=http://squid.internal:3128"
+    ${PROXY_DISABLE}Environment="http_proxy=http://squid.internal:3128"
+    ${PROXY_DISABLE}Environment="NO_PROXY=10.0.0.0/8,192.168.0.0/16,127.0.0.1,localhost,0.0.0.0"
+    ${PROXY_DISABLE}Environment="no_proxy=10.0.0.0/8,192.168.0.0/16,127.0.0.1,localhost,0.0.0.0"
 ---
 apiVersion: cluster.x-k8s.io/v1beta1
 kind: Cluster
@@ -273,7 +273,7 @@ spec:
       kind: VSphereMachineTemplate
       name: ${CLUSTER_NAME}
   replicas: ${CONTROL_PLANE_MACHINE_COUNT}
-  version: ${CK8S_VERSION}
+  version: ${KUBERNETES_VERSION}
 ---
 apiVersion: bootstrap.cluster.x-k8s.io/v1beta2
 kind: CK8sConfigTemplate
@@ -329,7 +329,7 @@ spec:
         apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
         kind: VSphereMachineTemplate
         name: ${CLUSTER_NAME}-worker
-      version: ${CK8S_VERSION}
+      version: ${KUBERNETES_VERSION}
 ---
 apiVersion: addons.cluster.x-k8s.io/v1beta1
 kind: ClusterResourceSet
