@@ -204,6 +204,37 @@ func (w *Workload) GetK8sdProxyForControlPlane(ctx context.Context, options k8sd
 	return nil, fmt.Errorf("failed to get k8sd proxy for control plane")
 }
 
+// GetK8sdProxyForMachine returns a k8sd proxy client for the machine.
+func (w *Workload) GetK8sdProxyForMachine(ctx context.Context, machine *clusterv1.Machine) (*K8sdClient, error) {
+	node := &corev1.Node{}
+	if err := w.Client.Get(ctx, ctrlclient.ObjectKey{Name: machine.Status.NodeRef.Name}, node); err != nil {
+		return nil, fmt.Errorf("failed to get node: %w", err)
+	}
+
+	return w.K8sdClientGenerator.forNode(ctx, node)
+}
+
+func (w *Workload) RefreshMachine(ctx context.Context, machine *clusterv1.Machine, upgradeOption string) error {
+	request := apiv1.SnapRefreshRequest{}
+	optionKv := strings.Split(upgradeOption, "=")
+	switch optionKv[0] {
+	case "channel":
+		request.Channel = optionKv[1]
+	case "revision":
+		request.Revision = optionKv[1]
+	case "localPath":
+		request.LocalPath = optionKv[1]
+	default:
+		return fmt.Errorf("invalid upgrade option: %s", optionKv[0])
+	}
+
+	err := w.doK8sdRequestForMachine(ctx, machine, http.MethodPost, "1.0/snap/refresh", request, nil)
+	if err != nil {
+		return fmt.Errorf("failed to refresh machine %s: %w", machine.Name, err)
+	}
+	return nil
+}
+
 // NewControlPlaneJoinToken creates a new join token for a control plane node.
 // NewControlPlaneJoinToken reaches out to the control-plane of the workload cluster via k8sd-proxy client.
 func (w *Workload) NewControlPlaneJoinToken(ctx context.Context, name string) (string, error) {
@@ -291,6 +322,60 @@ func (w *Workload) doK8sdRequest(ctx context.Context, method, endpoint string, r
 	}
 	if responseBody.Metadata == nil || response == nil {
 		// Nothing to decode
+		return nil
+	}
+	if err := json.Unmarshal(responseBody.Metadata, response); err != nil {
+		return fmt.Errorf("failed to parse HTTP response: %w", err)
+	}
+
+	return nil
+}
+
+func (w *Workload) doK8sdRequestForMachine(ctx context.Context, machine *clusterv1.Machine, method, endpoint string, request any, response any) error {
+	type wrappedResponse struct {
+		Error    string          `json:"error"`
+		Metadata json.RawMessage `json:"metadata"`
+	}
+
+	k8sdProxy, err := w.GetK8sdProxyForMachine(ctx, machine)
+	if err != nil {
+		return fmt.Errorf("failed to create k8sd proxy: %w", err)
+	}
+
+	url := fmt.Sprintf("https://%s:%v/%s", k8sdProxy.NodeIP, w.microclusterPort, endpoint)
+
+	requestBody, err := json.Marshal(request)
+	if err != nil {
+		return fmt.Errorf("failed to prepare worker info request: %w", err)
+	}
+
+	req, err := http.NewRequestWithContext(ctx, method, url, bytes.NewBuffer(requestBody))
+	if err != nil {
+		return fmt.Errorf("failed to create request: %w", err)
+	}
+
+	res, err := k8sdProxy.Client.Do(req)
+	if err != nil {
+		return fmt.Errorf("failed to reach k8sd through proxy client: %w", err)
+	}
+	defer res.Body.Close()
+
+	var responseBody wrappedResponse
+	if err := json.NewDecoder(res.Body).Decode(&responseBody); err != nil {
+		return fmt.Errorf("failed to parse HTTP response: %w", err)
+	}
+	if res.StatusCode != http.StatusOK {
+		return fmt.Errorf("HTTP request failed with status code: %d (%s)", res.StatusCode, responseBody.Error)
+	}
+	if responseBody.Error != "" {
+		return fmt.Errorf("k8sd request failed: %s", responseBody.Error)
+	}
+	if responseBody.Metadata == nil {
+		// Nothing to decode
+		return nil
+	}
+	if response == nil {
+		// Response not needed
 		return nil
 	}
 	if err := json.Unmarshal(responseBody.Metadata, response); err != nil {
