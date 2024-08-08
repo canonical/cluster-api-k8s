@@ -30,11 +30,10 @@ jobs:
           sudo snap install kubectl --classic --channel=1.30/stable
       - name: Build provider images
         run: sudo make docker-build-e2e
-      - name: Build k8s-snap image
+      - name: Build k8s-snap images
+        working-directory: hack/
         run: |
-          cd templates/docker
-          sudo docker build . -t k8s-snap:dev-old --build-arg BRANCH=main --build-arg KUBERNETES_VERSION=v1.29.6
-          sudo docker build . -t k8s-snap:dev-new --build-arg BRANCH=main
+          ./build-e2e-images.sh
       - name: Save provider image
         run: |
           sudo docker save -o provider-images.tar ghcr.io/canonical/cluster-api-k8s/controlplane-controller:dev ghcr.io/canonical/cluster-api-k8s/bootstrap-controller:dev
