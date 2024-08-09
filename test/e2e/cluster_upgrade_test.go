@@ -25,12 +25,11 @@ import (
 )
 
 var _ = Describe("Workload cluster upgrade [CK8s-Upgrade]", func() {
-	BeforeEach(func() {
-		// TODO(bschimke): Remove once we find a way to run e2e tests with other infrastructure providers that support snap.
-		Skip("Skipping the upgrade tests as snap does not work on CAPD.")
-	})
-
 	Context("Upgrading a cluster with 1 control plane", func() {
+		It("Non-HA upgrades require in-place upgrades which are not supported yet.",
+			// TODO(ben): Enable this test once we have support for in-place upgrades.
+			func() { Skip("") },
+		)
 		ClusterUpgradeSpec(ctx, func() ClusterUpgradeSpecInput {
 			return ClusterUpgradeSpecInput{
 				E2EConfig:                e2eConfig,

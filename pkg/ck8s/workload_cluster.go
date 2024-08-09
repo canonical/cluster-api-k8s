@@ -232,9 +232,7 @@ func (w *Workload) requestJoinToken(ctx context.Context, name string, worker boo
 func (w *Workload) RemoveMachineFromCluster(ctx context.Context, machine *clusterv1.Machine) error {
 	request := &apiv1.RemoveNodeRequest{Name: machine.Name, Force: true}
 
-	// If we see that ignoring control-planes is causing issues, let's consider removing it.
-	// It *should* not be necessary as a machine should be able to remove itself from the cluster.
-	err := w.doK8sdRequest(ctx, http.MethodPost, "1.0/x/capi/remove-node", request, nil, k8sdProxyOptions{IgnoreNodes: map[string]struct{}{machine.Name: {}}})
+	err := w.doK8sdRequest(ctx, http.MethodPost, "1.0/x/capi/remove-node", request, nil, k8sdProxyOptions{})
 	if err != nil {
 		return fmt.Errorf("failed to remove %s from cluster: %w", machine.Name, err)
 	}
@@ -281,8 +279,8 @@ func (w *Workload) doK8sdRequest(ctx context.Context, method, endpoint string, r
 	if responseBody.Error != "" {
 		return fmt.Errorf("k8sd request failed: %s", responseBody.Error)
 	}
-	if responseBody.Metadata == nil {
-		// Nothing to decode
+	if responseBody.Metadata == nil || response == nil {
+		// No response expected.
 		return nil
 	}
 	if err := json.Unmarshal(responseBody.Metadata, response); err != nil {

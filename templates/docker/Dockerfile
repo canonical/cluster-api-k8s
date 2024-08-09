@@ -36,6 +36,8 @@ FROM $BUILD_BASE AS builder
 ARG REPO=https://github.com/canonical/k8s-snap
 ARG BRANCH=main
 
+ARG KUBERNETES_VERSION=""
+
 ## NOTE(neoaggelos): install dependencies needed to build the tools
 ## !!!IMPORTANT!!! Keep up to date with "snapcraft.yaml:parts.build-deps.build-packages"
 RUN apt-get update \
@@ -86,6 +88,10 @@ RUN /src/k8s-snap/build-scripts/build-component.sh helm
 
 ## kubernetes build
 FROM builder AS build-kubernetes
+ENV KUBERNETES_VERSION=${KUBERNETES_VERSION}
+RUN if [ -n "$KUBERNETES_VERSION" ]; then \
+      echo "$KUBERNETES_VERSION" > /src/k8s-snap/build-scripts/components/kubernetes/version; \
+    fi
 RUN /src/k8s-snap/build-scripts/build-component.sh kubernetes
 
 ## runc build

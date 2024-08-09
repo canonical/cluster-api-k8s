@@ -40,7 +40,7 @@ spec:
     infrastructureTemplate:
       apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
       kind: DockerMachineTemplate
-      name: ${CLUSTER_NAME}-control-plane
+      name: ${CLUSTER_NAME}-control-plane-old
   spec:
     airGapped: true
     controlPlane:
@@ -48,11 +48,23 @@ spec:
         --anonymous-auth: "true"
   replicas: ${CONTROL_PLANE_MACHINE_COUNT}
   version: ${KUBERNETES_VERSION}
+# Initial template for the machine deployment
 ---
 apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
 kind: DockerMachineTemplate
 metadata:
-  name: ${CLUSTER_NAME}-control-plane
+  name: ${CLUSTER_NAME}-control-plane-old
+  namespace: ${NAMESPACE}
+spec:
+  template:
+    spec:
+      customImage: k8s-snap:dev-old
+# After upgrade template for the machine deployment
+---
+apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
+kind: DockerMachineTemplate
+metadata:
+  name: ${CLUSTER_NAME}-control-plane-new
   namespace: ${NAMESPACE}
 spec:
   template:
@@ -90,12 +102,22 @@ spec:
       infrastructureRef:
         apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
         kind: DockerMachineTemplate
-        name: ${CLUSTER_NAME}-md-0
+        name: ${CLUSTER_NAME}-md-old-0
 ---
 apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
 kind: DockerMachineTemplate
 metadata:
-  name: ${CLUSTER_NAME}-md-0
+  name: ${CLUSTER_NAME}-md-old-0
+  namespace: ${NAMESPACE}
+spec:
+  template:
+    spec:
+      customImage: k8s-snap:dev-old
+---
+apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
+kind: DockerMachineTemplate
+metadata:
+  name: ${CLUSTER_NAME}-md-new-0
   namespace: ${NAMESPACE}
 spec:
   template:
