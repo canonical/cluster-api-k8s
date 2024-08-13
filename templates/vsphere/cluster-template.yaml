@@ -1,16 +1,163 @@
 apiVersion: v1
 kind: Secret
 metadata:
+  name: ${CLUSTER_NAME}-vsphere-proxy-env
+stringData:
+  proxy-env: |
+    HTTP_PROXY=${HTTP_PROXY}
+    HTTPS_PROXY=${HTTPS_PROXY}
+    NO_PROXY=${NO_PROXY}
+---
+apiVersion: v1
+kind: Secret
+metadata:
   name: ${CLUSTER_NAME}-vsphere-proxy-config
 stringData:
   proxy-config: |
     ${PROXY_DISABLE}[Service]
-    ${PROXY_DISABLE}Environment="HTTPS_PROXY=http://squid.internal:3128"
-    ${PROXY_DISABLE}Environment="HTTP_PROXY=http://squid.internal:3128"
-    ${PROXY_DISABLE}Environment="https_proxy=http://squid.internal:3128"
-    ${PROXY_DISABLE}Environment="http_proxy=http://squid.internal:3128"
-    ${PROXY_DISABLE}Environment="NO_PROXY=10.0.0.0/8,192.168.0.0/16,127.0.0.1,localhost,0.0.0.0"
-    ${PROXY_DISABLE}Environment="no_proxy=10.0.0.0/8,192.168.0.0/16,127.0.0.1,localhost,0.0.0.0"
+    ${PROXY_DISABLE}EnvironmentFile=/etc/systemd/system/snap.k8s.containerd.service.d/http-proxy.env
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: ${CLUSTER_NAME}-kube-vip-rbac
+stringData:
+  kube-vip-rbac: |
+    apiVersion: v1
+    kind: ServiceAccount
+    metadata:
+      name: kube-vip
+      namespace: kube-system
+    ---
+    apiVersion: rbac.authorization.k8s.io/v1
+    kind: ClusterRole
+    metadata:
+      annotations:
+        rbac.authorization.kubernetes.io/autoupdate: "true"
+      name: system:kube-vip-role
+    rules:
+      - apiGroups: [""]
+        resources: ["services/status"]
+        verbs: ["update"]
+      - apiGroups: [""]
+        resources: ["services", "endpoints"]
+        verbs: ["list","get","watch", "update"]
+      - apiGroups: [""]
+        resources: ["nodes"]
+        verbs: ["list","get","watch", "update", "patch"]
+      - apiGroups: ["coordination.k8s.io"]
+        resources: ["leases"]
+        verbs: ["list", "get", "watch", "update", "create"]
+      - apiGroups: ["discovery.k8s.io"]
+        resources: ["endpointslices"]
+        verbs: ["list","get","watch", "update"]
+    ---
+    kind: ClusterRoleBinding
+    apiVersion: rbac.authorization.k8s.io/v1
+    metadata:
+      name: system:kube-vip-binding
+    roleRef:
+      apiGroup: rbac.authorization.k8s.io
+      kind: ClusterRole
+      name: system:kube-vip-role
+    subjects:
+    - kind: ServiceAccount
+      name: kube-vip
+      namespace: kube-system
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: ${CLUSTER_NAME}-kube-vip-manifest
+stringData:
+  kube-vip-manifest: |
+    apiVersion: apps/v1
+    kind: DaemonSet
+    metadata:
+      creationTimestamp: null
+      name: kube-vip
+      namespace: kube-system
+    spec:
+      selector:
+        matchLabels:
+          name: kube-vip-ds
+      template:
+        metadata:
+          creationTimestamp: null
+          labels:
+            name: kube-vip-ds
+        spec:
+          serviceAccountName: kube-vip
+          affinity:
+            nodeAffinity:
+              requiredDuringSchedulingIgnoredDuringExecution:
+                nodeSelectorTerms:
+                - matchExpressions:
+                  - key: node-role.kubernetes.io/control-plane
+                    operator: Exists
+          containers:
+          - args:
+            - manager
+            env:
+            - name: vip_arp
+              value: "true"
+            - name: port
+              value: "6443"
+            - name: vip_interface
+              value: "${VIP_NETWORK_INTERFACE}"
+            - name: vip_cidr
+              value: "32"
+            - name: cp_enable
+              value: "true"
+            - name: cp_namespace
+              value: kube-system
+            - name: vip_ddns
+              value: "false"
+            - name: svc_enable
+              value: "true"
+            - name: svc_leasename
+              value: plndr-svcs-lock
+            - name: svc_election
+              value: "true"
+            - name: vip_leaderelection
+              value: "true"
+            - name: vip_leasename
+              value: plndr-cp-lock
+            - name: vip_leaseduration
+              value: "15"
+            - name: vip_renewdeadline
+              value: "10"
+            - name: vip_retryperiod
+              value: "2"
+            - name: vip_address
+              value: "${CONTROL_PLANE_ENDPOINT_IP}"
+            - name: prometheus_server
+              value: :2112
+            image: ghcr.io/kube-vip/kube-vip:v0.6.4
+            imagePullPolicy: IfNotPresent
+            name: kube-vip
+            resources: {}
+            securityContext:
+              capabilities:
+                add:
+                - NET_ADMIN
+                - NET_RAW
+            volumeMounts:
+            - mountPath: /etc/hosts
+              name: etchosts
+          hostNetwork: true
+          volumes:
+          - hostPath:
+              path: /etc/kube-vip.hosts
+              type: File
+            name: etchosts
+          tolerations:
+            - effect: NoSchedule
+              operator: Exists
+            - effect: NoExecute
+              operator: Exists
+      updateStrategy: {}
+    status: {}
 ---
 apiVersion: cluster.x-k8s.io/v1beta1
 kind: Cluster
@@ -110,6 +257,18 @@ spec:
     controlPlane:
       cloudProvider: external
     files:
+      - content: |
+          ${VSPHERE_SSH_AUTHORIZED_KEY}
+        owner: root:root
+        path: /root/.ssh/authorized_keys
+        permissions: "600"
+      - contentFrom:
+          secret:
+            key: proxy-env
+            name: ${CLUSTER_NAME}-vsphere-proxy-env
+        owner: root:root
+        path: /etc/systemd/system/snap.k8s.containerd.service.d/http-proxy.env
+        permissions: "0644"
       - contentFrom:
           secret:
             key: proxy-config
@@ -117,139 +276,17 @@ spec:
         owner: root:root
         path: /etc/systemd/system/snap.k8s.containerd.service.d/http-proxy.conf
         permissions: "0644"
-      - content: |
-          apiVersion: v1
-          kind: ServiceAccount
-          metadata:
-            name: kube-vip
-            namespace: kube-system
-          ---
-          apiVersion: rbac.authorization.k8s.io/v1
-          kind: ClusterRole
-          metadata:
-            annotations:
-              rbac.authorization.kubernetes.io/autoupdate: "true"
-            name: system:kube-vip-role
-          rules:
-            - apiGroups: [""]
-              resources: ["services/status"]
-              verbs: ["update"]
-            - apiGroups: [""]
-              resources: ["services", "endpoints"]
-              verbs: ["list","get","watch", "update"]
-            - apiGroups: [""]
-              resources: ["nodes"]
-              verbs: ["list","get","watch", "update", "patch"]
-            - apiGroups: ["coordination.k8s.io"]
-              resources: ["leases"]
-              verbs: ["list", "get", "watch", "update", "create"]
-            - apiGroups: ["discovery.k8s.io"]
-              resources: ["endpointslices"]
-              verbs: ["list","get","watch", "update"]
-          ---
-          kind: ClusterRoleBinding
-          apiVersion: rbac.authorization.k8s.io/v1
-          metadata:
-            name: system:kube-vip-binding
-          roleRef:
-            apiGroup: rbac.authorization.k8s.io
-            kind: ClusterRole
-            name: system:kube-vip-role
-          subjects:
-          - kind: ServiceAccount
-            name: kube-vip
-            namespace: kube-system
+      - contentFrom:
+          secret:
+            key: kube-vip-rbac
+            name: ${CLUSTER_NAME}-kube-vip-rbac
         owner: root:root
         path: /capi/manifests/kube-vip-rbac.yaml
         permissions: "0644"
-      - content: |
-          apiVersion: apps/v1
-          kind: DaemonSet
-          metadata:
-            creationTimestamp: null
-            name: kube-vip
-            namespace: kube-system
-          spec:
-            selector:
-              matchLabels:
-                name: kube-vip-ds
-            template:
-              metadata:
-                creationTimestamp: null
-                labels:
-                  name: kube-vip-ds
-              spec:
-                serviceAccountName: kube-vip
-                affinity:
-                  nodeAffinity:
-                    requiredDuringSchedulingIgnoredDuringExecution:
-                      nodeSelectorTerms:
-                      - matchExpressions:
-                        - key: node-role.kubernetes.io/control-plane
-                          operator: Exists
-                containers:
-                - args:
-                  - manager
-                  env:
-                  - name: vip_arp
-                    value: "true"
-                  - name: port
-                    value: "6443"
-                  - name: vip_interface
-                    value: "${VIP_NETWORK_INTERFACE}"
-                  - name: vip_cidr
-                    value: "32"
-                  - name: cp_enable
-                    value: "true"
-                  - name: cp_namespace
-                    value: kube-system
-                  - name: vip_ddns
-                    value: "false"
-                  - name: svc_enable
-                    value: "true"
-                  - name: svc_leasename
-                    value: plndr-svcs-lock
-                  - name: svc_election
-                    value: "true"
-                  - name: vip_leaderelection
-                    value: "true"
-                  - name: vip_leasename
-                    value: plndr-cp-lock
-                  - name: vip_leaseduration
-                    value: "15"
-                  - name: vip_renewdeadline
-                    value: "10"
-                  - name: vip_retryperiod
-                    value: "2"
-                  - name: vip_address
-                    value: "${CONTROL_PLANE_ENDPOINT_IP}"
-                  - name: prometheus_server
-                    value: :2112
-                  image: ghcr.io/kube-vip/kube-vip:v0.6.4
-                  imagePullPolicy: IfNotPresent
-                  name: kube-vip
-                  resources: {}
-                  securityContext:
-                    capabilities:
-                      add:
-                      - NET_ADMIN
-                      - NET_RAW
-                  volumeMounts:
-                  - mountPath: /etc/hosts
-                    name: etchosts
-                hostNetwork: true
-                volumes:
-                - hostPath:
-                    path: /etc/kube-vip.hosts
-                    type: File
-                  name: etchosts
-                tolerations:
-                  - effect: NoSchedule
-                    operator: Exists
-                  - effect: NoExecute
-                    operator: Exists
-            updateStrategy: {}
-          status: {}
+      - content:
+          secret:
+            key: kube-vip-manifest
+            name: ${CLUSTER_NAME}-kube-vip-manifest
         owner: root:root
         path: /capi/manifests/kube-vip.yaml
         permissions: "0644"
@@ -259,17 +296,9 @@ spec:
         permissions: "0644"
     preRunCommands:
       - hostnamectl set-hostname "{{ ds.meta_data.hostname }}"
-      - echo "::1         ipv6-localhost ipv6-loopback localhost6 localhost6.localdomain6"
-        >/etc/hosts
+      - echo "::1         ipv6-localhost ipv6-loopback localhost6 localhost6.localdomain6" >/etc/hosts
       - echo "127.0.0.1   {{ ds.meta_data.hostname }} {{ local_hostname }} localhost
         localhost.localdomain localhost4 localhost4.localdomain4" >>/etc/hosts
-      - |
-        if [ -n "${VSPHERE_SSH_AUTHORIZED_KEY}" ]; then
-          echo "${VSPHERE_SSH_AUTHORIZED_KEY}" >> /root/.ssh/authorized_keys
-          chmod 700 /root/.ssh
-          chmod 600 /root/.ssh/authorized_keys
-        fi
-      - snap install k8s --classic --edge
   machineTemplate:
     infrastructureTemplate:
       apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
@@ -289,18 +318,15 @@ spec:
         cloudProvider: external
       preRunCommands:
         - hostnamectl set-hostname "{{ ds.meta_data.hostname }}"
-        - echo "::1         ipv6-localhost ipv6-loopback localhost6 localhost6.localdomain6"
-          >/etc/hosts
+        - echo "::1         ipv6-localhost ipv6-loopback localhost6 localhost6.localdomain6" >/etc/hosts
         - echo "127.0.0.1   {{ ds.meta_data.hostname }} {{ local_hostname }} localhost
           localhost.localdomain localhost4 localhost4.localdomain4" >>/etc/hosts
-        - |
-          if [ -n "${VSPHERE_SSH_AUTHORIZED_KEY}" ]; then
-            echo "${VSPHERE_SSH_AUTHORIZED_KEY}" >> /root/.ssh/authorized_keys
-            chmod 700 /root/.ssh
-            chmod 600 /root/.ssh/authorized_keys
-          fi
-        - snap install k8s --classic --edge
       files:
+        - content: |
+            ${VSPHERE_SSH_AUTHORIZED_KEY}
+          owner: root:root
+          path: /root/.ssh/authorized_keys
+          permissions: "600"
         - contentFrom:
             secret:
               key: proxy-config

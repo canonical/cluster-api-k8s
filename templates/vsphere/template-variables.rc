@@ -1,3 +1,21 @@
+export KUBERNETES_VERSION=""                    # K8s Version of the cluster, e.g. "v1.30.0"
+
+export PROXY_DISABLE=""                         # Set to "#" to disable, or "" to enable the proxy configuration
+                                                # If enabled, make sure to configure the proxy in the following section.
+
+if [ "$PROXY_DISABLE" == "#" ]; then
+  export HTTP_PROXY=""
+  export HTTPS_PROXY=""
+  export NO_PROXY=""
+else
+  export HTTP_PROXY=http://squid.internal:3128
+  export HTTPS_PROXY=http://squid.internal:3128
+  export NO_PROXY=10.0.0.0/8,192.168.0.0/16,127.0.0.1,localhost,0.0.0.0
+fi
+
+export CONTROL_PLANE_MACHINE_COUNT=1
+export WORKER_MACHINE_COUNT=1
+
 # Source: https://github.com/kubernetes-sigs/cluster-api-provider-vsphere/blob/main/docs/getting_started.md
 
 export VSPHERE_USERNAME=""                      # The username used to access the remote vSphere endpoint
@@ -27,10 +45,3 @@ export CSI_RESIZER_IMAGE="registry.k8s.io/sig-storage/csi-resizer:v1.8.0"
 export CSI_PROVISIONER_IMAGE="registry.k8s.io/sig-storage/csi-provisioner:v3.5.0"
 export CSI_SNAPSHOTTER_IMAGE="registry.k8s.io/sig-storage/csi-snapshotter:v6.2.2"
 export CSI_REGISTRAR_IMAGE="registry.k8s.io/sig-storage/csi-node-driver-registrar:v2.8.0"
-
-export KUBERNETES_VERSION=""                    # K8s Version of the cluster, e.g. "v1.30.0"
-
-export PROXY_DISABLE="#"                        # Set to "#" to disable, or "" to enable the proxy configuration
-
-export CONTROL_PLANE_MACHINE_COUNT=1
-export WORKER_MACHINE_COUNT=1
