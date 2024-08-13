@@ -213,6 +213,16 @@ spec:
                         items:
                           type: string
                         type: array
+                      riskLevel:
+                        default: stable
+                        description: RiskLevel specifies the risk level for the snap
+                          channel.
+                        enum:
+                        - stable
+                        - candidate
+                        - beta
+                        - edge
+                        type: string
                       version:
                         description: Version specifies the Kubernetes version.
                         type: string

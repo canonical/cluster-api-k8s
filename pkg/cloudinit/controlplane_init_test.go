@@ -30,6 +30,7 @@ func TestNewInitControlPlane(t *testing.T) {
 	config, err := cloudinit.NewInitControlPlane(cloudinit.InitControlPlaneInput{
 		BaseUserData: cloudinit.BaseUserData{
 			KubernetesVersion: "v1.30.0",
+			SnapRiskLevel:     "stable",
 			BootCommands:      []string{"bootcmd"},
 			PreRunCommands:    []string{"prerun1", "prerun2"},
 			PostRunCommands:   []string{"postrun1", "postrun2"},

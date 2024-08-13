@@ -12,6 +12,8 @@ import (
 type BaseUserData struct {
 	// KubernetesVersion is the Kubernetes version from the cluster object.
 	KubernetesVersion string
+	// SnapRiskLevel is the risk level of the snap channels.
+	SnapRiskLevel string
 	// BootCommands is a list of commands to run early in the boot process.
 	BootCommands []string
 	// PreRunCommands is a list of commands to run prior to k8s installation.
@@ -69,7 +71,7 @@ func NewBaseCloudConfig(data BaseUserData) (CloudConfig, error) {
 			},
 			File{
 				Path:        "/capi/etc/snap-track",
-				Content:     fmt.Sprintf("%d.%d-classic/stable", kubernetesVersion.Major(), kubernetesVersion.Minor()),
+				Content:     fmt.Sprintf("%d.%d-classic/%s", kubernetesVersion.Major(), kubernetesVersion.Minor(), data.SnapRiskLevel),
 				Permissions: "0400",
 				Owner:       "root:root",
 			},

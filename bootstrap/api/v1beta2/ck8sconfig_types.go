@@ -29,6 +29,12 @@ type CK8sConfigSpec struct {
 	// +optional
 	Version string `json:"version,omitempty"`
 
+	// RiskLevel specifies the risk level for the snap channel.
+	// +optional
+	// +kubebuilder:validation:Enum=stable;candidate;beta;edge
+	// +kubebuilder:default=stable
+	RiskLevel string `json:"riskLevel,omitempty"`
+
 	// Files specifies extra files to be passed to user_data upon creation.
 	// +optional
 	Files []File `json:"files,omitempty"`
