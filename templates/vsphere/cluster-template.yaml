@@ -283,7 +283,7 @@ spec:
         owner: root:root
         path: /capi/manifests/kube-vip-rbac.yaml
         permissions: "0644"
-      - content:
+      - contentFrom:
           secret:
             key: kube-vip-manifest
             name: ${CLUSTER_NAME}-kube-vip-manifest
