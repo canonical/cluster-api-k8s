@@ -38,6 +38,17 @@ func NewBaseCloudConfig(data BaseUserData) (CloudConfig, error) {
 		return CloudConfig{}, fmt.Errorf("failed to parse kubernetes version %q: %w", data.KubernetesVersion, err)
 	}
 
+	var validRiskLevel bool
+	for _, riskLevel := range []string{"stable", "beta", "edge", "classic", "candidate"} {
+		if riskLevel == data.SnapRiskLevel {
+			validRiskLevel = true
+			break
+		}
+	}
+	if !validRiskLevel {
+		return CloudConfig{}, fmt.Errorf("snap risk level is not valid: %q", data.SnapRiskLevel)
+	}
+
 	config := CloudConfig{
 		RunCommands: []string{"set -x"},
 		WriteFiles:  make([]File, 0, len(scripts)+len(data.ExtraFiles)+3),
