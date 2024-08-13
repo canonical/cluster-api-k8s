@@ -206,14 +206,14 @@ spec:
       cloneMode: linkedClone
       datacenter: ${VSPHERE_DATACENTER}
       datastore: ${VSPHERE_DATASTORE}
-      diskGiB: 25
+      diskGiB: ${CONTROL_PLANE_MACHINE_DISK_GB}
       folder: ${VSPHERE_FOLDER}
-      memoryMiB: 8192
+      memoryMiB: ${CONTROL_PLANE_MACHINE_MEMORY_MB}
       network:
         devices:
           - dhcp4: true
             networkName: ${VSPHERE_NETWORK}
-      numCPUs: 2
+      numCPUs: ${CONTROL_PLANE_MACHINE_CPU_COUNT}
       os: Linux
       powerOffMode: trySoft
       resourcePool: '${VSPHERE_RESOURCE_POOL}'
@@ -232,14 +232,14 @@ spec:
       cloneMode: linkedClone
       datacenter: ${VSPHERE_DATACENTER}
       datastore: ${VSPHERE_DATASTORE}
-      diskGiB: 25
+      diskGiB: ${WORKER_MACHINE_DISK_GB}
       folder: ${VSPHERE_FOLDER}
-      memoryMiB: 8192
+      memoryMiB: ${WORKER_MACHINE_MEMORY_MB}
       network:
         devices:
           - dhcp4: true
             networkName: ${VSPHERE_NETWORK}
-      numCPUs: 2
+      numCPUs: ${WORKER_MACHINE_CPU_COUNT}
       os: Linux
       powerOffMode: trySoft
       resourcePool: '${VSPHERE_RESOURCE_POOL}'

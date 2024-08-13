@@ -16,6 +16,14 @@ fi
 export CONTROL_PLANE_MACHINE_COUNT=1
 export WORKER_MACHINE_COUNT=1
 
+export CONTROL_PLANE_MACHINE_CPU_COUNT=4
+export CONTROL_PLANE_MACHINE_MEMORY_MB=4096
+export CONTROL_PLANE_MACHINE_DISK_GB=25
+
+export WORKER_MACHINE_CPU_COUNT=2
+export WORKER_MACHINE_MEMORY_MB=2048
+export WORKER_MACHINE_DISK_GB=25
+
 # Source: https://github.com/kubernetes-sigs/cluster-api-provider-vsphere/blob/main/docs/getting_started.md
 
 export VSPHERE_USERNAME=""                      # The username used to access the remote vSphere endpoint
