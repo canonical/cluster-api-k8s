@@ -9,7 +9,7 @@
 
 VERSION="$1"
 
-fname="$(curl -s https://go.dev/dl/ | grep -o "go$VERSION.*.linux-amd64.tar.gz" | head -1)"
+fname="$(curl -s https://go.dev/dl/ | grep -oP "go$VERSION\.\d+\.linux-amd64\.tar\.gz" | head -1)"
 wget "https://go.dev/dl/$fname"
 tar -C /usr/local -xvzf "$fname"
 rm "$fname"
