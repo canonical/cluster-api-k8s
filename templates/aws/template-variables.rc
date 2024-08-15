@@ -12,3 +12,5 @@ export AWS_PUBLIC_IP=false
 export AWS_CONTROL_PLANE_MACHINE_FLAVOR=t3.large
 export AWS_NODE_MACHINE_FLAVOR=t3.large
 export AWS_SSH_KEY_NAME=default
+
+export AWS_CCM_IMAGE=registry.k8s.io/provider-aws/cloud-controller-manager:v1.28.3
