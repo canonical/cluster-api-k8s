@@ -9,8 +9,7 @@ spec:
       - 10.1.0.0/16
     services:
       cidrBlocks:
-      - 10.152.0.0/16
-    serviceDomain: cluster.local
+      - 10.152.183.0/24
   controlPlaneRef:
     apiVersion: controlplane.cluster.x-k8s.io/v1beta2
     kind: CK8sControlPlane
@@ -28,7 +27,7 @@ spec:
   region: ${AWS_REGION}
   sshKeyName: ${AWS_SSH_KEY_NAME}
   bastion:
-    enabled: ${AWS_CREATE_BASTION:=false}
+    enabled: ${AWS_CREATE_BASTION:=true}
   controlPlaneLoadBalancer:
     healthCheckProtocol: TCP
   network:
@@ -58,16 +57,22 @@ spec:
         content: |
           #!/bin/bash -xe
           snap install k8s --classic --edge
-    preRunCommands:
-      - systemctl stop kubelet || true
-      - systemctl disable kubelet || true
-      - systemctl stop containerd || true
-      - systemctl disable containerd || true
-
+      - path: /capi/scripts/bootstrap.sh
+        permissions: "0500"
+        owner: "root:root"
+        content: |
+          #!/bin/bash -xe
+          if [ ! -f /etc/kubernetes/pki/ca.crt ]; then
+            k8s bootstrap --name '{{ ds.meta_data.local_hostname }}' --address "$(cat /capi/etc/microcluster-address)" --file '/capi/etc/config.yaml'
+          fi
+      - path: /capi/scripts/join-cluster.sh
+        permissions: "0500"
+        owner: "root:root"
+        content: |
+          #!/bin/bash -xe
+          k8s join-cluster --name '{{ ds.meta_data.local_hostname }}' "$(cat /capi/etc/join-token)" --address "$(cat /capi/etc/microcluster-address)" --file "/capi/etc/config.yaml"
     controlPlane:
       cloudProvider: external
-      extraKubeAPIServerArgs:
-        --anonymous-auth: "true"
   replicas: ${CONTROL_PLANE_MACHINE_COUNT}
   version: ${KUBERNETES_VERSION}
 ---
@@ -144,7 +149,7 @@ spec:
           content: |
             #!/bin/bash -xe
             if [ ! -f /etc/kubernetes/pki/ca.crt ]; then
-              k8s bootstrap --name '{{ ds.meta_data.local_hostname }}' --address '$(cat /capi/etc/microcluster-address)' --file '/capi/etc/config.yaml'
+              k8s bootstrap --name '{{ ds.meta_data.local_hostname }}' --address "$(cat /capi/etc/microcluster-address)" --file '/capi/etc/config.yaml'
             fi
         - path: /capi/scripts/join-cluster.sh
           permissions: "0500"
@@ -152,11 +157,7 @@ spec:
           content: |
             #!/bin/bash -xe
             k8s join-cluster --name '{{ ds.meta_data.local_hostname }}' "$(cat /capi/etc/join-token)" --address "$(cat /capi/etc/microcluster-address)" --file "/capi/etc/config.yaml"
-      preRunCommands:
-        - systemctl stop kubelet || true
-        - systemctl disable kubelet || true
-        - systemctl stop containerd || true
-        - systemctl disable containerd || true
+
 ---
 apiVersion: addons.cluster.x-k8s.io/v1beta1
 kind: ClusterResourceSet
@@ -169,10 +170,11 @@ spec:
   resources:
   - kind: ConfigMap
     name: cloud-controller-manager-addon
+  strategy: ApplyOnce
 ---
 apiVersion: v1
 data:
-  aws-ccm.yaml: |
+  aws-ccm-external.yaml: |
     ---
     apiVersion: apps/v1
     kind: DaemonSet
@@ -192,11 +194,11 @@ data:
           labels:
             k8s-app: aws-cloud-controller-manager
         spec:
+          nodeSelector:
+            node-role.kubernetes.io/control-plane: ""
           tolerations:
             - key: node.cloudprovider.kubernetes.io/uninitialized
               value: "true"
-              effect: NoSchedule
-            - key: node-role.kubernetes.io/master
               effect: NoSchedule
             - effect: NoSchedule
               key: node-role.kubernetes.io/control-plane
@@ -207,15 +209,15 @@ data:
                   - matchExpressions:
                       - key: node-role.kubernetes.io/control-plane
                         operator: Exists
-                  - matchExpressions:
-                      - key: node-role.kubernetes.io/master
-                        operator: Exists
           serviceAccountName: cloud-controller-manager
           containers:
             - name: aws-cloud-controller-manager
-              image: gcr.io/k8s-staging-provider-aws/cloud-controller-manager:v1.20.0-alpha.0
+              image: registry.k8s.io/provider-aws/cloud-controller-manager:v1.28.3
               args:
                 - --v=2
+                - --cloud-provider=aws
+                - --use-service-account-credentials=true
+                - --configure-cloud-routes=false
               resources:
                 requests:
                   cpu: 200m
@@ -247,86 +249,88 @@ data:
     metadata:
       name: system:cloud-controller-manager
     rules:
-      - apiGroups:
-          - ""
-        resources:
-          - events
-        verbs:
-          - create
-          - patch
-          - update
-      - apiGroups:
-          - ""
-        resources:
-          - nodes
-        verbs:
-          - '*'
-      - apiGroups:
-          - ""
-        resources:
-          - nodes/status
-        verbs:
-          - patch
-      - apiGroups:
-          - ""
-        resources:
-          - services
-        verbs:
-          - list
-          - patch
-          - update
-          - watch
-      - apiGroups:
-          - ""
-        resources:
-          - services/status
-        verbs:
-          - list
-          - patch
-          - update
-          - watch
-      - apiGroups:
-          - ""
-        resources:
-          - serviceaccounts
-        verbs:
-          - create
-      - apiGroups:
-          - ""
-        resources:
-          - persistentvolumes
-        verbs:
-          - get
-          - list
-          - update
-          - watch
-      - apiGroups:
-          - ""
-        resources:
-          - configmaps
-        verbs:
-          - list
-          - watch
-      - apiGroups:
-          - ""
-        resources:
-          - endpoints
-        verbs:
-          - create
-          - get
-          - list
-          - watch
-          - update
-      - apiGroups:
-          - coordination.k8s.io
-        resources:
-          - leases
-        verbs:
-          - create
-          - get
-          - list
-          - watch
-          - update
+    - apiGroups:
+      - ""
+      resources:
+      - events
+      verbs:
+      - create
+      - patch
+      - update
+    - apiGroups:
+      - ""
+      resources:
+      - nodes
+      verbs:
+      - '*'
+    - apiGroups:
+      - ""
+      resources:
+      - nodes/status
+      verbs:
+      - patch
+    - apiGroups:
+      - ""
+      resources:
+      - services
+      verbs:
+      - list
+      - patch
+      - update
+      - watch
+    - apiGroups:
+      - ""
+      resources:
+      - services/status
+      verbs:
+      - list
+      - patch
+      - update
+      - watch
+    - apiGroups:
+      - ""
+      resources:
+      - serviceaccounts
+      verbs:
+      - create
+      - get
+      - list
+      - watch
+    - apiGroups:
+      - ""
+      resources:
+      - persistentvolumes
+      verbs:
+      - get
+      - list
+      - update
+      - watch
+    - apiGroups:
+      - ""
+      resources:
+      - endpoints
+      verbs:
+      - create
+      - get
+      - list
+      - watch
+      - update
+    - apiGroups:
+      - coordination.k8s.io
+      resources:
+      - leases
+      verbs:
+      - create
+      - get
+      - list
+      - watch
+      - update
+    - apiGroups:
+      - ""
+      resources:
+      - serviceaccounts/token
+      verbs:
+      - create
     ---
     kind: ClusterRoleBinding
     apiVersion: rbac.authorization.k8s.io/v1
