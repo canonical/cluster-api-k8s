@@ -34,7 +34,7 @@ FROM $BUILD_BASE AS builder
 
 ## NOTE(neoaggelos): k8s-snap repo and branch to use for building
 ARG REPO=https://github.com/canonical/k8s-snap
-ARG BRANCH=KU-1272/microcluster-name-workaround
+ARG BRANCH=mcv2-moonray
 
 ## NOTE(neoaggelos): install dependencies needed to build the tools
 ## !!!IMPORTANT!!! Keep up to date with "snapcraft.yaml:parts.build-deps.build-packages"
