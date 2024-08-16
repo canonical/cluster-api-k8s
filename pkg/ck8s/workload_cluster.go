@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"strings"
 
+	apiv1 "github.com/canonical/k8s-snap-api/api/v1"
 	"github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -22,7 +23,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
 	controlplanev1 "github.com/canonical/cluster-api-k8s/controlplane/api/v1beta2"
-	apiv1 "github.com/canonical/cluster-api-k8s/pkg/ck8s/api"
 )
 
 const (
