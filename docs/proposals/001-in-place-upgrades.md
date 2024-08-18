@@ -98,6 +98,24 @@ This section is very useful to help guide the implementation details section
 below, or serve as reference for future proposals.
 -->
 
+### Cluster-wide Orchestration
+A cluster controller called `ClusterReconciler` is added which would perform the one-by-one in-place upgrade of the entire workload cluster. 
+
+The controller would propagate the `k8sd.io/in-place-upgrade-to` annotation on the `Cluster` object by adding this annotation one-by-one to all the machines that is owned by this cluster. 
+
+The reconciler would perform upgrades in 2 separate phases for control-plane and worker machines. 
+
+A Kubernetes API call listing the objects of type `Machine` and filtering with `ownerRef` would produce the list of machines owned by the cluster. For each phase controller would iterate over this list filtering by the machine type, annotating the machines and waiting for the operation to complete on each iteration.
+
+The reconciler should ignore a machine if `k8sd.io/in-place-upgrade-status` is already set to `in-progress`. 
+
+Once upgrades of the underlying machines are finished:
+* `k8sd.io/in-place-upgrade-to` annotation on the `Cluster` would be removed
+* `k8sd.io/in-place-upgrade-release` annotation on the `Cluster` would be added/updated with the used `{upgrade-option}`.
+
+This will be introduced and explained more extensively in another proposal.
+
+### Upgrades of Underlying OS and Dependencies
 The in-place upgrades only address the upgrades of Canonical Kubernetes and it's respective dependencies. Which means changes on the OS front/image would not be handled since the underlying machine image stays the same. This would be handled by a rolling upgrade as usual.
 
 # Implementation Details
@@ -128,7 +146,9 @@ type SnapRefreshRequest struct {
 
 The upgrade can be either done with a `Channel`, `Revision` or a local `*.snap` file provided via `LocalPath`. The value of `LocalPath` should be an absolute path.
 
-This endpoint should use `ValidateCAPIAuthTokenAccessHandler("capi-auth-token")` for authentication.
+A refresh token per node will be generated at bootstrap time, which gets seeded into to the node under the `/capi/etc/refresh-token` file. The generated token will be stored on the management cluster in the `$clustername-token` secret, with keys formatted as `refresh-token::$nodename`.
+
+This endpoint will use `ValidateCAPIRefreshTokenAccessHandler("capi-refresh-token")` to check the `capi-refresh-token` header to match against the token in the `/capi/etc/refresh-token` file.
 
 ## Bootstrap Provider Changes
 <!--
@@ -147,18 +167,21 @@ The result of this operation will be communicated back to the user via the `k8sd
 
 After an upgrade process begins:
 * `k8sd.io/in-place-upgrade-status` annotation on the `Machine` would be added/updated with `in-progress`
+* An `InPlaceUpgradeInProgress` event is added to the `Machine` with the `Performing in place upgrade with {upgrade-option}` message.
 
 After a successfull upgrade:
 * `k8sd.io/in-place-upgrade-to` annotation on the `Machine` would be removed
 * `k8sd.io/in-place-upgrade-release` annotation on the `Machine` would be added/updated with the used `{upgrade-option}`.
-* `k8sd.io/in-place-upgrade-status-message` annotation on the `Machine` would be added/updated with the success message
 * `k8sd.io/in-place-upgrade-status` annotation on the `Machine` would be added/updated with `done`
+* An `InPlaceUpgradeDone` event is added to the `Machine` with the `Successfully performed in place upgrade with {upgrade-option}` message.
 
 After a failed upgrade:
-* `k8sd.io/in-place-upgrade-status-message` annotation on the `Machine` would be added/updated with the failure message
 * `k8sd.io/in-place-upgrade-status` annotation on the `Machine` would be added/updated with `failed`
+* An `InPlaceUpgradeFailed` event is added to the `Machine` with the `Failed to perform in place upgrade with option {upgrade-option}: {error}` message.
 
-The reconciler should ignore the upgrade if `k8sd.io/in-place-upgrade-status` is already set to `in-progress` on the machine. 
+A custom condition with type `InPlaceUpgradeStatus` can also be added to relay these information. 
+
+The reconciler should ignore the upgrade if `k8sd.io/in-place-upgrade-status` is already set to `in-progress` on the machine. The reconciler should also perform the upgrades one by one, requeuing other requests if an in-place upgrade is already in progress.
 
 #### Changes for Rolling Upgrades, Scaling Up and Creating New Machines
 In case of a rolling upgrade or when creating new machines the `CK8sConfigReconciler` should check for the `k8sd.io/in-place-upgrade-release` annotation both on the `Machine` and on the owner `Cluster` object.
@@ -185,17 +208,7 @@ This would prevent adding nodes with an outdated version and possibly breaking t
 <!--
 This section MUST mention any changes to the controlplane provider.
 -->
-A cluster controller called `ClusterReconciler` is added which would perform the one-by-one in-place upgrade of the entire workload cluster. 
-
-The controller would propagate the `k8sd.io/in-place-upgrade-to` annotation on the `Cluster` object by adding this annotation one-by-one to all the machines that is owned by this cluster. 
-
-A Kubernetes API call listing the objects of type `Machine` and filtering with `ownerRef` would produce the list of machines owned by the cluster. The controller then would iterate over this list, annotating machines and waiting for the operation to complete on each iteration.
-
-The reconciler should ignore a machine if `k8sd.io/in-place-upgrade-status` is already set to `in-progress`. 
-
-Once upgrades of the underlying machines are finished:
-* `k8sd.io/in-place-upgrade-to` annotation on the `Cluster` would be removed
-* `k8sd.io/in-place-upgrade-release` annotation on the `Cluster` would be added/updated with the used `{upgrade-option}`.
+none
 
 ## Configuration Changes
 <!--
