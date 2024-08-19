@@ -88,7 +88,8 @@ variables:
   KIND_IMAGE_VERSION: "v1.28.0"
   AWS_CONTROL_PLANE_MACHINE_TYPE: t3.large
   AWS_NODE_MACHINE_TYPE: t3.large
-  AWS_SSH_KEY_NAME: "default"
+  AWS_SSH_KEY_NAME: "etienne"
+  AWS_AMI_ID: "ami-05145146e3a9db6f3"
   AWS_CCM_IMAGE: "registry.k8s.io/provider-aws/cloud-controller-manager:v1.28.3"
   # https://github.com/kubernetes-sigs/cluster-api-provider-aws/blob/main/test/e2e/data/e2e_conf.yaml#L203C1-L205C27
   EXP_CLUSTER_RESOURCE_SET: "true"
