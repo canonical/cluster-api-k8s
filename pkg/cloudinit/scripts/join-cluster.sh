@@ -6,7 +6,8 @@
 ## - /capi/etc/join-token is a valid join token
 
 address="$(cat /capi/etc/microcluster-address)"
+name="$(cat /capi/etc/node-name)"
 config_file="/capi/etc/config.yaml"
 token="$(cat /capi/etc/join-token)"
 
-k8s join-cluster "${token}" --address "${address}" --file "${config_file}"
+k8s join-cluster "${token}" --name "${name}" --address "${address}" --file "${config_file}"

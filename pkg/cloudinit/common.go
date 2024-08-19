@@ -28,6 +28,8 @@ type BaseUserData struct {
 	MicroclusterAddress string
 	// MicroclusterPort is the port to use for microcluster.
 	MicroclusterPort int
+	// NodeName is the name of the node to set on microcluster.
+	NodeName string
 }
 
 func NewBaseCloudConfig(data BaseUserData) (CloudConfig, error) {
@@ -64,6 +66,12 @@ func NewBaseCloudConfig(data BaseUserData) (CloudConfig, error) {
 			File{
 				Path:        "/capi/etc/microcluster-address",
 				Content:     makeMicroclusterAddress(data.MicroclusterAddress, data.MicroclusterPort),
+				Permissions: "0400",
+				Owner:       "root:root",
+			},
+			File{
+				Path:        "/capi/etc/node-name",
+				Content:     data.NodeName,
 				Permissions: "0400",
 				Owner:       "root:root",
 			},
