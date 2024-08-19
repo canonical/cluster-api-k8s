@@ -58,6 +58,12 @@ type CK8sConfigSpec struct {
 	// CK8sInitConfig is configuration for the initializing the cluster features.
 	// +optional
 	InitConfig CK8sInitConfiguration `json:"initConfig,omitempty"`
+
+	// NodeName is the name to use for the kubelet of this node. It is needed for clouds
+	// where the cloud-provider has specific pre-requisites about the node names. It is
+	// typically set in Jinja template form, e.g."{{ ds.meta_data.local_hostname }}".
+	// +optional
+	NodeName string `json:"nodeName,omitempty"`
 }
 
 // IsEtcdManaged returns true if the control plane is using k8s-dqlite.
