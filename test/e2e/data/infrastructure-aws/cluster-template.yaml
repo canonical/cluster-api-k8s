@@ -1,0 +1,351 @@
+apiVersion: cluster.x-k8s.io/v1beta1
+kind: Cluster
+metadata:
+  name: ${CLUSTER_NAME}
+spec:
+  clusterNetwork:
+    pods:
+      cidrBlocks:
+        - 10.1.0.0/16
+    services:
+      cidrBlocks:
+        - 10.152.183.0/24
+  controlPlaneRef:
+    apiVersion: controlplane.cluster.x-k8s.io/v1beta2
+    kind: CK8sControlPlane
+    name: ${CLUSTER_NAME}-control-plane
+  infrastructureRef:
+    apiVersion: infrastructure.cluster.x-k8s.io/v1beta2
+    kind: AWSCluster
+    name: ${CLUSTER_NAME}
+---
+apiVersion: infrastructure.cluster.x-k8s.io/v1beta2
+kind: AWSCluster
+metadata:
+  name: ${CLUSTER_NAME}
+spec:
+  region: ${AWS_REGION}
+  sshKeyName: ${AWS_SSH_KEY_NAME}
+  bastion:
+    enabled: ${AWS_CREATE_BASTION:=true}
+  controlPlaneLoadBalancer:
+    healthCheckProtocol: TCP
+  network:
+    cni:
+      cniIngressRules:
+        - description: microcluster
+          protocol: tcp
+          toPort: 2380
+---
+apiVersion: controlplane.cluster.x-k8s.io/v1beta2
+kind: CK8sControlPlane
+metadata:
+  name: ${CLUSTER_NAME}-control-plane
+  namespace: default
+spec:
+  machineTemplate:
+    infrastructureTemplate:
+      apiVersion: infrastructure.cluster.x-k8s.io/v1beta2
+      kind: AWSMachineTemplate
+      name: ${CLUSTER_NAME}-control-plane
+  spec:
+    files:
+      # note(ben): This is only required as long as k8s does not have a stable release.
+      - path: /capi/scripts/install.sh
+        permissions: "0500"
+        owner: "root:root"
+        content: |
+          #!/bin/bash -xe
+          snap install k8s --classic --edge
+      - path: /capi/scripts/bootstrap.sh
+        permissions: "0500"
+        owner: "root:root"
+        content: |
+          #!/bin/bash -xe
+          if [ ! -f /etc/kubernetes/pki/ca.crt ]; then
+            k8s bootstrap --name '{{ ds.meta_data.local_hostname }}' --address "$(cat /capi/etc/microcluster-address)" --file '/capi/etc/config.yaml'
+          fi
+      - path: /capi/scripts/join-cluster.sh
+        permissions: "0500"
+        owner: "root:root"
+        content: |
+          #!/bin/bash -xe
+          k8s join-cluster --name '{{ ds.meta_data.local_hostname }}' "$(cat /capi/etc/join-token)" --address "$(cat /capi/etc/microcluster-address)" --file "/capi/etc/config.yaml"
+    controlPlane:
+      cloudProvider: external
+  replicas: ${CONTROL_PLANE_MACHINE_COUNT}
+  version: ${KUBERNETES_VERSION}
+---
+apiVersion: infrastructure.cluster.x-k8s.io/v1beta2
+kind: AWSMachineTemplate
+metadata:
+  name: ${CLUSTER_NAME}-control-plane
+spec:
+  template:
+    spec:
+      ami:
+        id: ${AWS_AMI_ID:=ami-0ad50e72a79228704}
+      iamInstanceProfile: control-plane.cluster-api-provider-aws.sigs.k8s.io
+      instanceType: ${AWS_CONTROL_PLANE_INSTANCE_TYPE:=t3.large}
+      publicIP: ${AWS_PUBLIC_IP:=false}
+      sshKeyName: ${AWS_SSH_KEY_NAME}
+---
+apiVersion: cluster.x-k8s.io/v1beta1
+kind: MachineDeployment
+metadata:
+  name: ${CLUSTER_NAME}-worker-md-0
+spec:
+  clusterName: ${CLUSTER_NAME}
+  replicas: ${WORKER_MACHINE_COUNT}
+  selector:
+    matchLabels:
+      cluster.x-k8s.io/cluster-name: ${CLUSTER_NAME}
+  template:
+    spec:
+      version: ${KUBERNETES_VERSION}
+      clusterName: ${CLUSTER_NAME}
+      bootstrap:
+        configRef:
+          apiVersion: bootstrap.cluster.x-k8s.io/v1beta2
+          kind: CK8sConfigTemplate
+          name: ${CLUSTER_NAME}-md-0
+      infrastructureRef:
+        name: "${CLUSTER_NAME}-md-0"
+        apiVersion: infrastructure.cluster.x-k8s.io/v1beta2
+        kind: AWSMachineTemplate
+---
+apiVersion: infrastructure.cluster.x-k8s.io/v1beta2
+kind: AWSMachineTemplate
+metadata:
+  name: ${CLUSTER_NAME}-md-0
+spec:
+  template:
+    spec:
+      ami:
+        id: ${AWS_AMI_ID:=ami-0ad50e72a79228704}
+      iamInstanceProfile: nodes.cluster-api-provider-aws.sigs.k8s.io
+      instanceType: ${AWS_NODE_INSTANCE_TYPE:=t3.large}
+      publicIP: ${AWS_PUBLIC_IP:=false}
+      sshKeyName: ${AWS_SSH_KEY_NAME}
+---
+apiVersion: bootstrap.cluster.x-k8s.io/v1beta2
+kind: CK8sConfigTemplate
+metadata:
+  name: ${CLUSTER_NAME}-md-0
+spec:
+  template:
+    spec:
+      files:
+        # note(ben): This is only required as long as k8s does not have a stable release.
+        - path: /capi/scripts/install.sh
+          permissions: "0500"
+          owner: "root:root"
+          content: |
+            #!/bin/bash -xe
+            snap install k8s --classic --edge
+        - path: /capi/scripts/bootstrap.sh
+          permissions: "0500"
+          owner: "root:root"
+          content: |
+            #!/bin/bash -xe
+            if [ ! -f /etc/kubernetes/pki/ca.crt ]; then
+              k8s bootstrap --name '{{ ds.meta_data.local_hostname }}' --address "$(cat /capi/etc/microcluster-address)" --file '/capi/etc/config.yaml'
+            fi
+        - path: /capi/scripts/join-cluster.sh
+          permissions: "0500"
+          owner: "root:root"
+          content: |
+            #!/bin/bash -xe
+            k8s join-cluster --name '{{ ds.meta_data.local_hostname }}' "$(cat /capi/etc/join-token)" --address "$(cat /capi/etc/microcluster-address)" --file "/capi/etc/config.yaml"
+
+---
+apiVersion: addons.cluster.x-k8s.io/v1beta1
+kind: ClusterResourceSet
+metadata:
+  name: crs-ccm
+spec:
+  clusterSelector:
+    matchLabels:
+      cluster.x-k8s.io/cluster-name: ${CLUSTER_NAME}
+  resources:
+    - kind: ConfigMap
+      name: cloud-controller-manager-addon
+  strategy: ApplyOnce
+---
+apiVersion: v1
+data:
+  aws-ccm-external.yaml: |
+    ---
+    apiVersion: apps/v1
+    kind: DaemonSet
+    metadata:
+      name: aws-cloud-controller-manager
+      namespace: kube-system
+      labels:
+        k8s-app: aws-cloud-controller-manager
+    spec:
+      selector:
+        matchLabels:
+          k8s-app: aws-cloud-controller-manager
+      updateStrategy:
+        type: RollingUpdate
+      template:
+        metadata:
+          labels:
+            k8s-app: aws-cloud-controller-manager
+        spec:
+          nodeSelector:
+            node-role.kubernetes.io/control-plane: ""
+          tolerations:
+            - key: node.cloudprovider.kubernetes.io/uninitialized
+              value: "true"
+              effect: NoSchedule
+            - effect: NoSchedule
+              key: node-role.kubernetes.io/control-plane
+          affinity:
+            nodeAffinity:
+              requiredDuringSchedulingIgnoredDuringExecution:
+                nodeSelectorTerms:
+                  - matchExpressions:
+                      - key: node-role.kubernetes.io/control-plane
+                        operator: Exists
+          serviceAccountName: cloud-controller-manager
+          containers:
+            - name: aws-cloud-controller-manager
+              image: ${AWS_CCM_IMAGE}
+              args:
+                - --v=2
+                - --cloud-provider=aws
+                - --use-service-account-credentials=true
+                - --configure-cloud-routes=false
+              resources:
+                requests:
+                  cpu: 200m
+          hostNetwork: true
+    ---
+    apiVersion: v1
+    kind: ServiceAccount
+    metadata:
+      name: cloud-controller-manager
+      namespace: kube-system
+    ---
+    apiVersion: rbac.authorization.k8s.io/v1
+    kind: RoleBinding
+    metadata:
+      name: cloud-controller-manager:apiserver-authentication-reader
+      namespace: kube-system
+    roleRef:
+      apiGroup: rbac.authorization.k8s.io
+      kind: Role
+      name: extension-apiserver-authentication-reader
+    subjects:
+      - apiGroup: ""
+        kind: ServiceAccount
+        name: cloud-controller-manager
+        namespace: kube-system
+    ---
+    apiVersion: rbac.authorization.k8s.io/v1
+    kind: ClusterRole
+    metadata:
+      name: system:cloud-controller-manager
+    rules:
+    - apiGroups:
+      - ""
+      resources:
+      - events
+      verbs:
+      - create
+      - patch
+      - update
+    - apiGroups:
+      - ""
+      resources:
+      - nodes
+      verbs:
+      - '*'
+    - apiGroups:
+      - ""
+      resources:
+      - nodes/status
+      verbs:
+      - patch
+    - apiGroups:
+      - ""
+      resources:
+      - services
+      verbs:
+      - list
+      - patch
+      - update
+      - watch
+    - apiGroups:
+      - ""
+      resources:
+      - services/status
+      verbs:
+      - list
+      - patch
+      - update
+      - watch
+    - apiGroups:
+      - ""
+      resources:
+      - serviceaccounts
+      verbs:
+      - create
+      - get
+      - list
+      - watch
+    - apiGroups:
+      - ""
+      resources:
+      - persistentvolumes
+      verbs:
+      - get
+      - list
+      - update
+      - watch
+    - apiGroups:
+      - ""
+      resources:
+      - endpoints
+      verbs:
+      - create
+      - get
+      - list
+      - watch
+      - update
+    - apiGroups:
+      - coordination.k8s.io
+      resources:
+      - leases
+      verbs:
+      - create
+      - get
+      - list
+      - watch
+      - update
+    - apiGroups:
+      - ""
+      resources:
+      - serviceaccounts/token
+      verbs:
+      - create
+    ---
+    kind: ClusterRoleBinding
+    apiVersion: rbac.authorization.k8s.io/v1
+    metadata:
+      name: system:cloud-controller-manager
+    roleRef:
+      apiGroup: rbac.authorization.k8s.io
+      kind: ClusterRole
+      name: system:cloud-controller-manager
+    subjects:
+      - apiGroup: ""
+        kind: ServiceAccount
+        name: cloud-controller-manager
+        namespace: kube-system
+kind: ConfigMap
+metadata:
+  name: cloud-controller-manager-addon
+  namespace: default
