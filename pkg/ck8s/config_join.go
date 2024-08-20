@@ -1,8 +1,9 @@
 package ck8s
 
 import (
+	apiv1 "github.com/canonical/k8s-snap-api/api/v1"
+
 	bootstrapv1 "github.com/canonical/cluster-api-k8s/bootstrap/api/v1beta2"
-	apiv1 "github.com/canonical/cluster-api-k8s/pkg/ck8s/api"
 )
 
 type JoinControlPlaneConfig struct {
@@ -12,8 +13,8 @@ type JoinControlPlaneConfig struct {
 	ExtraKubeAPIServerArgs map[string]*string
 }
 
-func GenerateJoinControlPlaneConfig(cfg JoinControlPlaneConfig) apiv1.ControlPlaneNodeJoinConfig {
-	return apiv1.ControlPlaneNodeJoinConfig{
+func GenerateJoinControlPlaneConfig(cfg JoinControlPlaneConfig) apiv1.ControlPlaneJoinConfig {
+	return apiv1.ControlPlaneJoinConfig{
 		ExtraSANS: append(cfg.ControlPlaneConfig.ExtraSANs, cfg.ControlPlaneEndpoint),
 
 		ExtraNodeKubeAPIServerArgs: cfg.ControlPlaneConfig.ExtraKubeAPIServerArgs,
@@ -23,6 +24,6 @@ func GenerateJoinControlPlaneConfig(cfg JoinControlPlaneConfig) apiv1.ControlPla
 type JoinWorkerConfig struct {
 }
 
-func GenerateJoinWorkerConfig(cfg JoinWorkerConfig) apiv1.WorkerNodeJoinConfig {
-	return apiv1.WorkerNodeJoinConfig{}
+func GenerateJoinWorkerConfig(cfg JoinWorkerConfig) apiv1.WorkerJoinConfig {
+	return apiv1.WorkerJoinConfig{}
 }

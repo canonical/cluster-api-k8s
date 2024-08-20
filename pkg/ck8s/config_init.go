@@ -4,11 +4,11 @@ import (
 	"fmt"
 	"strings"
 
+	apiv1 "github.com/canonical/k8s-snap-api/api/v1"
 	"k8s.io/utils/ptr"
 	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
 
 	bootstrapv1 "github.com/canonical/cluster-api-k8s/bootstrap/api/v1beta2"
-	apiv1 "github.com/canonical/cluster-api-k8s/pkg/ck8s/api"
 	"github.com/canonical/cluster-api-k8s/pkg/secret"
 )
 
