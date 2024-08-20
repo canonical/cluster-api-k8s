@@ -60,6 +60,7 @@ func TestNewJoinControlPlane(t *testing.T) {
 		HaveField("Path", "/capi/scripts/create-sentinel-bootstrap.sh"),
 		HaveField("Path", "/capi/etc/config.yaml"),
 		HaveField("Path", "/capi/etc/microcluster-address"),
+		HaveField("Path", "/capi/etc/node-name"),
 		HaveField("Path", "/capi/etc/join-token"),
 		HaveField("Path", "/capi/etc/snap-track"),
 		HaveField("Path", "/tmp/file"),

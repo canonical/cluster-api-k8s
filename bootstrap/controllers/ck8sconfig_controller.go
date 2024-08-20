@@ -258,6 +258,7 @@ func (r *CK8sConfigReconciler) joinControlplane(ctx context.Context, scope *Scop
 			MicroclusterAddress: scope.Config.Spec.ControlPlaneConfig.MicroclusterAddress,
 			MicroclusterPort:    microclusterPort,
 			AirGapped:           scope.Config.Spec.AirGapped,
+			NodeName:            scope.Config.Spec.NodeName,
 		},
 		JoinToken: joinToken,
 	}
@@ -330,6 +331,7 @@ func (r *CK8sConfigReconciler) joinWorker(ctx context.Context, scope *Scope) err
 			MicroclusterAddress: scope.Config.Spec.ControlPlaneConfig.MicroclusterAddress,
 			MicroclusterPort:    microclusterPort,
 			AirGapped:           scope.Config.Spec.AirGapped,
+			NodeName:            scope.Config.Spec.NodeName,
 		},
 		JoinToken: joinToken,
 	}
@@ -514,6 +516,7 @@ func (r *CK8sConfigReconciler) handleClusterNotInitialized(ctx context.Context, 
 			ConfigFileContents:  string(initConfig),
 			MicroclusterAddress: scope.Config.Spec.ControlPlaneConfig.MicroclusterAddress,
 			MicroclusterPort:    microclusterPort,
+			NodeName:            scope.Config.Spec.NodeName,
 			AirGapped:           scope.Config.Spec.AirGapped,
 		},
 		Token:              *token,
