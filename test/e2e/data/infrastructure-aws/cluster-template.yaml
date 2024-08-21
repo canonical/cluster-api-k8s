@@ -2,6 +2,8 @@ apiVersion: cluster.x-k8s.io/v1beta1
 kind: Cluster
 metadata:
   name: ${CLUSTER_NAME}
+  labels:
+    ccm: external
 spec:
   clusterNetwork:
     pods:
@@ -41,7 +43,6 @@ apiVersion: controlplane.cluster.x-k8s.io/v1beta2
 kind: CK8sControlPlane
 metadata:
   name: ${CLUSTER_NAME}-control-plane
-  namespace: default
 spec:
   machineTemplate:
     infrastructureTemplate:
@@ -49,6 +50,11 @@ spec:
       kind: AWSMachineTemplate
       name: ${CLUSTER_NAME}-control-plane
   spec:
+    preRunCommands:
+      - systemctl stop kubelet || true
+      - systemctl disable kubelet || true
+      - systemctl stop containerd || true
+      - systemctl disable containerd || true
     files:
       # note(ben): This is only required as long as k8s does not have a stable release.
       - path: /capi/scripts/install.sh
@@ -84,7 +90,7 @@ spec:
   template:
     spec:
       ami:
-        id: ${AWS_AMI_ID:=ami-0ad50e72a79228704}
+        id: ${AWS_AMI_ID}
       iamInstanceProfile: control-plane.cluster-api-provider-aws.sigs.k8s.io
       instanceType: ${AWS_CONTROL_PLANE_INSTANCE_TYPE:=t3.large}
       publicIP: ${AWS_PUBLIC_IP:=false}
@@ -122,7 +128,7 @@ spec:
   template:
     spec:
       ami:
-        id: ${AWS_AMI_ID:=ami-0ad50e72a79228704}
+        id: ${AWS_AMI_ID}
       iamInstanceProfile: nodes.cluster-api-provider-aws.sigs.k8s.io
       instanceType: ${AWS_NODE_INSTANCE_TYPE:=t3.large}
       publicIP: ${AWS_PUBLIC_IP:=false}
@@ -135,6 +141,11 @@ metadata:
 spec:
   template:
     spec:
+      preRunCommands:
+        - systemctl stop kubelet || true
+        - systemctl disable kubelet || true
+        - systemctl stop containerd || true
+        - systemctl disable containerd || true
       files:
         # note(ben): This is only required as long as k8s does not have a stable release.
         - path: /capi/scripts/install.sh
@@ -166,7 +177,7 @@ metadata:
 spec:
   clusterSelector:
     matchLabels:
-      cluster.x-k8s.io/cluster-name: ${CLUSTER_NAME}
+      ccm: external
   resources:
     - kind: ConfigMap
       name: cloud-controller-manager-addon
@@ -348,4 +359,3 @@ data:
 kind: ConfigMap
 metadata:
   name: cloud-controller-manager-addon
-  namespace: default
