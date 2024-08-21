@@ -2,6 +2,8 @@ apiVersion: cluster.x-k8s.io/v1beta1
 kind: Cluster
 metadata:
   name: ${CLUSTER_NAME}
+  labels:
+    ccm: external
 spec:
   clusterNetwork:
     pods:
@@ -49,7 +51,7 @@ spec:
       kind: AWSMachineTemplate
       name: ${CLUSTER_NAME}-control-plane
   spec:
-    nodeName: {{ ds.meta_data.local_hostname }}
+    nodeName: "{{ ds.meta_data.local_hostname }}"
     files:
       # note(ben): This is only required as long as k8s does not have a stable release.
       - path: /capi/scripts/install.sh
@@ -122,7 +124,7 @@ metadata:
 spec:
   template:
     spec:
-      nodeName: {{ ds.meta_data.local_hostname }}
+      nodeName: "{{ ds.meta_data.local_hostname }}"
       files:
         # note(ben): This is only required as long as k8s does not have a stable release.
         - path: /capi/scripts/install.sh
@@ -139,7 +141,7 @@ metadata:
 spec:
   clusterSelector:
     matchLabels:
-      cluster.x-k8s.io/cluster-name: ${CLUSTER_NAME}
+      ccm: external
   resources:
   - kind: ConfigMap
     name: cloud-controller-manager-addon
