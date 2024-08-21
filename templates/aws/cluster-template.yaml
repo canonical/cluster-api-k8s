@@ -43,7 +43,6 @@ apiVersion: controlplane.cluster.x-k8s.io/v1beta2
 kind: CK8sControlPlane
 metadata:
   name: ${CLUSTER_NAME}-control-plane
-  namespace: default
 spec:
   machineTemplate:
     infrastructureTemplate:
@@ -327,4 +326,3 @@ data:
 kind: ConfigMap
 metadata:
   name: cloud-controller-manager-addon
-  namespace: default
