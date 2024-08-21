@@ -27,7 +27,7 @@ spec:
   region: ${AWS_REGION}
   sshKeyName: ${AWS_SSH_KEY_NAME}
   bastion:
-    enabled: ${AWS_CREATE_BASTION:=true}
+    enabled: ${AWS_CREATE_BASTION}
   controlPlaneLoadBalancer:
     healthCheckProtocol: TCP
   network:
@@ -49,6 +49,7 @@ spec:
       kind: AWSMachineTemplate
       name: ${CLUSTER_NAME}-control-plane
   spec:
+    nodeName: {{ ds.meta_data.local_hostname }}
     files:
       # note(ben): This is only required as long as k8s does not have a stable release.
       - path: /capi/scripts/install.sh
@@ -57,20 +58,6 @@ spec:
         content: |
           #!/bin/bash -xe
           snap install k8s --classic --edge
-      - path: /capi/scripts/bootstrap.sh
-        permissions: "0500"
-        owner: "root:root"
-        content: |
-          #!/bin/bash -xe
-          if [ ! -f /etc/kubernetes/pki/ca.crt ]; then
-            k8s bootstrap --name '{{ ds.meta_data.local_hostname }}' --address "$(cat /capi/etc/microcluster-address)" --file '/capi/etc/config.yaml'
-          fi
-      - path: /capi/scripts/join-cluster.sh
-        permissions: "0500"
-        owner: "root:root"
-        content: |
-          #!/bin/bash -xe
-          k8s join-cluster --name '{{ ds.meta_data.local_hostname }}' "$(cat /capi/etc/join-token)" --address "$(cat /capi/etc/microcluster-address)" --file "/capi/etc/config.yaml"
     controlPlane:
       cloudProvider: external
   replicas: ${CONTROL_PLANE_MACHINE_COUNT}
@@ -84,10 +71,10 @@ spec:
   template:
     spec:
       ami:
-        id: ${AWS_AMI_ID:=ami-0ad50e72a79228704}
+        id: ${AWS_AMI_ID}
       iamInstanceProfile: control-plane.cluster-api-provider-aws.sigs.k8s.io
-      instanceType: ${AWS_CONTROL_PLANE_INSTANCE_TYPE:=t3.large}
-      publicIP: ${AWS_PUBLIC_IP:=false}
+      instanceType: ${AWS_CONTROL_PLANE_INSTANCE_TYPE}
+      publicIP: ${AWS_PUBLIC_IP}
       sshKeyName: ${AWS_SSH_KEY_NAME}
 ---
 apiVersion: cluster.x-k8s.io/v1beta1
@@ -122,10 +109,10 @@ spec:
   template:
     spec:
       ami:
-        id: ${AWS_AMI_ID:=ami-0ad50e72a79228704}
+        id: ${AWS_AMI_ID}
       iamInstanceProfile: nodes.cluster-api-provider-aws.sigs.k8s.io
-      instanceType: ${AWS_NODE_INSTANCE_TYPE:=t3.large}
-      publicIP: ${AWS_PUBLIC_IP:=false}
+      instanceType: ${AWS_NODE_INSTANCE_TYPE}
+      publicIP: ${AWS_PUBLIC_IP}
       sshKeyName: ${AWS_SSH_KEY_NAME}
 ---
 apiVersion: bootstrap.cluster.x-k8s.io/v1beta2
@@ -135,6 +122,7 @@ metadata:
 spec:
   template:
     spec:
+      nodeName: {{ ds.meta_data.local_hostname }}
       files:
         # note(ben): This is only required as long as k8s does not have a stable release.
         - path: /capi/scripts/install.sh
@@ -143,21 +131,6 @@ spec:
           content: |
             #!/bin/bash -xe
             snap install k8s --classic --edge
-        - path: /capi/scripts/bootstrap.sh
-          permissions: "0500"
-          owner: "root:root"
-          content: |
-            #!/bin/bash -xe
-            if [ ! -f /etc/kubernetes/pki/ca.crt ]; then
-              k8s bootstrap --name '{{ ds.meta_data.local_hostname }}' --address "$(cat /capi/etc/microcluster-address)" --file '/capi/etc/config.yaml'
-            fi
-        - path: /capi/scripts/join-cluster.sh
-          permissions: "0500"
-          owner: "root:root"
-          content: |
-            #!/bin/bash -xe
-            k8s join-cluster --name '{{ ds.meta_data.local_hostname }}' "$(cat /capi/etc/join-token)" --address "$(cat /capi/etc/microcluster-address)" --file "/capi/etc/config.yaml"
-
 ---
 apiVersion: addons.cluster.x-k8s.io/v1beta1
 kind: ClusterResourceSet
