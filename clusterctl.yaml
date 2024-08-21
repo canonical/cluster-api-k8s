@@ -1,8 +1,0 @@
----
-providers:
-  - name: ck8s
-    type: BootstrapProvider
-    url: "https://github.com/canonical/cluster-api-k8s/releases/latest/bootstrap-components.yaml"
-  - name: ck8s
-    type: ControlPlaneProvider
-    url: "https://github.com/canonical/cluster-api-k8s/releases/latest/control-plane-components.yaml"
