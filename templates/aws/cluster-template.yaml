@@ -78,6 +78,8 @@ spec:
       instanceType: ${AWS_CONTROL_PLANE_INSTANCE_TYPE}
       publicIP: ${AWS_PUBLIC_IP}
       sshKeyName: ${AWS_SSH_KEY_NAME}
+      rootVolume:
+        size: ${AWS_CONTROL_PLANE_ROOT_VOLUME_SIZE}
 ---
 apiVersion: cluster.x-k8s.io/v1beta1
 kind: MachineDeployment
@@ -116,6 +118,8 @@ spec:
       instanceType: ${AWS_NODE_INSTANCE_TYPE}
       publicIP: ${AWS_PUBLIC_IP}
       sshKeyName: ${AWS_SSH_KEY_NAME}
+      rootVolume:
+        size: ${AWS_NODE_ROOT_VOLUME_SIZE}
 ---
 apiVersion: bootstrap.cluster.x-k8s.io/v1beta2
 kind: CK8sConfigTemplate
