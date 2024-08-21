@@ -9,8 +9,10 @@ export AWS_REGION=""                                # e.g. "us-east-2"
 # AWS machine configuration
 export AWS_CREATE_BASTION=                          # e.g. "true"
 export AWS_PUBLIC_IP=                               # e.g. "true"
-export AWS_CONTROL_PLANE_MACHINE_FLAVOR=            # e.g. "t3.large"
-export AWS_NODE_MACHINE_FLAVOR=                     # e.g. "t3.large"
+export AWS_CONTROL_PLANE_INSTANCE_TYPE=             # e.g. "t3.large"
+export AWS_NODE_INSTANCE_TYPE=                      # e.g. "t3.large"
+export AWS_CONTROL_PLANE_ROOT_VOLUME_SIZE=          # in Gi, e.g. 16
+export AWS_NODE_ROOT_VOLUME_SIZE=                   # in Gi, e.g. 16
 export AWS_SSH_KEY_NAME=                            # e.g. "default"
 export AWS_AMI_ID=                                  # e.g. "ami-0ad50e72a79228704"
 
