@@ -4,7 +4,7 @@ export CONTROL_PLANE_MACHINE_COUNT=3
 export WORKER_MACHINE_COUNT=3
 
 # AWS region
-export AWS_REGION=""                   # e.g. us-east-2
+export AWS_REGION=""                                # e.g. "us-east-2"
 
 # AWS machine configuration
 export AWS_CREATE_BASTION="true"
