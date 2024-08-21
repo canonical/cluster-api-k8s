@@ -16,11 +16,11 @@ sudo install -o root -g root -m 0755 clusterctl /usr/local/bin/clusterctl
 The management cluster hosts the CAPI providers. You can use a Canonical Kubernetes cluster as a management cluster:
 
 ```sh
-sudo snap install k8s --classic
+sudo snap install k8s --classic --edge
 sudo k8s bootstrap
 sudo k8s status --wait-ready
 mkdir -p ~/.kube/
-sudo k8s config > ~/.kube/config
+sudo k8s kubectl config view --raw > ~/.kube/config
 ```
 
 When setting up the management cluster, place its kubeconfig under `~/.kube/config` so other tools such as `clusterctl` can discover and interact with it.
@@ -44,7 +44,7 @@ With `clusterawsadm`, you can bootstrap the AWS environment that CAPI will use.
 Start by setting up environment variables defining the AWS account to use, if these are not already defined:
 
 ```sh
-export AWS_REGION=<your-region-eg-us-east-1>
+export AWS_REGION=<your-region-eg-us-east-2>
 export AWS_ACCESS_KEY_ID=<your-access-key>
 export AWS_SECRET_ACCESS_KEY=<your-secret-access-key>
 ```
@@ -79,20 +79,14 @@ clusterctl init --bootstrap ck8s --control-plane ck8s -i <infra-provider-of-choi
 
 Once the bootstrap and control-plane controllers are up and running, you can apply the cluster manifests with the specifications of the cluster you want to provision.
 
-For Canonical Kubernetes, there are example manifests in the bootstrap provider examples directory on GitHub.
+You can generate a cluster manifest for an infrastructure using templates provided by the Canonical Kubernetes team. The templates/ folder contains templates for common clouds.
 
-Alternatively, you can generate a cluster manifest for a selected set of commonly used infrastructures via templates provided by the Canonical Kubernetes team. Visit the usage instructions for a list of different providers and their deployment.
-
-Ensure you have initialized the desired infrastructure provider and fetch the Canonical Kubernetes bootstrap provider repository:
-
-```sh
-git clone https://github.com/canonical/cluster-api-bootstrap-provider-microk8s
-```
+Ensure you have initialized the desired infrastructure provider and fetch the Canonical Kubernetes bootstrap provider repository.
 
 Review the list of variables needed for the cluster template:
 
 ```sh
-cd cluster-api-bootstrap-provider-microk8s
+cd templates/<infra-provider-of-choice>
 clusterctl generate cluster k8s-<cloud_provider> --from ./templates/cluster-template-<cloud_provider>.yaml --list-variables
 ```
 
@@ -103,20 +97,20 @@ source ./templates/cluster-template-<cloud_provider>.rc
 clusterctl generate cluster k8s-<cloud_provider> --from ./templates/cluster-template-<cloud_provider>.yaml > cluster.yaml
 ```
 
-Each provisioned node is associated with a `K8sConfig`, through which you can set the cluster’s properties. Review the available options in the respective definitions file and edit the cluster manifest (`cluster.yaml` above) to match your needs. Note that the configuration structure is similar to that of `kubeadm` - in the `K8sConfig`, you will find a `ClusterConfiguration` and an `InitConfiguration` section.
+Each provisioned node is associated with a `K8sConfig`, through which you can set the cluster’s properties. Review the available options in the respective definitions file and edit the cluster manifest (`cluster.yaml` above) to match your needs. Note that the configuration structure is similar to that of `kubeadm` - in the `CK8sConfig`, you will find a `ClusterConfiguration` and an `InitConfiguration` section.
 
 ### Deploy the Cluster
 
 To deploy the cluster, run:
 
 ```sh
-sudo microk8s kubectl apply -f cluster.yaml
+sudo k8s kubectl apply -f cluster.yaml
 ```
 
 To see the deployed machines:
 
 ```sh
-sudo microk8s kubectl get machine
+sudo k8s kubectl get machine
 ```
 
 After the first control plane node is provisioned, you can get the kubeconfig of the workload cluster:
@@ -136,13 +130,13 @@ KUBECONFIG=./kubeconfig kubectl get node
 To get the list of provisioned clusters:
 
 ```sh
-sudo microk8s kubectl get clusters
+sudo k8s kubectl get clusters
 ```
 
 To delete a cluster:
 
 ```sh
-sudo microk8s kubectl delete cluster <provisioned-cluster>
+sudo k8s kubectl delete cluster <provisioned-cluster>
 ```
 
 <!-- Links -->
