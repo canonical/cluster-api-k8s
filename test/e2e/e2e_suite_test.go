@@ -39,7 +39,6 @@ import (
 	"sigs.k8s.io/cluster-api/test/framework/clusterctl"
 	"sigs.k8s.io/cluster-api/test/framework/ginkgoextensions"
 	dockerinfrav1 "sigs.k8s.io/cluster-api/test/infrastructure/docker/api/v1beta1"
-	awsinfrav1 "sigs.k8s.io/cluster-api-provider-aws/v2/api/v1beta2"
 	ctrl "sigs.k8s.io/controller-runtime"
 
 	bootstrapv1 "github.com/canonical/cluster-api-k8s/bootstrap/api/v1beta2"
@@ -197,7 +196,6 @@ func initScheme() *runtime.Scheme {
 	Expect(controlplanev1.AddToScheme(sc)).To(Succeed())
 	Expect(bootstrapv1.AddToScheme(sc)).To(Succeed())
 	Expect(dockerinfrav1.AddToScheme(sc)).To(Succeed())
-	Expect(awsinfrav1.AddToScheme(sc)).To(Succeed())
 	return sc
 }
 
