@@ -230,11 +230,18 @@ func (w *Workload) requestJoinToken(ctx context.Context, name string, worker boo
 }
 
 func (w *Workload) RemoveMachineFromCluster(ctx context.Context, machine *clusterv1.Machine) error {
-	request := &apiv1.RemoveNodeRequest{Name: machine.Name, Force: true}
+	if machine == nil {
+		return fmt.Errorf("machine is nil")
+	} else if machine.Status.NodeRef == nil {
+		return fmt.Errorf("machine %s has no node reference", machine.Name)
+	}
+
+	nodeName := machine.Status.NodeRef.Name
+	request := &apiv1.RemoveNodeRequest{Name: nodeName, Force: true}
 
 	// If we see that ignoring control-planes is causing issues, let's consider removing it.
 	// It *should* not be necessary as a machine should be able to remove itself from the cluster.
-	err := w.doK8sdRequest(ctx, http.MethodPost, "1.0/x/capi/remove-node", request, nil, k8sdProxyOptions{IgnoreNodes: map[string]struct{}{machine.Name: {}}})
+	err := w.doK8sdRequest(ctx, http.MethodPost, "1.0/x/capi/remove-node", request, nil, k8sdProxyOptions{IgnoreNodes: map[string]struct{}{nodeName: {}}})
 	if err != nil {
 		return fmt.Errorf("failed to remove %s from cluster: %w", machine.Name, err)
 	}
