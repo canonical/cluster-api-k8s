@@ -19,7 +19,7 @@ package cloudinit
 import (
 	"fmt"
 
-	apiv1 "github.com/canonical/cluster-api-k8s/pkg/ck8s/api"
+	apiv1 "github.com/canonical/k8s-snap-api/api/v1"
 	"gopkg.in/yaml.v2"
 )
 
@@ -70,7 +70,7 @@ func NewJoinControlPlane(input JoinControlPlaneInput) (CloudConfig, error) {
 // This is required because the token name and kubelet name diverge in the CAPI context.
 // See https://github.com/canonical/k8s-snap/pull/629 for more details.
 func addJoinTokenToExtraSANsConfig(input JoinControlPlaneInput) (JoinControlPlaneInput, error) {
-	var joinConfig apiv1.ControlPlaneNodeJoinConfig
+	var joinConfig apiv1.ControlPlaneJoinConfig
 	err := yaml.Unmarshal([]byte(input.BaseUserData.ConfigFileContents), &joinConfig)
 	if err != nil {
 		return JoinControlPlaneInput{}, fmt.Errorf("failed to parse config file: %w", err)
