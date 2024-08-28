@@ -231,8 +231,9 @@ func (w *Workload) requestJoinToken(ctx context.Context, name string, worker boo
 
 func (w *Workload) RemoveMachineFromCluster(ctx context.Context, machine *clusterv1.Machine) error {
 	if machine == nil {
-		return fmt.Errorf("machine is nil")
-	} else if machine.Status.NodeRef == nil {
+		return fmt.Errorf("machine object is not set")
+	}
+	if machine.Status.NodeRef == nil {
 		return fmt.Errorf("machine %s has no node reference", machine.Name)
 	}
 
