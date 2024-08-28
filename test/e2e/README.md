@@ -29,6 +29,45 @@ This is useful if you want to use a cluster managed by Tilt.
 make USE_EXISTING_CLUSTER=true test-e2e
 ```
 
+### Running the tests with Tilt
+
+This section explains how to run the E2E tests on AWS using a management cluster run by Tilt.
+
+This section assumes you have *kind* and *Docker* installed. (See [Prerequisites](https://cluster-api.sigs.k8s.io/developer/tilt#prerequisites))
+
+First, clone the upstream cluster-api and cluster-api-provider-aws repositories.
+```shell
+git clone https://github.com/kubernetes-sigs/cluster-api.git
+git clone https://github.com/kubernetes-sigs/cluster-api-provider-aws.git
+```
+
+Next, you need to create a `tilt-settings.yaml` file inside the `cluster-api` directory.
+The kustomize_substitutions you provide here are automatically applied to the *management cluster*.
+```shell
+default_registry: "ghcr.io/canonical/cluster-api-k8s"
+provider_repos:
+- ../cluster-api-k8s
+- ../cluster-api-provider-aws
+enable_providers:
+- aws
+- ck8s-bootstrap
+- ck8s-control-plane
+kustomize_substitutions:
+  EXP_CLUSTER_RESOURCE_SET: "true" # todo(eac): revisit these exp. features
+  EXP_MACHINE_POOL: "true"
+  CAPA_EKS_IAM: "false"
+  CAPA_EKS_ADD_ROLES: "false"
+  AWS_B64ENCODED_CREDENTIALS: ""
+```
+
+Tilt will know how to run the aws provider controllers because the `cluster-api-provider-aws` repository has a `tilt-provider.json` file at it's root. Canonical Kubernetes also provides this file at the root of the repository. The CK8s provider names, ck8s-bootstrap and ck8s-control-plane, are defined in CK8's `tilt-provider.yaml` file.
+
+Next, you have to customize the variables that will be substituted into the cluster templates applied by the tests (these are under `test/e2e/data/infrastructure-aws`). You can customize the variables in the `test/e2e/config/ck8s-aws.yaml` file under the `variables` key.
+
+Finally, in one terminal, go into the `cluster-api` directory and run `make tilt-up`. You should see a kind cluster be created, and finally a message indicating that Tilt is available at a certain address.
+
+In a second terminal in the `cluster-api-k8s` directory, run `make USE_EXISTING_CLUSTER=true test-e2e`.
+
 ### Cleaning up after an e2e test
 
 The test framework tries it's best to cleanup resources after a test suite, but it is possible that
