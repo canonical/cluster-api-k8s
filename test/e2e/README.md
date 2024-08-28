@@ -21,6 +21,50 @@ To run a specific e2e test, such as `[PR-Blocking]`, use the `GINKGO_FOCUS` envi
 make GINKGO_FOCUS="\\[PR-Blocking\\]" test-e2e  # only run e2e test with `[PR-Blocking]` in its spec name
 ```
 
+### Use an existing cluster as the management cluster
+
+This is useful if you want to use a cluster managed by Tilt.
+
+```shell
+make USE_EXISTING_CLUSTER=true test-e2e
+```
+
+### Cleaning up after an e2e test
+
+The test framework tries it's best to cleanup resources after a test suite, but it is possible that
+cloud resources are left over. This can be very problematic especially if you run the tests multiple times
+while iterating on development (see [Cluster API Book - Tear down](https://cluster-api.sigs.k8s.io/developer/e2e#tear-down)).
+
+You can use a tool like [aws-nuke](https://github.com/rebuy-de/aws-nuke) to cleanup your AWS account after a test. Here is a config. you can use that should cover most resources:
+
+```yaml
+regions:
+  - us-east-2
+
+account-blocklist:
+  - "<your prod account number>"
+
+accounts:
+  "<your account number>": {}
+
+resource-types:
+  targets:
+  - EC2Instance
+  - EC2SecurityGroup
+  - EC2Volume
+  - EC2InternetGateway
+  - EC2NATGateway
+  - EC2RouteTable
+  - EC2Subnet
+  - EC2VPC
+  - EC2VPCEndpoint
+  - EC2VPCEndpointServiceConfiguration
+  - EC2ElasticIP
+  - EC2NetworkInterface
+  - ELBv2
+  - ELBv2TargetGroup
+```
+
 ## Develop an e2e test
 
 Refer to [Developing E2E tests](https://cluster-api.sigs.k8s.io/developer/e2e) for a complete guide for developing e2e tests.
