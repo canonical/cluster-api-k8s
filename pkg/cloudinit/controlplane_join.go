@@ -16,12 +16,7 @@ limitations under the License.
 
 package cloudinit
 
-import (
-	"fmt"
-
-	apiv1 "github.com/canonical/k8s-snap-api/api/v1"
-	"gopkg.in/yaml.v2"
-)
+import "fmt"
 
 // JoinControlPlaneInput defines the context to generate a join controlplane instance user data.
 type JoinControlPlaneInput struct {
@@ -32,11 +27,6 @@ type JoinControlPlaneInput struct {
 
 // NewJoinControlPlane returns the user data string to be used on a controlplane instance.
 func NewJoinControlPlane(input JoinControlPlaneInput) (CloudConfig, error) {
-	input, err := addJoinTokenToExtraSANsConfig(input)
-	if err != nil {
-		return CloudConfig{}, fmt.Errorf("failed to add join token to ExtraSANs: %w", err)
-	}
-
 	config, err := NewBaseCloudConfig(input.BaseUserData)
 	if err != nil {
 		return CloudConfig{}, fmt.Errorf("failed to generate base cloud-config: %w", err)
@@ -64,27 +54,4 @@ func NewJoinControlPlane(input JoinControlPlaneInput) (CloudConfig, error) {
 	config.RunCommands = append(config.RunCommands, input.PostRunCommands...)
 
 	return config, nil
-}
-
-// addJoinTokenToExtraSANsConfig adds the JoinToken to the ExtraSANs field in the control plane node join config.
-// This is required because the token name and kubelet name diverge in the CAPI context.
-// See https://github.com/canonical/k8s-snap/pull/629 for more details.
-func addJoinTokenToExtraSANsConfig(input JoinControlPlaneInput) (JoinControlPlaneInput, error) {
-	var joinConfig apiv1.ControlPlaneJoinConfig
-	err := yaml.Unmarshal([]byte(input.BaseUserData.ConfigFileContents), &joinConfig)
-	if err != nil {
-		return JoinControlPlaneInput{}, fmt.Errorf("failed to parse config file: %w", err)
-	}
-
-	if joinConfig.ExtraSANS == nil {
-		joinConfig.ExtraSANS = []string{}
-	}
-
-	joinConfig.ExtraSANS = append(joinConfig.ExtraSANS, input.JoinToken)
-	updatedConfig, err := yaml.Marshal(joinConfig)
-	if err != nil {
-		return JoinControlPlaneInput{}, fmt.Errorf("failed to marshal updated config: %w", err)
-	}
-	input.BaseUserData.ConfigFileContents = string(updatedConfig)
-	return input, nil
 }

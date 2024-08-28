@@ -232,9 +232,15 @@ func (r *CK8sConfigReconciler) joinControlplane(ctx context.Context, scope *Scop
 		return fmt.Errorf("failed to request join token: %w", err)
 	}
 
+	controlPlaneConfig := scope.Config.Spec.ControlPlaneConfig
+	// Adding the join token name to the extra SANs is required because the token name
+	// and kubelet name diverge in the CAPI context.
+	// See https://github.com/canonical/k8s-snap/pull/629 for more details.
+	controlPlaneConfig.ExtraSANs = append(controlPlaneConfig.ExtraSANs, scope.Config.Name)
+
 	configStruct := ck8s.GenerateJoinControlPlaneConfig(ck8s.JoinControlPlaneConfig{
 		ControlPlaneEndpoint: scope.Cluster.Spec.ControlPlaneEndpoint.Host,
-		ControlPlaneConfig:   scope.Config.Spec.ControlPlaneConfig,
+		ControlPlaneConfig:   controlPlaneConfig,
 	})
 	joinConfig, err := kubeyaml.Marshal(configStruct)
 	if err != nil {
