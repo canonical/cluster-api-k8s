@@ -55,6 +55,8 @@ providers:
             new: "imagePullPolicy: IfNotPresent"
     files:
       - sourcePath: "../data/infrastructure-aws/cluster-template.yaml"
+      - sourcePath: "../data/infrastructure-aws/cluster-template-md-remediation.yaml"
+      - sourcePath: "../data/infrastructure-aws/cluster-template-kcp-remediation.yaml"
   - name: ck8s
     type: BootstrapProvider
     versions:
