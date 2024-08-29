@@ -661,14 +661,17 @@ func WaitForNodesReady(ctx context.Context, input WaitForNodesReadyInput) {
 		}
 		nodeReadyCount := 0
 		for _, node := range nodeList.Items {
+			fmt.Fprintf(GinkgoWriter, "versions: %s %s\n", semver.MajorMinor(node.Status.NodeInfo.KubeletVersion), semver.MajorMinor(input.KubernetesVersion))
 			if !(semver.MajorMinor(node.Status.NodeInfo.KubeletVersion) == semver.MajorMinor(input.KubernetesVersion)) {
 				return false, nil
 			}
+			fmt.Fprintf(GinkgoWriter, "node %s is ready: %t\n", node.Name, noderefutil.IsNodeReady(&node))
 			if !noderefutil.IsNodeReady(&node) {
 				return false, nil
 			}
 			nodeReadyCount++
 		}
+		fmt.Fprintf(GinkgoWriter, "nodeReadyCount: %d, expected count: %d\n", nodeReadyCount, input.Count)
 		return input.Count == nodeReadyCount, nil
 	}, input.WaitForNodesReady...).Should(BeTrue())
 }
