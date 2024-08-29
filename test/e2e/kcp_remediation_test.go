@@ -23,6 +23,7 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	"k8s.io/utils/ptr"
 	capi_e2e "sigs.k8s.io/cluster-api/test/e2e"
+	"sigs.k8s.io/cluster-api/test/framework/clusterctl"
 )
 
 var _ = Describe("When testing KCP remediation", func() {
@@ -33,6 +34,6 @@ var _ = Describe("When testing KCP remediation", func() {
 			BootstrapClusterProxy:  bootstrapClusterProxy,
 			ArtifactFolder:         artifactFolder,
 			SkipCleanup:            skipCleanup,
-			InfrastructureProvider: ptr.To("docker")}
+			InfrastructureProvider: ptr.To(clusterctl.DefaultInfrastructureProvider)}
 	})
 })
