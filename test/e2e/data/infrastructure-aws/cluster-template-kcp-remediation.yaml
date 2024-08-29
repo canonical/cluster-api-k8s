@@ -57,6 +57,7 @@ spec:
       - systemctl disable kubelet || true
       - systemctl stop containerd || true
       - systemctl disable containerd || true
+      - ./wait-signal.sh "${TOKEN}" "${SERVER}" "${NAMESPACE}"
     files:
       # note(ben): This is only required as long as k8s does not have a stable release.
       - path: /capi/scripts/install.sh
@@ -65,6 +66,34 @@ spec:
         content: |
           #!/bin/bash -xe
           snap install k8s --classic --channel=latest/edge/etienne-delete-me
+
+      - path: /wait-signal.sh
+        content: |
+          #!/bin/bash
+          
+          set -o errexit
+          set -o pipefail
+          
+          echo "Waiting for signal..."
+          
+          TOKEN=$1
+          SERVER=$2
+          NAMESPACE=$3
+          
+          while true;
+          do
+            sleep 1s
+          
+            signal=$(curl -k -s --header "Authorization: Bearer $TOKEN" $SERVER/api/v1/namespaces/$NAMESPACE/configmaps/mhc-test | jq -r .data.signal?)
+            echo "signal $signal"
+          
+            if [ "$signal" == "pass" ]; then
+              curl -k -s --header "Authorization: Bearer $TOKEN" -XPATCH -H "Content-Type: application/strategic-merge-patch+json" --data '{"data": {"signal": "ack-pass"}}' $SERVER/api/v1/namespaces/$NAMESPACE/configmaps/mhc-test
+              exit 0
+            fi
+          done
+        permissions: "0777"
+        owner: root:root
     controlPlane:
       cloudProvider: external
   replicas: ${CONTROL_PLANE_MACHINE_COUNT}
@@ -338,3 +367,21 @@ kind: ConfigMap
 metadata:
   name: cloud-controller-manager-addon
   namespace: default
+---
+apiVersion: cluster.x-k8s.io/v1beta1
+kind: MachineHealthCheck
+metadata:
+  name: ${CLUSTER_NAME}-mhc-0
+  namespace: ${NAMESPACE}
+spec:
+  clusterName: ${CLUSTER_NAME}
+  maxUnhealthy: 100%
+  nodeStartupTimeout: 30s
+  selector:
+    matchLabels:
+      cluster.x-k8s.io/control-plane: ""
+      mhc-test: fail
+  unhealthyConditions:
+    - status: "False"
+      timeout: 10s
+      type: e2e.remediation.condition

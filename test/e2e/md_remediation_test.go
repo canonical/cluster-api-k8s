@@ -49,7 +49,7 @@ var _ = Describe("When testing MachineDeployment remediation", func() {
 		Expect(e2eConfig.Variables).To(HaveKey(KubernetesVersion))
 
 		clusterName = fmt.Sprintf("capick8s-md-remediation-%s", util.RandomString(6))
-		infrastructureProvider = "docker"
+		infrastructureProvider = clusterctl.DefaultInfrastructureProvider
 
 		// Setup a Namespace where to host objects for this spec and create a watcher for the namespace events.
 		namespace, cancelWatches = setupSpecNamespace(ctx, specName, bootstrapClusterProxy, artifactFolder)

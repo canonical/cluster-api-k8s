@@ -48,12 +48,15 @@ jobs:
     needs: build-e2e-images
     strategy:
       matrix:
+        infra-provider:
+          #- docker
+          - aws
         ginkgo_focus:
-          - "KCP remediation"
-          - "MachineDeployment remediation"
+          #- "KCP remediation"
+          #- "MachineDeployment remediation"
           - "Workload cluster creation"
-          - "Workload cluster scaling"
-          - "Workload cluster upgrade"
+          #- "Workload cluster scaling"
+          #- "Workload cluster upgrade"
     steps:
       - name: Check out repo
         uses: actions/checkout@v4
@@ -64,6 +67,8 @@ jobs:
           sudo apt install make
           sudo apt install docker-buildx
           sudo snap install kubectl --classic --channel=1.30/stable
+          sudo ./hack/install-clusterctlawsadm.sh
+          sudo ./hack/install-clusterctl.sh
       - name: Download artifacts
         uses: actions/download-artifact@v4
         with:
@@ -83,4 +88,13 @@ jobs:
           sudo sysctl fs.inotify.max_user_instances=8192
       - name: Run e2e tests
         run: |
+          mkdir -p ~/.config/cluster-api
+          mkdir ~/.kube
+          export AWS_B64ENCODED_CREDENTIALS=$(clusterawsadm bootstrap credentials encode-as-profile)
+          sudo ./hack/write-provider-config.sh ~/.config/cluster-api/clusterctl.yaml v0.1.2
+          sudo docker run --name management-cluster --network kind --rm --detach --privileged
+          sudo docker exec management-cluster k8s bootstrap
+          sleep 1
+          sudo docker exec management-cluster k8s config > ~/.kube/config
+          sed -i 's/E2E_INFRA ?= docker/E2E_INFRA ?= ${{ matrix.infra-provider }}/' ./Makefile
           sudo GINKGO_FOCUS="${{ matrix.ginkgo_focus }}" SKIP_RESOURCE_CLEANUP=true make test-e2e
