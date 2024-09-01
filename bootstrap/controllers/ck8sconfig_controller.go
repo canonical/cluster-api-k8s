@@ -213,6 +213,9 @@ func (r *CK8sConfigReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 }
 
 func (r *CK8sConfigReconciler) joinControlplane(ctx context.Context, scope *Scope) error {
+
+	log := r.Log.WithValues("scope.Config", scope.Config)
+
 	machine := &clusterv1.Machine{}
 	if err := runtime.DefaultUnstructuredConverter.FromUnstructured(scope.ConfigOwner.Object, machine); err != nil {
 		return fmt.Errorf("cannot convert %s to Machine: %w", scope.ConfigOwner.GetKind(), err)
@@ -242,6 +245,11 @@ func (r *CK8sConfigReconciler) joinControlplane(ctx context.Context, scope *Scop
 		ControlPlaneEndpoint: scope.Cluster.Spec.ControlPlaneEndpoint.Host,
 		ControlPlaneConfig:   controlPlaneConfig,
 	})
+	log.Info("-----------------------------------------")
+	log.Info("Config.Name: %v\n", scope.Config.Name)
+	log.Info("extraSANs: %v\n", controlPlaneConfig.ExtraSANs)
+	log.Info("-----------------------------------------")
+
 	joinConfig, err := kubeyaml.Marshal(configStruct)
 	if err != nil {
 		return err
