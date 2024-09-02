@@ -213,7 +213,6 @@ func (r *CK8sConfigReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 }
 
 func (r *CK8sConfigReconciler) joinControlplane(ctx context.Context, scope *Scope) error {
-
 	log := r.Log.WithValues("scope.Config", scope.Config)
 
 	machine := &clusterv1.Machine{}

@@ -172,6 +172,6 @@ ENV PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/snap/k8s/
 ## NOTE(neoaggelos): Required for containerd to properly set up overlayfs for pods
 VOLUME ["/var/snap/k8s/common/var/lib/containerd"]
 
-## NOTE(ben): Remove exisitng kind image kubectl and kubelet binaries
+## NOTE(ben): Remove existing kind image kubectl and kubelet binaries
 # to avoid version confusion.
 RUN rm -f /usr/bin/kubectl /usr/bin/kubelet
