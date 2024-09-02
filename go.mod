@@ -24,6 +24,8 @@ require (
 	sigs.k8s.io/yaml v1.4.0
 )
 
+replace github.com/canonical/k8s-snap-api v1.0.2 => github.com/berkayoz/k8s-snap-api v1.0.5-0.20240901200911-5379ab6be5fa
+
 require (
 	github.com/BurntSushi/toml v1.0.0 // indirect
 	github.com/MakeNowJust/heredoc v1.0.0 // indirect

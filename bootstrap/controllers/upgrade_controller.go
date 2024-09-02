@@ -106,16 +106,11 @@ func (r *InPlaceUpgradeReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 
 		upgradeStatus, hasUpgradeStatusAnnotation := mAnnotations[ck8s.InPlaceUpgradeStatusAnnotation]
 
-		_, hasRefreshIdAnnotation := mAnnotations[ck8s.InPlaceUpgradeRefreshIdAnnotation]
+		refreshId, hasRefreshIdAnnotation := mAnnotations[ck8s.InPlaceUpgradeRefreshIdAnnotation]
 
 		if hasUpgradeStatusAnnotation && hasRefreshIdAnnotation {
-
 			switch upgradeStatus {
 			case ck8s.InPlaceUpgradeInProgressStatus:
-				refreshId, ok := mAnnotations[ck8s.InPlaceUpgradeRefreshIdAnnotation]
-				if !ok {
-					return ctrl.Result{}, fmt.Errorf("found in-place upgrade in progress annotation without refresh id")
-				}
 
 				status, err := workloadCluster.GetRefreshStatusForMachine(ctx, m, nodeToken, &refreshId)
 				if err != nil {
@@ -145,8 +140,6 @@ func (r *InPlaceUpgradeReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 						return ctrl.Result{}, errors.Wrapf(err, "failed to mark in place upgrade status")
 					}
 				}
-
-				return ctrl.Result{}, nil
 			case ck8s.InPlaceUpgradeDoneStatus:
 				delete(mAnnotations, ck8s.InPlaceUpgradeToAnnotation)
 				delete(mAnnotations, ck8s.InPlaceUpgradeRefreshIdAnnotation)
@@ -155,7 +148,6 @@ func (r *InPlaceUpgradeReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 				if err := patchHelper.Patch(ctx, m); err != nil {
 					return ctrl.Result{}, errors.Wrapf(err, "failed to patch machine annotations")
 				}
-				return ctrl.Result{}, nil
 			case ck8s.InPlaceUpgradeFailedStatus:
 				delete(mAnnotations, ck8s.InPlaceUpgradeStatusAnnotation)
 				delete(mAnnotations, ck8s.InPlaceUpgradeRefreshIdAnnotation)
@@ -163,13 +155,13 @@ func (r *InPlaceUpgradeReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 				if err := patchHelper.Patch(ctx, m); err != nil {
 					return ctrl.Result{}, errors.Wrapf(err, "failed to patch machine annotations")
 				}
-				return ctrl.Result{RequeueAfter: 3 * time.Second}, nil
 			default:
 				log.Info("Found invalid in-place upgrade status, marking as failed")
 				if err := r.markUpgradeFailed(ctx, m, upgradeOption); err != nil {
 					return ctrl.Result{}, errors.Wrapf(err, "failed to mark in place upgrade status")
 				}
 			}
+
 		} else {
 			// Handle the in-place upgrade request
 			delete(mAnnotations, ck8s.InPlaceUpgradeStatusAnnotation)
@@ -190,9 +182,7 @@ func (r *InPlaceUpgradeReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 			if err := r.markUpgradeInProgress(ctx, m, upgradeOption, changeId); err != nil {
 				return ctrl.Result{}, errors.Wrapf(err, "failed to mark in place upgrade status")
 			}
-
 		}
-
 	}
 
 	return ctrl.Result{}, nil
