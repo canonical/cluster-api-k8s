@@ -466,7 +466,12 @@ func (r *CK8sConfigReconciler) handleClusterNotInitialized(ctx context.Context, 
 	}
 	conditions.MarkTrue(scope.Config, bootstrapv1.CertificatesAvailableCondition)
 
-	token, err := token.Lookup(ctx, r.Client, client.ObjectKeyFromObject(scope.Cluster))
+	authToken, err := token.Lookup(ctx, r.Client, client.ObjectKeyFromObject(scope.Cluster))
+	if err != nil {
+		return ctrl.Result{}, err
+	}
+
+	nodeToken, err := token.GenerateAndStoreNodeToken(ctx, r.Client, client.ObjectKeyFromObject(scope.Cluster), machine.Name)
 	if err != nil {
 		return ctrl.Result{}, err
 	}
@@ -524,8 +529,9 @@ func (r *CK8sConfigReconciler) handleClusterNotInitialized(ctx context.Context, 
 			MicroclusterPort:    microclusterPort,
 			NodeName:            scope.Config.Spec.NodeName,
 			AirGapped:           scope.Config.Spec.AirGapped,
+			NodeToken:           *nodeToken,
 		},
-		Token:              *token,
+		AuthToken:          *authToken,
 		K8sdProxyDaemonSet: string(ds),
 	}
 

@@ -30,6 +30,8 @@ type BaseUserData struct {
 	MicroclusterPort int
 	// NodeName is the name of the node to set on microcluster.
 	NodeName string
+	// NodeToken is used for authenticating per-node k8sd endpoints.
+	NodeToken string
 }
 
 func NewBaseCloudConfig(data BaseUserData) (CloudConfig, error) {
@@ -60,6 +62,12 @@ func NewBaseCloudConfig(data BaseUserData) (CloudConfig, error) {
 			File{
 				Path:        "/capi/etc/config.yaml",
 				Content:     data.ConfigFileContents,
+				Permissions: "0400",
+				Owner:       "root:root",
+			},
+			File{
+				Path:        "/var/snap/k8s/common/node-token",
+				Content:     data.NodeToken,
 				Permissions: "0400",
 				Owner:       "root:root",
 			},

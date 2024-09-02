@@ -42,7 +42,7 @@ func TestNewInitControlPlane(t *testing.T) {
 			ConfigFileContents:  "### config file ###",
 			MicroclusterAddress: "10.0.0.10",
 		},
-		Token:              "test-token",
+		AuthToken:          "test-token",
 		K8sdProxyDaemonSet: "test-daemonset",
 	})
 

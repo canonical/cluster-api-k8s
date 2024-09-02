@@ -69,7 +69,8 @@ type WorkloadCluster interface {
 // Workload defines operations on workload clusters.
 type Workload struct {
 	WorkloadCluster
-	authToken           string
+	authToken string
+
 	Client              ctrlclient.Client
 	ClientRestConfig    *rest.Config
 	K8sdClientGenerator *k8sdClientGenerator
@@ -214,9 +215,10 @@ func (w *Workload) GetK8sdProxyForMachine(ctx context.Context, machine *clusterv
 	return w.K8sdClientGenerator.forNode(ctx, node)
 }
 
-func (w *Workload) RefreshMachine(ctx context.Context, machine *clusterv1.Machine, upgradeOption string) error {
+func (w *Workload) RefreshMachine(ctx context.Context, machine *clusterv1.Machine, nodeToken *string, upgradeOption *string) (string, error) {
 	request := apiv1.SnapRefreshRequest{}
-	optionKv := strings.Split(upgradeOption, "=")
+	response := &apiv1.SnapRefreshResponse{}
+	optionKv := strings.Split(*upgradeOption, "=")
 	switch optionKv[0] {
 	case "channel":
 		request.Channel = optionKv[1]
@@ -225,14 +227,36 @@ func (w *Workload) RefreshMachine(ctx context.Context, machine *clusterv1.Machin
 	case "localPath":
 		request.LocalPath = optionKv[1]
 	default:
-		return fmt.Errorf("invalid upgrade option: %s", optionKv[0])
+		return "", fmt.Errorf("invalid upgrade option: %s", optionKv[0])
 	}
 
-	err := w.doK8sdRequestForMachine(ctx, machine, http.MethodPost, "1.0/snap/refresh", request, nil)
-	if err != nil {
-		return fmt.Errorf("failed to refresh machine %s: %w", machine.Name, err)
+	header := map[string][]string{
+		"node-token": {*nodeToken},
 	}
-	return nil
+
+	err := w.doK8sdRequestForMachine(ctx, machine, http.MethodPost, "1.0/snap/refresh", header, request, response)
+	if err != nil {
+		return "", fmt.Errorf("failed to refresh machine %s: %w", machine.Name, err)
+	}
+
+	return response.ChangeID, nil
+}
+
+func (w *Workload) GetRefreshStatusForMachine(ctx context.Context, machine *clusterv1.Machine, nodeToken *string, changeId *string) (*apiv1.SnapRefreshStatusResponse, error) {
+	request := apiv1.SnapRefreshStatusRequest{}
+	response := &apiv1.SnapRefreshStatusResponse{}
+	request.ChangeID = *changeId
+
+	header := map[string][]string{
+		"node-token": {*nodeToken},
+	}
+
+	err := w.doK8sdRequestForMachine(ctx, machine, http.MethodPost, "1.0/snap/refresh-status", header, request, response)
+	if err != nil {
+		return nil, fmt.Errorf("failed to refresh machine %s: %w", machine.Name, err)
+	}
+
+	return response, nil
 }
 
 // NewControlPlaneJoinToken creates a new join token for a control plane node.
@@ -331,7 +355,7 @@ func (w *Workload) doK8sdRequest(ctx context.Context, method, endpoint string, r
 	return nil
 }
 
-func (w *Workload) doK8sdRequestForMachine(ctx context.Context, machine *clusterv1.Machine, method, endpoint string, request any, response any) error {
+func (w *Workload) doK8sdRequestForMachine(ctx context.Context, machine *clusterv1.Machine, method, endpoint string, header map[string][]string, request any, response any) error {
 	type wrappedResponse struct {
 		Error    string          `json:"error"`
 		Metadata json.RawMessage `json:"metadata"`
@@ -354,6 +378,8 @@ func (w *Workload) doK8sdRequestForMachine(ctx context.Context, machine *cluster
 		return fmt.Errorf("failed to create request: %w", err)
 	}
 
+	req.Header = http.Header(header)
+
 	res, err := k8sdProxy.Client.Do(req)
 	if err != nil {
 		return fmt.Errorf("failed to reach k8sd through proxy client: %w", err)
@@ -372,10 +398,6 @@ func (w *Workload) doK8sdRequestForMachine(ctx context.Context, machine *cluster
 	}
 	if responseBody.Metadata == nil {
 		// Nothing to decode
-		return nil
-	}
-	if response == nil {
-		// Response not needed
 		return nil
 	}
 	if err := json.Unmarshal(responseBody.Metadata, response); err != nil {
