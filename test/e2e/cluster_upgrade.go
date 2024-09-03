@@ -152,34 +152,34 @@ func ClusterUpgradeSpec(ctx context.Context, inputGetter func() ClusterUpgradeSp
 			WaitForMachineDeployments:    input.E2EConfig.GetIntervals(specName, "wait-worker-nodes"),
 		}, result)
 
-		/* 		By("Upgrading the Kubernetes control-plane")
-		   		UpgradeControlPlaneAndWaitForUpgrade(ctx, UpgradeControlPlaneAndWaitForUpgradeInput{
-		   			ClusterProxy:                input.BootstrapClusterProxy,
-		   			Cluster:                     result.Cluster,
-		   			ControlPlane:                result.ControlPlane,
-		   			KubernetesUpgradeVersion:    input.E2EConfig.GetVariable(KubernetesVersionUpgradeTo),
-		   			UpgradeMachineTemplate:      ptr.To(fmt.Sprintf("%s-control-plane-old", clusterName)),
-		   			WaitForMachinesToBeUpgraded: input.E2EConfig.GetIntervals(specName, "wait-machine-upgrade"),
-		   		})
+		By("Upgrading the Kubernetes control-plane")
+		UpgradeControlPlaneAndWaitForUpgrade(ctx, UpgradeControlPlaneAndWaitForUpgradeInput{
+			ClusterProxy:                input.BootstrapClusterProxy,
+			Cluster:                     result.Cluster,
+			ControlPlane:                result.ControlPlane,
+			KubernetesUpgradeVersion:    input.E2EConfig.GetVariable(KubernetesVersionUpgradeTo),
+			UpgradeMachineTemplate:      ptr.To(fmt.Sprintf("%s-control-plane-old", clusterName)),
+			WaitForMachinesToBeUpgraded: input.E2EConfig.GetIntervals(specName, "wait-machine-upgrade"),
+		})
 
-		   		By("Upgrading the machine deployment")
-		   		framework.UpgradeMachineDeploymentsAndWait(ctx, framework.UpgradeMachineDeploymentsAndWaitInput{
-		   			ClusterProxy:                input.BootstrapClusterProxy,
-		   			Cluster:                     result.Cluster,
-		   			UpgradeVersion:              input.E2EConfig.GetVariable(KubernetesVersionUpgradeTo),
-		   			MachineDeployments:          result.MachineDeployments,
-		   			UpgradeMachineTemplate:      ptr.To(fmt.Sprintf("%s-md-1.30-0", clusterName)),
-		   			WaitForMachinesToBeUpgraded: input.E2EConfig.GetIntervals(specName, "wait-worker-nodes"),
-		   		}) */
+		By("Upgrading the machine deployment")
+		framework.UpgradeMachineDeploymentsAndWait(ctx, framework.UpgradeMachineDeploymentsAndWaitInput{
+			ClusterProxy:                input.BootstrapClusterProxy,
+			Cluster:                     result.Cluster,
+			UpgradeVersion:              input.E2EConfig.GetVariable(KubernetesVersionUpgradeTo),
+			MachineDeployments:          result.MachineDeployments,
+			UpgradeMachineTemplate:      ptr.To(fmt.Sprintf("%s-md-1.30-0", clusterName)),
+			WaitForMachinesToBeUpgraded: input.E2EConfig.GetIntervals(specName, "wait-worker-nodes"),
+		})
 
-		/* 		By("Waiting until nodes are ready")
-		   		workloadProxy := input.BootstrapClusterProxy.GetWorkloadCluster(ctx, namespace.Name, result.Cluster.Name)
-		   		workloadClient := workloadProxy.GetClient()
-		   		framework.WaitForNodesReady(ctx, framework.WaitForNodesReadyInput{
-		   			Lister:            workloadClient,
-		   			KubernetesVersion: input.E2EConfig.GetVariable(KubernetesVersionUpgradeTo),
-		   			Count:             int(result.ExpectedTotalNodes()),
-		   			WaitForNodesReady: input.E2EConfig.GetIntervals(specName, "wait-nodes-ready"),
-		   		}) */
+		By("Waiting until nodes are ready")
+		workloadProxy := input.BootstrapClusterProxy.GetWorkloadCluster(ctx, namespace.Name, result.Cluster.Name)
+		workloadClient := workloadProxy.GetClient()
+		framework.WaitForNodesReady(ctx, framework.WaitForNodesReadyInput{
+			Lister:            workloadClient,
+			KubernetesVersion: input.E2EConfig.GetVariable(KubernetesVersionUpgradeTo),
+			Count:             int(result.ExpectedTotalNodes()),
+			WaitForNodesReady: input.E2EConfig.GetIntervals(specName, "wait-nodes-ready"),
+		})
 	})
 }

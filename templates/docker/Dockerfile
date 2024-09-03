@@ -87,21 +87,13 @@ FROM builder AS build-helm
 RUN /src/k8s-snap/build-scripts/build-component.sh helm
 
 ## kubernetes build
-RUN cat /src/k8s-snap/build-scripts/components/kubernetes/version
 FROM builder AS build-kubernetes
 ENV KUBERNETES_VERSION=${KUBERNETES_VERSION}
 RUN if [ -n "$KUBERNETES_VERSION" ]; then \
       echo "Overwriting Kubernetes version with $KUBERNETES_VERSION"; \
       echo "$KUBERNETES_VERSION" > /src/k8s-snap/build-scripts/components/kubernetes/version; \
-      cat /src/k8s-snap/build-scripts/components/kubernetes/version; \
     fi
-RUN cat /src/k8s-snap/build-scripts/components/kubernetes/version
-RUN echo "Kubernetes version: $KUBERNETES_VERSION" \
-&& cat /src/k8s-snap/build-scripts/components/kubernetes/version \
-&& /src/k8s-snap/build-scripts/build-component.sh kubernetes
-RUN ls /out
-RUN /out/bin/kubectl version --client
-RUN /out/bin/kubelet --version
+RUN  /src/k8s-snap/build-scripts/build-component.sh kubernetes
 
 ## runc build
 FROM builder AS build-runc
