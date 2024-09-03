@@ -245,8 +245,8 @@ func (r *CK8sConfigReconciler) joinControlplane(ctx context.Context, scope *Scop
 		ControlPlaneConfig:   controlPlaneConfig,
 	})
 	log.Info("-----------------------------------------")
-	log.Info("Config.Name: %v\n", "scope.Config.Name", scope.Config.Name)
-	log.Info("extraSANs: %v\n", "controlPlaneConfig.ExtraSANs", controlPlaneConfig.ExtraSANs)
+	log.Info(fmt.Sprintf("Config.Name: %v\n", scope.Config.Name))
+	log.Info(fmt.Sprintf("extraSANs: %v\n", controlPlaneConfig.ExtraSANs))
 	log.Info("-----------------------------------------")
 
 	joinConfig, err := kubeyaml.Marshal(configStruct)
