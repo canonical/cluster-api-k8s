@@ -661,7 +661,7 @@ func WaitForNodesReady(ctx context.Context, input WaitForNodesReadyInput) {
 		}
 		nodeReadyCount := 0
 		for _, node := range nodeList.Items {
-			fmt.Fprintf(GinkgoWriter, "versions: %s %s\n", semver.MajorMinor(node.Status.NodeInfo.KubeletVersion), semver.MajorMinor(input.KubernetesVersion))
+			fmt.Fprintf(GinkgoWriter, "KubeletVersions: %s, KubernetesVersion: %s\n", semver.MajorMinor(node.Status.NodeInfo.KubeletVersion), semver.MajorMinor(input.KubernetesVersion))
 			if !(semver.MajorMinor(node.Status.NodeInfo.KubeletVersion) == semver.MajorMinor(input.KubernetesVersion)) {
 				return false, nil
 			}
