@@ -1,10 +1,10 @@
-package ck8s
+package v1beta2
 
 const (
 	InPlaceUpgradeToAnnotation        = "k8sd.io/in-place-upgrade-to"
 	InPlaceUpgradeStatusAnnotation    = "k8sd.io/in-place-upgrade-status"
 	InPlaceUpgradeReleaseAnnotation   = "k8sd.io/in-place-upgrade-release"
-	InPlaceUpgradeRefreshIdAnnotation = "k8sd.io/in-place-upgrade-refresh-id"
+	InPlaceUpgradeRefreshIDAnnotation = "k8sd.io/in-place-upgrade-refresh-id"
 )
 
 const (

@@ -242,10 +242,10 @@ func (w *Workload) RefreshMachine(ctx context.Context, machine *clusterv1.Machin
 	return response.ChangeID, nil
 }
 
-func (w *Workload) GetRefreshStatusForMachine(ctx context.Context, machine *clusterv1.Machine, nodeToken *string, changeId *string) (*apiv1.SnapRefreshStatusResponse, error) {
+func (w *Workload) GetRefreshStatusForMachine(ctx context.Context, machine *clusterv1.Machine, nodeToken *string, changeID *string) (*apiv1.SnapRefreshStatusResponse, error) {
 	request := apiv1.SnapRefreshStatusRequest{}
 	response := &apiv1.SnapRefreshStatusResponse{}
-	request.ChangeID = *changeId
+	request.ChangeID = *changeID
 
 	header := map[string][]string{
 		"node-token": {*nodeToken},
