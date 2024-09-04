@@ -48,6 +48,7 @@ func NewJoinWorker(input JoinWorkerInput) (CloudConfig, error) {
 	config.RunCommands = append(config.RunCommands,
 		"/capi/scripts/load-images.sh",
 		"/capi/scripts/join-cluster.sh",
+		"/capi/scripts/configure-node-token.sh",
 		"/capi/scripts/create-sentinel-bootstrap.sh",
 	)
 	config.RunCommands = append(config.RunCommands, input.PostRunCommands...)

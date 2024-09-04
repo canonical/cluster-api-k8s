@@ -66,7 +66,7 @@ func NewBaseCloudConfig(data BaseUserData) (CloudConfig, error) {
 				Owner:       "root:root",
 			},
 			File{
-				Path:        "/var/snap/k8s/common/node-token",
+				Path:        "/capi/etc/node-token",
 				Content:     data.NodeToken,
 				Permissions: "0400",
 				Owner:       "root:root",
