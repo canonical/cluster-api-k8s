@@ -175,7 +175,7 @@ func ClusterUpgradeSpec(ctx context.Context, inputGetter func() ClusterUpgradeSp
 		By("Waiting until nodes are ready")
 		workloadProxy := input.BootstrapClusterProxy.GetWorkloadCluster(ctx, namespace.Name, result.Cluster.Name)
 		workloadClient := workloadProxy.GetClient()
-		framework.WaitForNodesReady(ctx, framework.WaitForNodesReadyInput{
+		WaitForNodesReady(ctx, WaitForNodesReadyInput{
 			Lister:            workloadClient,
 			KubernetesVersion: input.E2EConfig.GetVariable(KubernetesVersionUpgradeTo),
 			Count:             int(result.ExpectedTotalNodes()),
