@@ -558,6 +558,7 @@ type UpgradeControlPlaneAndWaitForUpgradeInput struct {
 	Cluster                     *clusterv1.Cluster
 	ControlPlane                *controlplanev1.CK8sControlPlane
 	KubernetesUpgradeVersion    string
+	UpgradeMachineTemplate      *string
 	WaitForMachinesToBeUpgraded []interface{}
 }
 
@@ -577,6 +578,17 @@ func UpgradeControlPlaneAndWaitForUpgrade(ctx context.Context, input UpgradeCont
 
 	input.ControlPlane.Spec.Version = input.KubernetesUpgradeVersion
 
+	// Create a new ObjectReference for the infrastructure provider
+	newInfrastructureRef := corev1.ObjectReference{
+		APIVersion: "infrastructure.cluster.x-k8s.io/v1beta1",
+		Kind:       "DockerMachineTemplate",
+		Name:       fmt.Sprintf("%s-control-plane-new", input.Cluster.Name),
+		Namespace:  input.ControlPlane.Spec.MachineTemplate.InfrastructureRef.Namespace,
+	}
+
+	// Update the infrastructureRef
+	input.ControlPlane.Spec.MachineTemplate.InfrastructureRef = newInfrastructureRef
+
 	Eventually(func() error {
 		return patchHelper.Patch(ctx, input.ControlPlane)
 	}, retryableOperationTimeout, retryableOperationInterval).Should(Succeed(), "Failed to patch the new kubernetes version to KCP %s", klog.KObj(input.ControlPlane))
@@ -588,6 +600,48 @@ func UpgradeControlPlaneAndWaitForUpgrade(ctx context.Context, input UpgradeCont
 		MachineCount:             int(*input.ControlPlane.Spec.Replicas),
 		KubernetesUpgradeVersion: input.KubernetesUpgradeVersion,
 	}, input.WaitForMachinesToBeUpgraded...)
+}
+
+// UpgradeMachineDeploymentsAndWait upgrades a machine deployment and waits for its machines to be upgraded.
+func UpgradeMachineDeploymentsAndWait(ctx context.Context, input framework.UpgradeMachineDeploymentsAndWaitInput) {
+	Expect(ctx).NotTo(BeNil(), "ctx is required for UpgradeMachineDeploymentsAndWait")
+	Expect(input.ClusterProxy).ToNot(BeNil(), "Invalid argument. input.ClusterProxy can't be nil when calling UpgradeMachineDeploymentsAndWait")
+	Expect(input.Cluster).ToNot(BeNil(), "Invalid argument. input.Cluster can't be nil when calling UpgradeMachineDeploymentsAndWait")
+	Expect(input.UpgradeVersion).ToNot(BeNil(), "Invalid argument. input.UpgradeVersion can't be nil when calling UpgradeMachineDeploymentsAndWait")
+	Expect(input.MachineDeployments).ToNot(BeEmpty(), "Invalid argument. input.MachineDeployments can't be empty when calling UpgradeMachineDeploymentsAndWait")
+
+	mgmtClient := input.ClusterProxy.GetClient()
+
+	for _, deployment := range input.MachineDeployments {
+		patchHelper, err := patch.NewHelper(deployment, mgmtClient)
+		Expect(err).ToNot(HaveOccurred())
+
+		oldVersion := deployment.Spec.Template.Spec.Version
+		deployment.Spec.Template.Spec.Version = &input.UpgradeVersion
+		// Create a new ObjectReference for the infrastructure provider
+		newInfrastructureRef := corev1.ObjectReference{
+			APIVersion: "infrastructure.cluster.x-k8s.io/v1beta1",
+			Kind:       "DockerMachineTemplate",
+			Name:       fmt.Sprintf("%s-md-new-0", input.Cluster.Name),
+			Namespace:  deployment.Spec.Template.Spec.InfrastructureRef.Namespace,
+		}
+
+		// Update the infrastructureRef
+		deployment.Spec.Template.Spec.InfrastructureRef = newInfrastructureRef
+		Eventually(func() error {
+			return patchHelper.Patch(ctx, deployment)
+		}, retryableOperationTimeout, retryableOperationInterval).Should(Succeed(), "Failed to patch Kubernetes version on MachineDeployment %s", klog.KObj(deployment))
+
+		Byf("Waiting for Kubernetes versions of machines in MachineDeployment %s to be upgraded from %s to %s",
+			klog.KObj(deployment), *oldVersion, input.UpgradeVersion)
+		framework.WaitForMachineDeploymentMachinesToBeUpgraded(ctx, framework.WaitForMachineDeploymentMachinesToBeUpgradedInput{
+			Lister:                   mgmtClient,
+			Cluster:                  input.Cluster,
+			MachineCount:             int(*deployment.Spec.Replicas),
+			KubernetesUpgradeVersion: input.UpgradeVersion,
+			MachineDeployment:        *deployment,
+		}, input.WaitForMachinesToBeUpgraded...)
+	}
 }
 
 type WaitForNodesReadyInput struct {
@@ -607,14 +661,17 @@ func WaitForNodesReady(ctx context.Context, input WaitForNodesReadyInput) {
 		}
 		nodeReadyCount := 0
 		for _, node := range nodeList.Items {
+			fmt.Fprintf(GinkgoWriter, "KubeletVersions: %s, KubernetesVersion: %s\n", semver.MajorMinor(node.Status.NodeInfo.KubeletVersion), semver.MajorMinor(input.KubernetesVersion))
 			if !(semver.MajorMinor(node.Status.NodeInfo.KubeletVersion) == semver.MajorMinor(input.KubernetesVersion)) {
 				return false, nil
 			}
+			fmt.Fprintf(GinkgoWriter, "node %s is ready: %t\n", node.Name, noderefutil.IsNodeReady(&node))
 			if !noderefutil.IsNodeReady(&node) {
 				return false, nil
 			}
 			nodeReadyCount++
 		}
+		fmt.Fprintf(GinkgoWriter, "nodeReadyCount: %d, expected count: %d\n", nodeReadyCount, input.Count)
 		return input.Count == nodeReadyCount, nil
 	}, input.WaitForNodesReady...).Should(BeTrue())
 }

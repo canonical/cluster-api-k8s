@@ -36,6 +36,8 @@ FROM $BUILD_BASE AS builder
 ARG REPO=https://github.com/canonical/k8s-snap
 ARG BRANCH=main
 
+ARG KUBERNETES_VERSION=""
+
 ## NOTE(neoaggelos): install dependencies needed to build the tools
 ## !!!IMPORTANT!!! Keep up to date with "snapcraft.yaml:parts.build-deps.build-packages"
 RUN apt-get update \
@@ -86,7 +88,12 @@ RUN /src/k8s-snap/build-scripts/build-component.sh helm
 
 ## kubernetes build
 FROM builder AS build-kubernetes
-RUN /src/k8s-snap/build-scripts/build-component.sh kubernetes
+ENV KUBERNETES_VERSION=${KUBERNETES_VERSION}
+RUN if [ -n "$KUBERNETES_VERSION" ]; then \
+      echo "Overwriting Kubernetes version with $KUBERNETES_VERSION"; \
+      echo "$KUBERNETES_VERSION" > /src/k8s-snap/build-scripts/components/kubernetes/version; \
+    fi
+RUN  /src/k8s-snap/build-scripts/build-component.sh kubernetes
 
 ## runc build
 FROM builder AS build-runc
@@ -156,3 +163,7 @@ ENV PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/snap/k8s/
 
 ## NOTE(neoaggelos): Required for containerd to properly set up overlayfs for pods
 VOLUME ["/var/snap/k8s/common/var/lib/containerd"]
+
+## NOTE(ben): Remove existing kind image kubectl and kubelet binaries
+# to avoid version confusion.
+RUN rm -f /usr/bin/kubectl /usr/bin/kubelet

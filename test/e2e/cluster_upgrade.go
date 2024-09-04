@@ -139,7 +139,7 @@ func ClusterUpgradeSpec(ctx context.Context, inputGetter func() ClusterUpgradeSp
 				ClusterctlConfigPath:     input.ClusterctlConfigPath,
 				KubeconfigPath:           input.BootstrapClusterProxy.GetKubeconfigPath(),
 				InfrastructureProvider:   *input.InfrastructureProvider,
-				Flavor:                   ptr.Deref(input.Flavor, ""),
+				Flavor:                   ptr.Deref(input.Flavor, "upgrades"),
 				Namespace:                namespace.Name,
 				ClusterName:              clusterName,
 				KubernetesVersion:        input.E2EConfig.GetVariable(KubernetesVersion),
@@ -158,6 +158,7 @@ func ClusterUpgradeSpec(ctx context.Context, inputGetter func() ClusterUpgradeSp
 			Cluster:                     result.Cluster,
 			ControlPlane:                result.ControlPlane,
 			KubernetesUpgradeVersion:    input.E2EConfig.GetVariable(KubernetesVersionUpgradeTo),
+			UpgradeMachineTemplate:      ptr.To(fmt.Sprintf("%s-control-plane-old", clusterName)),
 			WaitForMachinesToBeUpgraded: input.E2EConfig.GetIntervals(specName, "wait-machine-upgrade"),
 		})
 
@@ -167,13 +168,14 @@ func ClusterUpgradeSpec(ctx context.Context, inputGetter func() ClusterUpgradeSp
 			Cluster:                     result.Cluster,
 			UpgradeVersion:              input.E2EConfig.GetVariable(KubernetesVersionUpgradeTo),
 			MachineDeployments:          result.MachineDeployments,
+			UpgradeMachineTemplate:      ptr.To(fmt.Sprintf("%s-md-new-0", clusterName)),
 			WaitForMachinesToBeUpgraded: input.E2EConfig.GetIntervals(specName, "wait-worker-nodes"),
 		})
 
 		By("Waiting until nodes are ready")
 		workloadProxy := input.BootstrapClusterProxy.GetWorkloadCluster(ctx, namespace.Name, result.Cluster.Name)
 		workloadClient := workloadProxy.GetClient()
-		framework.WaitForNodesReady(ctx, framework.WaitForNodesReadyInput{
+		WaitForNodesReady(ctx, WaitForNodesReadyInput{
 			Lister:            workloadClient,
 			KubernetesVersion: input.E2EConfig.GetVariable(KubernetesVersionUpgradeTo),
 			Count:             int(result.ExpectedTotalNodes()),

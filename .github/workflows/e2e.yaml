@@ -11,6 +11,14 @@ jobs:
     name: Build & Run E2E Images
     runs-on: [self-hosted, linux, X64, jammy, large]
     steps:
+      -
+        name: Login to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          # We run into rate limiting issues if we don't authenticate
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
       - name: Check out repo
         uses: actions/checkout@v4
       - name: Install requirements
@@ -22,29 +30,32 @@ jobs:
           sudo snap install kubectl --classic --channel=1.30/stable
       - name: Build provider images
         run: sudo make docker-build-e2e
-      - name: Build k8s-snap image
+      - name: Build k8s-snap images
+        working-directory: hack/
         run: |
-          cd templates/docker
-          sudo docker build . -t k8s-snap:dev
+          ./build-e2e-images.sh
       - name: Save provider image
         run: |
           sudo docker save -o provider-images.tar ghcr.io/canonical/cluster-api-k8s/controlplane-controller:dev ghcr.io/canonical/cluster-api-k8s/bootstrap-controller:dev
           sudo chmod 775 provider-images.tar
       - name: Save k8s-snap image
         run: |
-          sudo docker save -o k8s-snap-image.tar k8s-snap:dev
-          sudo chmod 775 k8s-snap-image.tar
+          sudo docker save -o k8s-snap-image-old.tar k8s-snap:dev-old
+          sudo docker save -o k8s-snap-image-new.tar k8s-snap:dev-new
+          sudo chmod 775 k8s-snap-image-old.tar
+          sudo chmod 775 k8s-snap-image-new.tar
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
           name: e2e-images
           path: |
             provider-images.tar
-            k8s-snap-image.tar
+            k8s-snap-image-old.tar
+            k8s-snap-image-new.tar
 
   run-e2e-tests:
     name: Run E2E Tests
-    runs-on: [self-hosted, linux, X64, jammy, large]
+    runs-on: [self-hosted, linux, X64, jammy, xlarge]
     needs: build-e2e-images
     strategy:
       matrix:
@@ -54,7 +65,17 @@ jobs:
           - "Workload cluster creation"
           - "Workload cluster scaling"
           - "Workload cluster upgrade"
+      # TODO(ben): Remove once all tests are running stable.
+      fail-fast: false
     steps:
+      -
+        name: Login to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          # We run into rate limiting issues if we don't authenticate
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
       - name: Check out repo
         uses: actions/checkout@v4
       - name: Install requirements
@@ -71,8 +92,13 @@ jobs:
           path: .
       - name: Load provider image
         run: sudo docker load -i provider-images.tar
-      - name: Load k8s-snap image
-        run: sudo docker load -i k8s-snap-image.tar
+      - name: Load k8s-snap old image
+        if: matrix.ginkgo_focus == 'Workload cluster upgrade'
+        run: |
+          sudo docker load -i k8s-snap-image-old.tar
+      - name: Load k8s-snap new image
+        run: |
+          sudo docker load -i k8s-snap-image-new.tar
       - name: Create docker network
         run: |
           sudo docker network create kind --driver=bridge -o com.docker.network.bridge.enable_ip_masquerade=true
