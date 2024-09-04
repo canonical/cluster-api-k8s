@@ -168,7 +168,7 @@ func ClusterUpgradeSpec(ctx context.Context, inputGetter func() ClusterUpgradeSp
 			Cluster:                     result.Cluster,
 			UpgradeVersion:              input.E2EConfig.GetVariable(KubernetesVersionUpgradeTo),
 			MachineDeployments:          result.MachineDeployments,
-			UpgradeMachineTemplate:      ptr.To(fmt.Sprintf("%s-md-1.30-0", clusterName)),
+			UpgradeMachineTemplate:      ptr.To(fmt.Sprintf("%s-md-new-0", clusterName)),
 			WaitForMachinesToBeUpgraded: input.E2EConfig.GetIntervals(specName, "wait-worker-nodes"),
 		})
 
