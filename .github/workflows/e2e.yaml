@@ -2,6 +2,8 @@ name: E2E Tests
 
 on:
   pull_request:
+    branches:
+      - does-not-exist
 
 permissions:
   contents: read
