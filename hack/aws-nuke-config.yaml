@@ -1,0 +1,25 @@
+regions:
+  - us-east-2
+
+account-blocklist:
+  - "<your prod account number>"
+
+accounts:
+  "<your account number>": {}
+
+resource-types:
+  targets:
+  - EC2Instance
+  - EC2SecurityGroup
+  - EC2Volume
+  - EC2InternetGateway
+  - EC2NATGateway
+  - EC2RouteTable
+  - EC2Subnet
+  - EC2VPC
+  - EC2VPCEndpoint
+  - EC2VPCEndpointServiceConfiguration
+  - EC2ElasticIP
+  - EC2NetworkInterface
+  - ELBv2
+  - ELBv2TargetGroup
