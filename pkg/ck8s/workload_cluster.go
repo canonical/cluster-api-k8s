@@ -215,10 +215,10 @@ func (w *Workload) GetK8sdProxyForMachine(ctx context.Context, machine *clusterv
 	return w.K8sdClientGenerator.forNode(ctx, node)
 }
 
-func (w *Workload) RefreshMachine(ctx context.Context, machine *clusterv1.Machine, nodeToken *string, upgradeOption *string) (string, error) {
+func (w *Workload) RefreshMachine(ctx context.Context, machine *clusterv1.Machine, nodeToken string, upgradeOption string) (string, error) {
 	request := apiv1.SnapRefreshRequest{}
 	response := &apiv1.SnapRefreshResponse{}
-	optionKv := strings.Split(*upgradeOption, "=")
+	optionKv := strings.Split(upgradeOption, "=")
 	switch optionKv[0] {
 	case "channel":
 		request.Channel = optionKv[1]
@@ -230,29 +230,37 @@ func (w *Workload) RefreshMachine(ctx context.Context, machine *clusterv1.Machin
 		return "", fmt.Errorf("invalid upgrade option: %s", optionKv[0])
 	}
 
-	header := map[string][]string{
-		"node-token": {*nodeToken},
+	k8sdProxy, err := w.GetK8sdProxyForMachine(ctx, machine)
+	if err != nil {
+		return "", fmt.Errorf("failed to create k8sd proxy: %w", err)
 	}
 
-	err := w.doK8sdRequestForMachine(ctx, machine, http.MethodPost, "1.0/snap/refresh", header, request, response)
-	if err != nil {
+	header := map[string][]string{
+		"node-token": {nodeToken},
+	}
+
+	if err := w.doK8sdRequest(ctx, k8sdProxy, http.MethodPost, "1.0/snap/refresh", header, request, response); err != nil {
 		return "", fmt.Errorf("failed to refresh machine %s: %w", machine.Name, err)
 	}
 
 	return response.ChangeID, nil
 }
 
-func (w *Workload) GetRefreshStatusForMachine(ctx context.Context, machine *clusterv1.Machine, nodeToken *string, changeID *string) (*apiv1.SnapRefreshStatusResponse, error) {
+func (w *Workload) GetRefreshStatusForMachine(ctx context.Context, machine *clusterv1.Machine, nodeToken string, changeID string) (*apiv1.SnapRefreshStatusResponse, error) {
 	request := apiv1.SnapRefreshStatusRequest{}
 	response := &apiv1.SnapRefreshStatusResponse{}
-	request.ChangeID = *changeID
+	request.ChangeID = changeID
 
-	header := map[string][]string{
-		"node-token": {*nodeToken},
+	k8sdProxy, err := w.GetK8sdProxyForMachine(ctx, machine)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create k8sd proxy: %w", err)
 	}
 
-	err := w.doK8sdRequestForMachine(ctx, machine, http.MethodPost, "1.0/snap/refresh-status", header, request, response)
-	if err != nil {
+	header := map[string][]string{
+		"node-token": {nodeToken},
+	}
+
+	if err := w.doK8sdRequest(ctx, k8sdProxy, http.MethodPost, "1.0/snap/refresh-status", header, request, response); err != nil {
 		return nil, fmt.Errorf("failed to refresh machine %s: %w", machine.Name, err)
 	}
 
@@ -277,10 +285,20 @@ func (w *Workload) NewWorkerJoinToken(ctx context.Context) (string, error) {
 func (w *Workload) requestJoinToken(ctx context.Context, name string, worker bool) (string, error) {
 	request := apiv1.GetJoinTokenRequest{Name: name, Worker: worker}
 	response := &apiv1.GetJoinTokenResponse{}
-	err := w.doK8sdRequest(ctx, http.MethodPost, "1.0/x/capi/generate-join-token", request, response, k8sdProxyOptions{})
+
+	k8sdProxy, err := w.GetK8sdProxyForControlPlane(ctx, k8sdProxyOptions{})
 	if err != nil {
+		return "", fmt.Errorf("failed to create k8sd proxy: %w", err)
+	}
+
+	header := map[string][]string{
+		"capi-auth-token": {w.authToken},
+	}
+
+	if err := w.doK8sdRequest(ctx, k8sdProxy, http.MethodPost, "1.0/x/capi/generate-join-token", header, request, response); err != nil {
 		return "", fmt.Errorf("failed to get join token: %w", err)
 	}
+
 	return response.EncodedToken, nil
 }
 
@@ -297,73 +315,25 @@ func (w *Workload) RemoveMachineFromCluster(ctx context.Context, machine *cluste
 
 	// If we see that ignoring control-planes is causing issues, let's consider removing it.
 	// It *should* not be necessary as a machine should be able to remove itself from the cluster.
-	err := w.doK8sdRequest(ctx, http.MethodPost, "1.0/x/capi/remove-node", request, nil, k8sdProxyOptions{IgnoreNodes: map[string]struct{}{nodeName: {}}})
+	k8sdProxy, err := w.GetK8sdProxyForControlPlane(ctx, k8sdProxyOptions{IgnoreNodes: map[string]struct{}{nodeName: {}}})
 	if err != nil {
+		return fmt.Errorf("failed to create k8sd proxy: %w", err)
+	}
+
+	header := map[string][]string{
+		"capi-auth-token": {w.authToken},
+	}
+
+	if err := w.doK8sdRequest(ctx, k8sdProxy, http.MethodPost, "1.0/x/capi/remove-node", header, request, nil); err != nil {
 		return fmt.Errorf("failed to remove %s from cluster: %w", machine.Name, err)
 	}
 	return nil
 }
 
-func (w *Workload) doK8sdRequest(ctx context.Context, method, endpoint string, request any, response any, k8sdProxyOptions k8sdProxyOptions) error {
+func (w *Workload) doK8sdRequest(ctx context.Context, k8sdProxy *K8sdClient, method, endpoint string, header map[string][]string, request any, response any) error {
 	type wrappedResponse struct {
 		Error    string          `json:"error"`
 		Metadata json.RawMessage `json:"metadata"`
-	}
-
-	k8sdProxy, err := w.GetK8sdProxyForControlPlane(ctx, k8sdProxyOptions)
-	if err != nil {
-		return fmt.Errorf("failed to create k8sd proxy: %w", err)
-	}
-
-	url := fmt.Sprintf("https://%s:%v/%s", k8sdProxy.NodeIP, w.microclusterPort, endpoint)
-
-	requestBody, err := json.Marshal(request)
-	if err != nil {
-		return fmt.Errorf("failed to prepare worker info request: %w", err)
-	}
-
-	req, err := http.NewRequestWithContext(ctx, method, url, bytes.NewBuffer(requestBody))
-	if err != nil {
-		return fmt.Errorf("failed to create request: %w", err)
-	}
-
-	req.Header.Add("capi-auth-token", w.authToken)
-	res, err := k8sdProxy.Client.Do(req)
-	if err != nil {
-		return fmt.Errorf("failed to reach k8sd through proxy client: %w", err)
-	}
-	defer res.Body.Close()
-
-	var responseBody wrappedResponse
-	if err := json.NewDecoder(res.Body).Decode(&responseBody); err != nil {
-		return fmt.Errorf("failed to parse HTTP response: %w", err)
-	}
-	if res.StatusCode != http.StatusOK {
-		return fmt.Errorf("HTTP request failed with status code: %d (%s)", res.StatusCode, responseBody.Error)
-	}
-	if responseBody.Error != "" {
-		return fmt.Errorf("k8sd request failed: %s", responseBody.Error)
-	}
-	if responseBody.Metadata == nil || response == nil {
-		// Nothing to decode
-		return nil
-	}
-	if err := json.Unmarshal(responseBody.Metadata, response); err != nil {
-		return fmt.Errorf("failed to parse HTTP response: %w", err)
-	}
-
-	return nil
-}
-
-func (w *Workload) doK8sdRequestForMachine(ctx context.Context, machine *clusterv1.Machine, method, endpoint string, header map[string][]string, request any, response any) error {
-	type wrappedResponse struct {
-		Error    string          `json:"error"`
-		Metadata json.RawMessage `json:"metadata"`
-	}
-
-	k8sdProxy, err := w.GetK8sdProxyForMachine(ctx, machine)
-	if err != nil {
-		return fmt.Errorf("failed to create k8sd proxy: %w", err)
 	}
 
 	url := fmt.Sprintf("https://%s:%v/%s", k8sdProxy.NodeIP, w.microclusterPort, endpoint)
@@ -396,7 +366,7 @@ func (w *Workload) doK8sdRequestForMachine(ctx context.Context, machine *cluster
 	if responseBody.Error != "" {
 		return fmt.Errorf("k8sd request failed: %s", responseBody.Error)
 	}
-	if responseBody.Metadata == nil {
+	if responseBody.Metadata == nil || response == nil {
 		// Nothing to decode
 		return nil
 	}

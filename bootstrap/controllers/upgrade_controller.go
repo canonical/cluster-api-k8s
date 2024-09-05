@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/go-logr/logr"
-	"github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -17,6 +16,7 @@ import (
 	"sigs.k8s.io/cluster-api/util/patch"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	bootstrapv1 "github.com/canonical/cluster-api-k8s/bootstrap/api/v1beta2"
 	"github.com/canonical/cluster-api-k8s/pkg/ck8s"
@@ -55,6 +55,15 @@ func (r *InPlaceUpgradeReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return err
 }
 
+type UpgradeScope struct {
+	Log             logr.Logger
+	Cluster         *clusterv1.Cluster
+	WorkloadCluster *ck8s.Workload
+	Machine         *clusterv1.Machine
+	PatchHelper     *patch.Helper
+	UpgradeOption   string
+}
+
 // +kubebuilder:rbac:groups=cluster.x-k8s.io,resources=clusters;clusters/status,verbs=get;list;watch
 // +kubebuilder:rbac:groups=cluster.x-k8s.io,resources=machines;machines/status,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=bootstrap.cluster.x-k8s.io,resources=ck8sconfigs,verbs=get;list;watch
@@ -77,114 +86,69 @@ func (r *InPlaceUpgradeReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 
 	mAnnotations := m.GetAnnotations()
 
-	// Check if the machine has an in-place upgrade annotation
-	if upgradeOption, ok := mAnnotations[bootstrapv1.InPlaceUpgradeToAnnotation]; ok {
-		log.Info("Found in-place upgrade annotation", "upgrade-option", upgradeOption)
-
-		// Lookup the cluster the machine belongs to
-		cluster, err := util.GetClusterByName(ctx, r.Client, m.Namespace, m.Spec.ClusterName)
-		if err != nil {
-			return ctrl.Result{}, err
-		}
-
-		// Get the workload cluster for the machine
-		workloadCluster, err := r.getWorkloadClusterForMachine(ctx, util.ObjectKey(cluster), m)
-		if err != nil {
-			return ctrl.Result{}, errors.Wrapf(err, "failed to get workload cluster for machine")
-		}
-
-		// Lookup the node token for the machine
-		nodeToken, err := token.LookupNodeToken(ctx, r.Client, util.ObjectKey(cluster), m.Name)
-		if err != nil {
-			return ctrl.Result{}, errors.Wrapf(err, "failed to lookup node token")
-		}
-
-		patchHelper, err := patch.NewHelper(m, r.Client)
-		if err != nil {
-			return ctrl.Result{}, errors.Wrapf(err, "failed to create patch helper for machine")
-		}
-
-		upgradeStatus, hasUpgradeStatusAnnotation := mAnnotations[bootstrapv1.InPlaceUpgradeStatusAnnotation]
-
-		refreshID, hasRefreshIDAnnotation := mAnnotations[bootstrapv1.InPlaceUpgradeRefreshIDAnnotation]
-
-		if hasUpgradeStatusAnnotation && hasRefreshIDAnnotation {
-			switch upgradeStatus {
-			case bootstrapv1.InPlaceUpgradeInProgressStatus:
-
-				status, err := workloadCluster.GetRefreshStatusForMachine(ctx, m, nodeToken, &refreshID)
-				if err != nil {
-					log.Info("Failed to get refresh status for machine", "error", err)
-					return ctrl.Result{}, errors.Wrapf(err, "failed to get refresh status for machine")
-				}
-
-				if !status.Completed {
-					log.Info("In-place upgrade still in progress, requeuing...")
-					return ctrl.Result{RequeueAfter: 5 * time.Second}, nil
-				}
-
-				switch status.Status {
-				case "Done":
-					log.Info("In-place upgrade completed successfully")
-					if err := r.markUpgradeDone(ctx, m, upgradeOption); err != nil {
-						return ctrl.Result{}, errors.Wrapf(err, "failed to mark in place upgrade status")
-					}
-				case "Error":
-					log.Info("In-place upgrade failed", "error", status.ErrorMessage)
-					if err := r.markUpgradeFailed(ctx, m, upgradeOption, status.ErrorMessage); err != nil {
-						return ctrl.Result{}, errors.Wrapf(err, "failed to mark in place upgrade status")
-					}
-				default:
-					log.Info("Found invalid refresh status, marking as failed")
-					if err := r.markUpgradeFailed(ctx, m, upgradeOption, "invalid refresh status"); err != nil {
-						return ctrl.Result{}, errors.Wrapf(err, "failed to mark in place upgrade status")
-					}
-				}
-			case bootstrapv1.InPlaceUpgradeDoneStatus:
-				delete(mAnnotations, bootstrapv1.InPlaceUpgradeToAnnotation)
-				delete(mAnnotations, bootstrapv1.InPlaceUpgradeRefreshIDAnnotation)
-				mAnnotations[bootstrapv1.InPlaceUpgradeReleaseAnnotation] = upgradeOption
-				m.SetAnnotations(mAnnotations)
-				if err := patchHelper.Patch(ctx, m); err != nil {
-					return ctrl.Result{}, errors.Wrapf(err, "failed to patch machine annotations")
-				}
-			case bootstrapv1.InPlaceUpgradeFailedStatus:
-				delete(mAnnotations, bootstrapv1.InPlaceUpgradeStatusAnnotation)
-				delete(mAnnotations, bootstrapv1.InPlaceUpgradeRefreshIDAnnotation)
-				m.SetAnnotations(mAnnotations)
-				if err := patchHelper.Patch(ctx, m); err != nil {
-					return ctrl.Result{}, errors.Wrapf(err, "failed to patch machine annotations")
-				}
-			default:
-				log.Info("Found invalid in-place upgrade status, marking as failed")
-				if err := r.markUpgradeFailed(ctx, m, upgradeOption, "invalid in-place upgrade status"); err != nil {
-					return ctrl.Result{}, errors.Wrapf(err, "failed to mark in place upgrade status")
-				}
-			}
-		} else {
-			// Handle the in-place upgrade request
-			delete(mAnnotations, bootstrapv1.InPlaceUpgradeStatusAnnotation)
-			delete(mAnnotations, bootstrapv1.InPlaceUpgradeRefreshIDAnnotation)
-			delete(mAnnotations, bootstrapv1.InPlaceUpgradeReleaseAnnotation)
-			m.SetAnnotations(mAnnotations)
-			if err := patchHelper.Patch(ctx, m); err != nil {
-				return ctrl.Result{}, errors.Wrapf(err, "failed to patch machine annotations")
-			}
-
-			// Perform the in-place upgrade through snap refresh
-			changeID, err := workloadCluster.RefreshMachine(ctx, m, nodeToken, &upgradeOption)
-			if err != nil {
-				return ctrl.Result{}, fmt.Errorf("failed to refresh machine: %w", err)
-			}
-
-			// Set in place upgrade status to in progress
-			if err := r.markUpgradeInProgress(ctx, m, upgradeOption, changeID); err != nil {
-				return ctrl.Result{}, errors.Wrapf(err, "failed to mark in place upgrade status")
-			}
-		}
+	upgradeOption, ok := mAnnotations[bootstrapv1.InPlaceUpgradeToAnnotation]
+	if !ok {
+		// In-place upgrade to annotation not found, ignoring...
+		return ctrl.Result{}, nil
 	}
 
-	return ctrl.Result{}, nil
+	// Lookup the cluster the machine belongs to
+	cluster, err := util.GetClusterByName(ctx, r.Client, m.Namespace, m.Spec.ClusterName)
+	if err != nil {
+		return ctrl.Result{}, err
+	}
+
+	// Get the workload cluster for the machine
+	workloadCluster, err := r.getWorkloadClusterForMachine(ctx, util.ObjectKey(cluster), m)
+	if err != nil {
+		return ctrl.Result{}, fmt.Errorf("failed to get workload cluster for machine: %w", err)
+	}
+
+	patchHelper, err := patch.NewHelper(m, r.Client)
+	if err != nil {
+		return ctrl.Result{}, fmt.Errorf("failed to create patch helper for machine: %w", err)
+	}
+
+	scope := &UpgradeScope{
+		Log:             log,
+		Cluster:         cluster,
+		WorkloadCluster: workloadCluster,
+		Machine:         m,
+		PatchHelper:     patchHelper,
+		UpgradeOption:   upgradeOption,
+	}
+
+	changeID, hasChangeIDAnnotation := mAnnotations[bootstrapv1.InPlaceUpgradeChangeIDAnnotation]
+
+	if hasChangeIDAnnotation {
+		// Still handling an in-progress upgrade since change ID is present
+		upgradeStatus, ok := mAnnotations[bootstrapv1.InPlaceUpgradeStatusAnnotation]
+		if !ok {
+			log.Info("Found in-place upgrade change ID without status, marking as failed")
+			if err := r.markUpgradeFailed(ctx, scope, "missing in-place upgrade status"); err != nil {
+				return ctrl.Result{}, fmt.Errorf("failed to mark in place upgrade status: %w", err)
+			}
+		}
+
+		switch upgradeStatus {
+		case bootstrapv1.InPlaceUpgradeInProgressStatus:
+			return r.handleUpgradeInProgress(ctx, scope, changeID)
+		case bootstrapv1.InPlaceUpgradeDoneStatus:
+			return r.handleUpgradeDone(ctx, scope)
+		case bootstrapv1.InPlaceUpgradeFailedStatus:
+			return r.handleUpgradeFailed(ctx, scope)
+		default:
+			log.Info("Found invalid in-place upgrade status, marking as failed")
+			if err := r.markUpgradeFailed(ctx, scope, "invalid in-place upgrade status"); err != nil {
+				return ctrl.Result{}, fmt.Errorf("failed to mark in place upgrade status: %w", err)
+			}
+		}
+
+		return ctrl.Result{}, nil
+	}
+
+	// Starting a new upgrade or retrying a failed one
+	return r.handleUpgradeRequest(ctx, scope)
 }
 
 func (r *InPlaceUpgradeReconciler) getWorkloadClusterForMachine(ctx context.Context, clusterKey types.NamespacedName, m *clusterv1.Machine) (*ck8s.Workload, error) {
@@ -198,48 +162,139 @@ func (r *InPlaceUpgradeReconciler) getWorkloadClusterForMachine(ctx context.Cont
 	return r.managementCluster.GetWorkloadCluster(ctx, clusterKey, microclusterPort)
 }
 
-func (r *InPlaceUpgradeReconciler) markUpgradeInProgress(ctx context.Context, m *clusterv1.Machine, upgradeOption string, changeID string) error {
-	patchHelper, err := patch.NewHelper(m, r.Client)
-	if err != nil {
-		return errors.Wrapf(err, "failed to create patch helper for machine")
-	}
-	mAnnotations := m.GetAnnotations()
+func (r *InPlaceUpgradeReconciler) markUpgradeInProgress(ctx context.Context, scope *UpgradeScope, changeID string) error {
+	mAnnotations := scope.Machine.GetAnnotations()
+
 	mAnnotations[bootstrapv1.InPlaceUpgradeStatusAnnotation] = bootstrapv1.InPlaceUpgradeInProgressStatus
-	mAnnotations[bootstrapv1.InPlaceUpgradeRefreshIDAnnotation] = changeID
-	m.SetAnnotations(mAnnotations)
-	if err := patchHelper.Patch(ctx, m); err != nil {
-		return errors.Wrapf(err, "failed to patch machine annotations")
+	mAnnotations[bootstrapv1.InPlaceUpgradeChangeIDAnnotation] = changeID
+	scope.Machine.SetAnnotations(mAnnotations)
+	if err := scope.PatchHelper.Patch(ctx, scope.Machine); err != nil {
+		return fmt.Errorf("failed to patch machine annotations: %w", err)
 	}
-	r.recorder.Eventf(m, corev1.EventTypeNormal, bootstrapv1.InPlaceUpgradeInProgressEvent, "Performing in place upgrade with %s", upgradeOption)
+
+	r.recorder.Eventf(scope.Machine, corev1.EventTypeNormal, bootstrapv1.InPlaceUpgradeInProgressEvent, "Performing in place upgrade with %s", scope.UpgradeOption)
 	return nil
 }
 
-func (r *InPlaceUpgradeReconciler) markUpgradeDone(ctx context.Context, m *clusterv1.Machine, upgradeOption string) error {
-	patchHelper, err := patch.NewHelper(m, r.Client)
-	if err != nil {
-		return errors.Wrapf(err, "failed to create patch helper for machine")
-	}
-	mAnnotations := m.GetAnnotations()
+func (r *InPlaceUpgradeReconciler) markUpgradeDone(ctx context.Context, scope *UpgradeScope) error {
+	mAnnotations := scope.Machine.GetAnnotations()
+
 	mAnnotations[bootstrapv1.InPlaceUpgradeStatusAnnotation] = bootstrapv1.InPlaceUpgradeDoneStatus
-	m.SetAnnotations(mAnnotations)
-	if err := patchHelper.Patch(ctx, m); err != nil {
-		return errors.Wrapf(err, "failed to patch machine annotations")
+	scope.Machine.SetAnnotations(mAnnotations)
+	if err := scope.PatchHelper.Patch(ctx, scope.Machine); err != nil {
+		return fmt.Errorf("failed to patch machine annotations: %w", err)
 	}
-	r.recorder.Eventf(m, corev1.EventTypeNormal, bootstrapv1.InPlaceUpgradeDoneEvent, "Successfully performed in place upgrade with %s", upgradeOption)
+
+	r.recorder.Eventf(scope.Machine, corev1.EventTypeNormal, bootstrapv1.InPlaceUpgradeDoneEvent, "Successfully performed in place upgrade with %s", scope.UpgradeOption)
 	return nil
 }
 
-func (r *InPlaceUpgradeReconciler) markUpgradeFailed(ctx context.Context, m *clusterv1.Machine, upgradeOption string, message string) error {
-	patchHelper, err := patch.NewHelper(m, r.Client)
-	if err != nil {
-		return errors.Wrapf(err, "failed to create patch helper for machine")
-	}
-	mAnnotations := m.GetAnnotations()
+func (r *InPlaceUpgradeReconciler) markUpgradeFailed(ctx context.Context, scope *UpgradeScope, failure string) error {
+	mAnnotations := scope.Machine.GetAnnotations()
+
 	mAnnotations[bootstrapv1.InPlaceUpgradeStatusAnnotation] = bootstrapv1.InPlaceUpgradeFailedStatus
-	m.SetAnnotations(mAnnotations)
-	if err := patchHelper.Patch(ctx, m); err != nil {
-		return errors.Wrapf(err, "failed to patch machine annotations")
+	scope.Machine.SetAnnotations(mAnnotations)
+	if err := scope.PatchHelper.Patch(ctx, scope.Machine); err != nil {
+		return fmt.Errorf("failed to patch machine annotations: %w", err)
 	}
-	r.recorder.Eventf(m, corev1.EventTypeWarning, bootstrapv1.InPlaceUpgradeFailedEvent, "Failed to perform in place upgrade with %s: %s", upgradeOption, message)
+
+	r.recorder.Eventf(scope.Machine, corev1.EventTypeWarning, bootstrapv1.InPlaceUpgradeFailedEvent, "Failed to perform in place upgrade with %s: %s", scope.UpgradeOption, failure)
 	return nil
+}
+
+func (r *InPlaceUpgradeReconciler) handleUpgradeRequest(ctx context.Context, scope *UpgradeScope) (reconcile.Result, error) {
+	// Lookup the node token for the machine
+	nodeToken, err := token.LookupNodeToken(ctx, r.Client, util.ObjectKey(scope.Cluster), scope.Machine.Name)
+	if err != nil {
+		return ctrl.Result{}, fmt.Errorf("failed to lookup node token: %w", err)
+	}
+
+	mAnnotations := scope.Machine.GetAnnotations()
+
+	delete(mAnnotations, bootstrapv1.InPlaceUpgradeStatusAnnotation)
+	delete(mAnnotations, bootstrapv1.InPlaceUpgradeChangeIDAnnotation)
+	delete(mAnnotations, bootstrapv1.InPlaceUpgradeReleaseAnnotation)
+	scope.Machine.SetAnnotations(mAnnotations)
+	if err := scope.PatchHelper.Patch(ctx, scope.Machine); err != nil {
+		return ctrl.Result{}, fmt.Errorf("failed to patch machine annotations: %w", err)
+	}
+
+	// Perform the in-place upgrade through snap refresh
+	changeID, err := scope.WorkloadCluster.RefreshMachine(ctx, scope.Machine, *nodeToken, scope.UpgradeOption)
+	if err != nil {
+		return ctrl.Result{}, fmt.Errorf("failed to refresh machine: %w", err)
+	}
+
+	// Set in place upgrade status to in progress
+	if err := r.markUpgradeInProgress(ctx, scope, changeID); err != nil {
+		return ctrl.Result{}, fmt.Errorf("failed to mark in place upgrade status: %w", err)
+	}
+
+	return ctrl.Result{}, nil
+}
+
+func (r *InPlaceUpgradeReconciler) handleUpgradeInProgress(ctx context.Context, scope *UpgradeScope, changeID string) (reconcile.Result, error) {
+	// Lookup the node token for the machine
+	nodeToken, err := token.LookupNodeToken(ctx, r.Client, util.ObjectKey(scope.Cluster), scope.Machine.Name)
+	if err != nil {
+		return ctrl.Result{}, fmt.Errorf("failed to lookup node token: %w", err)
+	}
+
+	status, err := scope.WorkloadCluster.GetRefreshStatusForMachine(ctx, scope.Machine, *nodeToken, changeID)
+	if err != nil {
+		scope.Log.Info("Failed to get refresh status for machine", "error", err)
+		return ctrl.Result{}, fmt.Errorf("failed to get refresh status for machine: %w", err)
+	}
+
+	if !status.Completed {
+		scope.Log.Info("In-place upgrade still in progress, requeuing...")
+		return ctrl.Result{RequeueAfter: 5 * time.Second}, nil
+	}
+
+	switch status.Status {
+	case "Done":
+		scope.Log.Info("In-place upgrade completed successfully")
+		if err := r.markUpgradeDone(ctx, scope); err != nil {
+			return ctrl.Result{}, fmt.Errorf("failed to mark in place upgrade status: %w", err)
+		}
+	case "Error":
+		scope.Log.Info("In-place upgrade failed", "error", status.ErrorMessage)
+		if err := r.markUpgradeFailed(ctx, scope, status.ErrorMessage); err != nil {
+			return ctrl.Result{}, fmt.Errorf("failed to mark in place upgrade status: %w", err)
+		}
+	default:
+		scope.Log.Info("Found invalid refresh status, marking as failed")
+		if err := r.markUpgradeFailed(ctx, scope, "invalid refresh status"); err != nil {
+			return ctrl.Result{}, fmt.Errorf("failed to mark in place upgrade status: %w", err)
+		}
+	}
+
+	return ctrl.Result{}, nil
+}
+
+func (r *InPlaceUpgradeReconciler) handleUpgradeDone(ctx context.Context, scope *UpgradeScope) (reconcile.Result, error) {
+	mAnnotations := scope.Machine.GetAnnotations()
+
+	delete(mAnnotations, bootstrapv1.InPlaceUpgradeToAnnotation)
+	delete(mAnnotations, bootstrapv1.InPlaceUpgradeChangeIDAnnotation)
+	mAnnotations[bootstrapv1.InPlaceUpgradeReleaseAnnotation] = scope.UpgradeOption
+	scope.Machine.SetAnnotations(mAnnotations)
+	if err := scope.PatchHelper.Patch(ctx, scope.Machine); err != nil {
+		return ctrl.Result{}, fmt.Errorf("failed to patch machine annotations: %w", err)
+	}
+
+	return ctrl.Result{}, nil
+}
+
+func (r *InPlaceUpgradeReconciler) handleUpgradeFailed(ctx context.Context, scope *UpgradeScope) (reconcile.Result, error) {
+	mAnnotations := scope.Machine.GetAnnotations()
+
+	delete(mAnnotations, bootstrapv1.InPlaceUpgradeStatusAnnotation)
+	delete(mAnnotations, bootstrapv1.InPlaceUpgradeChangeIDAnnotation)
+	scope.Machine.SetAnnotations(mAnnotations)
+	if err := scope.PatchHelper.Patch(ctx, scope.Machine); err != nil {
+		return ctrl.Result{}, fmt.Errorf("failed to patch machine annotations: %w", err)
+	}
+
+	return ctrl.Result{}, nil
 }
