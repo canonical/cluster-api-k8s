@@ -330,6 +330,7 @@ func (w *Workload) RemoveMachineFromCluster(ctx context.Context, machine *cluste
 	return nil
 }
 
+//nolint:unparam
 func (w *Workload) doK8sdRequest(ctx context.Context, k8sdProxy *K8sdClient, method, endpoint string, header map[string][]string, request any, response any) error {
 	type wrappedResponse struct {
 		Error    string          `json:"error"`

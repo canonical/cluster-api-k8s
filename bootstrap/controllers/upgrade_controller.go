@@ -36,10 +36,7 @@ type InPlaceUpgradeReconciler struct {
 }
 
 func (r *InPlaceUpgradeReconciler) SetupWithManager(mgr ctrl.Manager) error {
-	_, err := ctrl.NewControllerManagedBy(mgr).
-		For(&clusterv1.Machine{}).
-		Build(r)
-	if err != nil {
+	if _, err := ctrl.NewControllerManagedBy(mgr).For(&clusterv1.Machine{}).Build(r); err != nil {
 		return fmt.Errorf("failed setting up with a controller manager: %w", err)
 	}
 
