@@ -1,10 +1,10 @@
 package v1beta2
 
 const (
-	InPlaceUpgradeToAnnotation        = "k8sd.io/in-place-upgrade-to"
-	InPlaceUpgradeStatusAnnotation    = "k8sd.io/in-place-upgrade-status"
-	InPlaceUpgradeReleaseAnnotation   = "k8sd.io/in-place-upgrade-release"
-	InPlaceUpgradeRefreshIDAnnotation = "k8sd.io/in-place-upgrade-refresh-id"
+	InPlaceUpgradeToAnnotation        = "v1beta2.k8sd.io/in-place-upgrade-to"
+	InPlaceUpgradeStatusAnnotation    = "v1beta2.k8sd.io/in-place-upgrade-status"
+	InPlaceUpgradeReleaseAnnotation   = "v1beta2.k8sd.io/in-place-upgrade-release"
+	InPlaceUpgradeRefreshIDAnnotation = "v1beta2.k8sd.io/in-place-upgrade-refresh-id"
 )
 
 const (
