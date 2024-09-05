@@ -5,6 +5,7 @@
 #
 # Usage:
 #   ./build-e2e-images.sh
+set -xe
 
 DIR="$(realpath "$(dirname "${0}")")"
 
