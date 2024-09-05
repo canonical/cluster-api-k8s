@@ -75,6 +75,9 @@ function setup_container {
 
   exec_in_container "apt update && apt install -y snapd"
   exec_in_container "systemctl start snapd"
+
+  # Script is running from the hack directory, so push the entire directory to the container
+  lxc file push -r .. $CONTAINER_NAME/root/
 }
 
 function configure_container_env {
@@ -107,33 +110,46 @@ function setup_management_cluster {
   exec_in_container "sudo k8s config > /root/.kube/config"
 }
 
+function clone_repos {
+  exec_in_container "git clone --depth 1 https://github.com/kubernetes-sigs/cluster-api-provider-aws /root/cluster-api-provider-aws"
+  exec_in_container "git clone --depth 1 https://github.com/kubernetes-sigs/cluster-api /root/cluster-api"
+}
+
 # Transfer and execute scripts
 function install_tools {
   tools=(install-clusterctl.sh)
+  packages=(make)
+  snaps=(kubectl)
 
   if [[ $INFRA_PROVIDER == "aws" ]]; then
     tools+=(install-clusterctlawsadm.sh install-aws-nuke.sh)
   fi
 
   for script in "${tools[@]}"; do
-    lxc file push ./"$script" $CONTAINER_NAME/root/"$script"
-    exec_in_container "chmod +x /root/$script && /root/$script"
+    exec_in_container "chmod +x /root/cluster-api-k8s/hack/$script && /root/cluster-api-k8s/hack/$script"
+  done
+
+  for package in "${packages[@]}"; do
+    exec_in_container "apt install -y $package"
+  done
+
+  for snap in "${snaps[@]}"; do
+    exec_in_container "snap install $snap --classic"
   done
 }
 
 function init_clusterctl {
   configure_container_env # Ensures that the right environment variables are set in the container
 
-  lxc file push ./write-provider-config.sh $CONTAINER_NAME/root/write-provider-config.sh
-  exec_in_container "chmod +x /root/write-provider-config.sh"
+  exec_in_container "chmod +x /root/cluster-api-k8s/hack/write-provider-config.sh"
   exec_in_container "mkdir -p /root/.cluster-api"
-  exec_in_container "/root/write-provider-config.sh /root/.cluster-api/clusterctl.yaml $CK8S_PROVIDER_VERSION"
+  exec_in_container "/root/cluster-api-k8s/hack/write-provider-config.sh /root/.cluster-api/clusterctl.yaml $CK8S_PROVIDER_VERSION"
 
   exec_in_container "clusterctl init -i $INFRA_PROVIDER -b ck8s:$CK8S_PROVIDER_VERSION -c ck8s:$CK8S_PROVIDER_VERSION --config /root/.cluster-api/clusterctl.yaml"
 }
 
 function run_e2e_tests {
-  make USE_EXISTING_CLUSTER=true GINKGO_FOCUS="Workload cluster creation" test-e2e
+  exec_in_container "cd /root/cluster-api-k8s && make USE_EXISTING_CLUSTER=true GINKGO_FOCUS=\"Workload cluster creation\" test-e2e"
 }
 
 function cleanup {
@@ -162,9 +178,10 @@ function main {
   setup_lxd_profile
   setup_container
   setup_management_cluster
+  clone_repos
   install_tools
   init_clusterctl
-  #run_e2e_tests
+  run_e2e_tests
   cleanup
 }
 
