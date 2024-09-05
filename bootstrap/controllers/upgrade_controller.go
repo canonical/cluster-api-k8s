@@ -49,7 +49,7 @@ func (r *InPlaceUpgradeReconciler) SetupWithManager(mgr ctrl.Manager) error {
 			K8sdDialTimeout: r.K8sdDialTimeout,
 		}
 	}
-	return err
+	return nil
 }
 
 type UpgradeScope struct {
