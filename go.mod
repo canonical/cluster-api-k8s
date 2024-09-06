@@ -3,7 +3,7 @@ module github.com/canonical/cluster-api-k8s
 go 1.22.6
 
 require (
-	github.com/canonical/k8s-snap-api v1.0.2
+	github.com/canonical/k8s-snap-api v1.0.5
 	github.com/go-logr/logr v1.4.1
 	github.com/google/uuid v1.4.0
 	github.com/onsi/ginkgo v1.16.5
@@ -23,8 +23,6 @@ require (
 	sigs.k8s.io/controller-runtime v0.17.3
 	sigs.k8s.io/yaml v1.4.0
 )
-
-replace github.com/canonical/k8s-snap-api v1.0.2 => github.com/berkayoz/k8s-snap-api v1.0.5-0.20240901200911-5379ab6be5fa
 
 require (
 	github.com/BurntSushi/toml v1.0.0 // indirect
