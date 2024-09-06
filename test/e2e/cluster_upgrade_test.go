@@ -22,7 +22,6 @@ package e2e
 import (
 	. "github.com/onsi/ginkgo/v2"
 	"k8s.io/utils/ptr"
-	"sigs.k8s.io/cluster-api/test/framework/clusterctl"
 )
 
 var _ = Describe("Workload cluster upgrade [CK8s-Upgrade]", func() {
@@ -39,7 +38,7 @@ var _ = Describe("Workload cluster upgrade [CK8s-Upgrade]", func() {
 				BootstrapClusterProxy:    bootstrapClusterProxy,
 				ArtifactFolder:           artifactFolder,
 				SkipCleanup:              skipCleanup,
-				InfrastructureProvider:   ptr.To(clusterctl.DefaultInfrastructureProvider),
+				InfrastructureProvider:   ptr.To("docker"),
 				ControlPlaneMachineCount: ptr.To[int64](1),
 				WorkerMachineCount:       ptr.To[int64](2),
 			}
@@ -54,7 +53,7 @@ var _ = Describe("Workload cluster upgrade [CK8s-Upgrade]", func() {
 				BootstrapClusterProxy:    bootstrapClusterProxy,
 				ArtifactFolder:           artifactFolder,
 				SkipCleanup:              skipCleanup,
-				InfrastructureProvider:   ptr.To(clusterctl.DefaultInfrastructureProvider),
+				InfrastructureProvider:   ptr.To("docker"),
 				ControlPlaneMachineCount: ptr.To[int64](3),
 				WorkerMachineCount:       ptr.To[int64](1),
 			}

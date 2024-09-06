@@ -92,15 +92,14 @@ KUSTOMIZE := $(TOOLS_BIN_DIR)/$(KUSTOMIZE_BIN)-$(KUSTOMIZE_VER)
 # Ginkgo
 TEST_DIR := $(shell pwd)/test
 ARTIFACTS ?= $(shell pwd)/_artifacts
-GINKGO_FOCUS ?= Workload cluster creation
+GINKGO_FOCUS ?=
 GINKGO_SKIP ?=
 GINKGO_NODES ?= 1 # GINKGO_NODES is the number of parallel nodes to run
                   # when running the e2e tests, 1 means no parallelism
 GINKGO_TIMEOUT ?= 2h
 GINKGO_POLL_PROGRESS_AFTER ?= 60m
 GINKGO_POLL_PROGRESS_INTERVAL ?= 5m
-E2E_INFRA ?= aws
-E2E_CONF_FILE ?= $(TEST_DIR)/e2e/config/ck8s-$(E2E_INFRA).yaml
+E2E_CONF_FILE ?= $(TEST_DIR)/e2e/config/ck8s-docker.yaml
 SKIP_RESOURCE_CLEANUP ?= false
 USE_EXISTING_CLUSTER ?= false
 GINKGO_NOCOLOR ?= false
@@ -408,7 +407,3 @@ $(CONTROLLER_GEN): ## Build controller-gen from tools folder.
 
 $(CONVERSION_GEN): ## Build conversion-gen from tools folder.
 	GOBIN=$(TOOLS_BIN_DIR) $(GO_INSTALL) k8s.io/code-generator/cmd/conversion-gen $(CONVERSION_GEN_BIN) $(CONVERSION_GEN_VER)
-
-.PHONY: nuke
-nuke:
-	aws-nuke -c ~/.config/aws-nuke/nuke-config.yaml --no-dry-run
