@@ -69,7 +69,8 @@ type WorkloadCluster interface {
 // Workload defines operations on workload clusters.
 type Workload struct {
 	WorkloadCluster
-	authToken           string
+	authToken string
+
 	Client              ctrlclient.Client
 	ClientRestConfig    *rest.Config
 	K8sdClientGenerator *k8sdClientGenerator
@@ -204,6 +205,68 @@ func (w *Workload) GetK8sdProxyForControlPlane(ctx context.Context, options k8sd
 	return nil, fmt.Errorf("failed to get k8sd proxy for control plane")
 }
 
+// GetK8sdProxyForMachine returns a k8sd proxy client for the machine.
+func (w *Workload) GetK8sdProxyForMachine(ctx context.Context, machine *clusterv1.Machine) (*K8sdClient, error) {
+	node := &corev1.Node{}
+	if err := w.Client.Get(ctx, ctrlclient.ObjectKey{Name: machine.Status.NodeRef.Name}, node); err != nil {
+		return nil, fmt.Errorf("failed to get node: %w", err)
+	}
+
+	return w.K8sdClientGenerator.forNode(ctx, node)
+}
+
+func (w *Workload) RefreshMachine(ctx context.Context, machine *clusterv1.Machine, nodeToken string, upgradeOption string) (string, error) {
+	request := apiv1.SnapRefreshRequest{}
+	response := &apiv1.SnapRefreshResponse{}
+	optionKv := strings.Split(upgradeOption, "=")
+	switch optionKv[0] {
+	case "channel":
+		request.Channel = optionKv[1]
+	case "revision":
+		request.Revision = optionKv[1]
+	case "localPath":
+		request.LocalPath = optionKv[1]
+	default:
+		return "", fmt.Errorf("invalid upgrade option: %s", optionKv[0])
+	}
+
+	k8sdProxy, err := w.GetK8sdProxyForMachine(ctx, machine)
+	if err != nil {
+		return "", fmt.Errorf("failed to create k8sd proxy: %w", err)
+	}
+
+	header := map[string][]string{
+		"node-token": {nodeToken},
+	}
+
+	if err := w.doK8sdRequest(ctx, k8sdProxy, http.MethodPost, "1.0/snap/refresh", header, request, response); err != nil {
+		return "", fmt.Errorf("failed to refresh machine %s: %w", machine.Name, err)
+	}
+
+	return response.ChangeID, nil
+}
+
+func (w *Workload) GetRefreshStatusForMachine(ctx context.Context, machine *clusterv1.Machine, nodeToken string, changeID string) (*apiv1.SnapRefreshStatusResponse, error) {
+	request := apiv1.SnapRefreshStatusRequest{}
+	response := &apiv1.SnapRefreshStatusResponse{}
+	request.ChangeID = changeID
+
+	k8sdProxy, err := w.GetK8sdProxyForMachine(ctx, machine)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create k8sd proxy: %w", err)
+	}
+
+	header := map[string][]string{
+		"node-token": {nodeToken},
+	}
+
+	if err := w.doK8sdRequest(ctx, k8sdProxy, http.MethodPost, "1.0/snap/refresh-status", header, request, response); err != nil {
+		return nil, fmt.Errorf("failed to refresh machine %s: %w", machine.Name, err)
+	}
+
+	return response, nil
+}
+
 // NewControlPlaneJoinToken creates a new join token for a control plane node.
 // NewControlPlaneJoinToken reaches out to the control-plane of the workload cluster via k8sd-proxy client.
 func (w *Workload) NewControlPlaneJoinToken(ctx context.Context, name string) (string, error) {
@@ -222,10 +285,20 @@ func (w *Workload) NewWorkerJoinToken(ctx context.Context) (string, error) {
 func (w *Workload) requestJoinToken(ctx context.Context, name string, worker bool) (string, error) {
 	request := apiv1.GetJoinTokenRequest{Name: name, Worker: worker}
 	response := &apiv1.GetJoinTokenResponse{}
-	err := w.doK8sdRequest(ctx, http.MethodPost, "1.0/x/capi/generate-join-token", request, response, k8sdProxyOptions{})
+
+	k8sdProxy, err := w.GetK8sdProxyForControlPlane(ctx, k8sdProxyOptions{})
 	if err != nil {
+		return "", fmt.Errorf("failed to create k8sd proxy: %w", err)
+	}
+
+	header := map[string][]string{
+		"capi-auth-token": {w.authToken},
+	}
+
+	if err := w.doK8sdRequest(ctx, k8sdProxy, http.MethodPost, "1.0/x/capi/generate-join-token", header, request, response); err != nil {
 		return "", fmt.Errorf("failed to get join token: %w", err)
 	}
+
 	return response.EncodedToken, nil
 }
 
@@ -242,22 +315,26 @@ func (w *Workload) RemoveMachineFromCluster(ctx context.Context, machine *cluste
 
 	// If we see that ignoring control-planes is causing issues, let's consider removing it.
 	// It *should* not be necessary as a machine should be able to remove itself from the cluster.
-	err := w.doK8sdRequest(ctx, http.MethodPost, "1.0/x/capi/remove-node", request, nil, k8sdProxyOptions{IgnoreNodes: map[string]struct{}{nodeName: {}}})
+	k8sdProxy, err := w.GetK8sdProxyForControlPlane(ctx, k8sdProxyOptions{IgnoreNodes: map[string]struct{}{nodeName: {}}})
 	if err != nil {
+		return fmt.Errorf("failed to create k8sd proxy: %w", err)
+	}
+
+	header := map[string][]string{
+		"capi-auth-token": {w.authToken},
+	}
+
+	if err := w.doK8sdRequest(ctx, k8sdProxy, http.MethodPost, "1.0/x/capi/remove-node", header, request, nil); err != nil {
 		return fmt.Errorf("failed to remove %s from cluster: %w", machine.Name, err)
 	}
 	return nil
 }
 
-func (w *Workload) doK8sdRequest(ctx context.Context, method, endpoint string, request any, response any, k8sdProxyOptions k8sdProxyOptions) error {
+//nolint:unparam
+func (w *Workload) doK8sdRequest(ctx context.Context, k8sdProxy *K8sdClient, method, endpoint string, header map[string][]string, request any, response any) error {
 	type wrappedResponse struct {
 		Error    string          `json:"error"`
 		Metadata json.RawMessage `json:"metadata"`
-	}
-
-	k8sdProxy, err := w.GetK8sdProxyForControlPlane(ctx, k8sdProxyOptions)
-	if err != nil {
-		return fmt.Errorf("failed to create k8sd proxy: %w", err)
 	}
 
 	url := fmt.Sprintf("https://%s:%v/%s", k8sdProxy.NodeIP, w.microclusterPort, endpoint)
@@ -272,7 +349,8 @@ func (w *Workload) doK8sdRequest(ctx context.Context, method, endpoint string, r
 		return fmt.Errorf("failed to create request: %w", err)
 	}
 
-	req.Header.Add("capi-auth-token", w.authToken)
+	req.Header = http.Header(header)
+
 	res, err := k8sdProxy.Client.Do(req)
 	if err != nil {
 		return fmt.Errorf("failed to reach k8sd through proxy client: %w", err)

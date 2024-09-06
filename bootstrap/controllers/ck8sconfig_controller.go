@@ -221,6 +221,11 @@ func (r *CK8sConfigReconciler) joinControlplane(ctx context.Context, scope *Scop
 	// injects into config.Version values from top level object
 	r.reconcileTopLevelObjectSettings(scope.Cluster, machine, scope.Config)
 
+	nodeToken, err := token.GenerateAndStoreNodeToken(ctx, r.Client, client.ObjectKeyFromObject(scope.Cluster), machine.Name)
+	if err != nil {
+		return fmt.Errorf("failed to generate node token: %w", err)
+	}
+
 	microclusterPort := scope.Config.Spec.ControlPlaneConfig.GetMicroclusterPort()
 	workloadCluster, err := r.managementCluster.GetWorkloadCluster(ctx, util.ObjectKey(scope.Cluster), microclusterPort)
 	if err != nil {
@@ -265,6 +270,7 @@ func (r *CK8sConfigReconciler) joinControlplane(ctx context.Context, scope *Scop
 			MicroclusterPort:    microclusterPort,
 			AirGapped:           scope.Config.Spec.AirGapped,
 			NodeName:            scope.Config.Spec.NodeName,
+			NodeToken:           *nodeToken,
 		},
 		JoinToken: joinToken,
 	}
@@ -303,6 +309,11 @@ func (r *CK8sConfigReconciler) joinWorker(ctx context.Context, scope *Scope) err
 		return fmt.Errorf("auth token not yet generated")
 	}
 
+	nodeToken, err := token.GenerateAndStoreNodeToken(ctx, r.Client, client.ObjectKeyFromObject(scope.Cluster), machine.Name)
+	if err != nil {
+		return fmt.Errorf("failed to generate node token: %w", err)
+	}
+
 	microclusterPort := scope.Config.Spec.ControlPlaneConfig.GetMicroclusterPort()
 	workloadCluster, err := r.managementCluster.GetWorkloadCluster(ctx, util.ObjectKey(scope.Cluster), microclusterPort)
 	if err != nil {
@@ -338,6 +349,7 @@ func (r *CK8sConfigReconciler) joinWorker(ctx context.Context, scope *Scope) err
 			MicroclusterPort:    microclusterPort,
 			AirGapped:           scope.Config.Spec.AirGapped,
 			NodeName:            scope.Config.Spec.NodeName,
+			NodeToken:           *nodeToken,
 		},
 		JoinToken: joinToken,
 	}
@@ -466,9 +478,14 @@ func (r *CK8sConfigReconciler) handleClusterNotInitialized(ctx context.Context, 
 	}
 	conditions.MarkTrue(scope.Config, bootstrapv1.CertificatesAvailableCondition)
 
-	token, err := token.Lookup(ctx, r.Client, client.ObjectKeyFromObject(scope.Cluster))
+	authToken, err := token.Lookup(ctx, r.Client, client.ObjectKeyFromObject(scope.Cluster))
 	if err != nil {
 		return ctrl.Result{}, err
+	}
+
+	nodeToken, err := token.GenerateAndStoreNodeToken(ctx, r.Client, client.ObjectKeyFromObject(scope.Cluster), machine.Name)
+	if err != nil {
+		return ctrl.Result{}, fmt.Errorf("failed to generate node token: %w", err)
 	}
 
 	clusterInitConfig := ck8s.InitControlPlaneConfig{
@@ -524,8 +541,9 @@ func (r *CK8sConfigReconciler) handleClusterNotInitialized(ctx context.Context, 
 			MicroclusterPort:    microclusterPort,
 			NodeName:            scope.Config.Spec.NodeName,
 			AirGapped:           scope.Config.Spec.AirGapped,
+			NodeToken:           *nodeToken,
 		},
-		Token:              *token,
+		AuthToken:          *authToken,
 		K8sdProxyDaemonSet: string(ds),
 	}
 

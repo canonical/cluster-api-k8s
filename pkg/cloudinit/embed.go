@@ -16,7 +16,8 @@ var (
 	scriptInstall                 script = "install.sh"
 	scriptBootstrap               script = "bootstrap.sh"
 	scriptLoadImages              script = "load-images.sh"
-	scriptConfigureToken          script = "configure-token.sh"
+	scriptConfigureAuthToken      script = "configure-auth-token.sh" // #nosec G101
+	scriptConfigureNodeToken      script = "configure-node-token.sh" // #nosec G101
 	scriptJoinCluster             script = "join-cluster.sh"
 	scriptWaitAPIServerReady      script = "wait-apiserver-ready.sh"
 	scriptDeployManifests         script = "deploy-manifests.sh"
@@ -37,7 +38,8 @@ var (
 		scriptInstall:                 mustEmbed(scriptInstall),
 		scriptBootstrap:               mustEmbed(scriptBootstrap),
 		scriptLoadImages:              mustEmbed(scriptLoadImages),
-		scriptConfigureToken:          mustEmbed(scriptConfigureToken),
+		scriptConfigureAuthToken:      mustEmbed(scriptConfigureAuthToken),
+		scriptConfigureNodeToken:      mustEmbed(scriptConfigureNodeToken),
 		scriptJoinCluster:             mustEmbed(scriptJoinCluster),
 		scriptWaitAPIServerReady:      mustEmbed(scriptWaitAPIServerReady),
 		scriptDeployManifests:         mustEmbed(scriptDeployManifests),

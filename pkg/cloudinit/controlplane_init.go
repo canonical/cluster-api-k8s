@@ -21,8 +21,8 @@ import "fmt"
 // InitControlPlaneInput defines the context to generate an init controlplane instance user data.
 type InitControlPlaneInput struct {
 	BaseUserData
-	// Token is used to join more cluster nodes.
-	Token string
+	// AuthToken is used to join more cluster nodes.
+	AuthToken string
 	// K8sdProxyDaemonSet is the manifest that deploys k8sd-proxy to the cluster.
 	K8sdProxyDaemonSet string
 }
@@ -39,7 +39,7 @@ func NewInitControlPlane(input InitControlPlaneInput) (CloudConfig, error) {
 		config.WriteFiles,
 		File{
 			Path:        "/capi/etc/token",
-			Content:     input.Token,
+			Content:     input.AuthToken,
 			Permissions: "0400",
 			Owner:       "root:root",
 		},
@@ -61,7 +61,8 @@ func NewInitControlPlane(input InitControlPlaneInput) (CloudConfig, error) {
 		"/capi/scripts/load-images.sh",
 		"/capi/scripts/wait-apiserver-ready.sh",
 		"/capi/scripts/deploy-manifests.sh",
-		"/capi/scripts/configure-token.sh",
+		"/capi/scripts/configure-auth-token.sh",
+		"/capi/scripts/configure-node-token.sh",
 		"/capi/scripts/create-sentinel-bootstrap.sh",
 	)
 	config.RunCommands = append(config.RunCommands, input.PostRunCommands...)
