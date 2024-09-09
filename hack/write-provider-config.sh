@@ -6,9 +6,7 @@
 # Usage:
 #   $ write-clusterctl-config.sh $output-file $version
 
-set -o errexit
-set -o nounset
-set -o pipefail
+set -euo pipefail
 
 OUTPUT_FILE="$1"
 VERSION="$2"
