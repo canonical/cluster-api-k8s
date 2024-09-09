@@ -58,14 +58,8 @@ clear example of "before" and "after".
 
 Users will be able to perform in-place upgrades per machine basis by running:
 ```sh
-kubectl annotate machine <machine-name> k8sd.io/in-place-upgrade-to={upgrade-option}
+kubectl annotate machine <machine-name> v1beta2.k8sd.io/in-place-upgrade-to={upgrade-option}
 ```
-
-Users can also perform in-place upgrades on the entire cluster by running:
-```sh
-kubectl annotate cluster <cluster-name> k8sd.io/in-place-upgrade-to={upgrade-option}
-```
-This would upgrade machines belonging to `<cluster-name>` one by one.
 
 `{upgrade-option}` can be one of:
 * `channel=<channel>` which would refresh the machine to the provided channel e.g. `channel=1.31-classic/stable`
@@ -101,19 +95,25 @@ below, or serve as reference for future proposals.
 ### Cluster-wide Orchestration
 A cluster controller called `ClusterReconciler` is added which would perform the one-by-one in-place upgrade of the entire workload cluster. 
 
-The controller would propagate the `k8sd.io/in-place-upgrade-to` annotation on the `Cluster` object by adding this annotation one-by-one to all the machines that is owned by this cluster. 
+Users perform in-place upgrades on the entire cluster by running:
+```sh
+kubectl annotate cluster <cluster-name> v1beta2.k8sd.io/in-place-upgrade-to={upgrade-option}
+```
+This would upgrade machines belonging to `<cluster-name>` one by one.
+
+The controller would propagate the `v1beta2.k8sd.io/in-place-upgrade-to` annotation on the `Cluster` object by adding this annotation one-by-one to all the machines that is owned by this cluster. 
 
 The reconciler would perform upgrades in 2 separate phases for control-plane and worker machines. 
 
 A Kubernetes API call listing the objects of type `Machine` and filtering with `ownerRef` would produce the list of machines owned by the cluster. For each phase controller would iterate over this list filtering by the machine type, annotating the machines and waiting for the operation to complete on each iteration.
 
-The reconciler should ignore a machine if `k8sd.io/in-place-upgrade-status` is already set to `in-progress`. 
+The reconciler should not trigger the upgrade endpoint if `v1beta2.k8sd.io/in-place-upgrade-status` is already set to `in-progress` on the machine.
 
 Once upgrades of the underlying machines are finished:
-* `k8sd.io/in-place-upgrade-to` annotation on the `Cluster` would be removed
-* `k8sd.io/in-place-upgrade-release` annotation on the `Cluster` would be added/updated with the used `{upgrade-option}`.
+* `v1beta2.k8sd.io/in-place-upgrade-to` annotation on the `Cluster` would be removed
+* `v1beta2.k8sd.io/in-place-upgrade-release` annotation on the `Cluster` would be added/updated with the used `{upgrade-option}`.
 
-This will be introduced and explained more extensively in another proposal.
+This process can be adapted to use `CK8sControlPlane` and `MachineDeployment` objects instead to be able to upgrade control-plane and worker nodes separately. This will be introduced and explained more extensively in another proposal.
 
 ### Upgrades of Underlying OS and Dependencies
 The in-place upgrades only address the upgrades of Canonical Kubernetes and it's respective dependencies. Which means changes on the OS front/image would not be handled since the underlying machine image stays the same. This would be handled by a rolling upgrade as usual.
@@ -129,69 +129,107 @@ Unless there is a particularly strong reason, it is preferable to add new v2/v3
 APIs endpoints instead of breaking the existing APIs, such that API clients are
 not affected.
 -->
-### `POST /x/capi/snap-refresh`
+### `POST /snap/refresh`
 
 ```go
 type SnapRefreshRequest struct {
 	// Channel is the channel to refresh the snap to.
-	Channel string
+	Channel string `json:"channel"`
 	// Revision is the revision number to refresh the snap to.
-	Revision string
+	Revision string `json:"revision"`
 	// LocalPath is the local path to use to refresh the snap.
-	LocalPath string
+	LocalPath string `json:"localPath"`
+}
+
+// SnapRefreshResponse is the response message for the SnapRefresh RPC.
+type SnapRefreshResponse struct {
+	// The change id belonging to a snap refresh/install operation.
+	ChangeID string `json:"changeId"`
 }
 ```
 
-`POST /x/capi/snap-refresh` performs the in-place upgrade with the given options.
+`POST /snap/refresh` performs the in-place upgrade with the given options and returns the change id of the snap operation.
 
 The upgrade can be either done with a `Channel`, `Revision` or a local `*.snap` file provided via `LocalPath`. The value of `LocalPath` should be an absolute path.
 
-A refresh token per node will be generated at bootstrap time, which gets seeded into to the node under the `/capi/etc/refresh-token` file. The generated token will be stored on the management cluster in the `$clustername-token` secret, with keys formatted as `refresh-token::$nodename`.
+### `POST /snap/refresh-status`
 
-This endpoint will use `ValidateCAPIRefreshTokenAccessHandler("capi-refresh-token")` to check the `capi-refresh-token` header to match against the token in the `/capi/etc/refresh-token` file.
+```go
+// SnapRefreshStatusRequest is the request message for the SnapRefreshStatus RPC.
+type SnapRefreshStatusRequest struct {
+	// The change id belonging to a snap refresh/install operation.
+	ChangeID string `json:"changeId"`
+}
+
+// SnapRefreshStatusResponse is the response message for the SnapRefreshStatus RPC.
+type SnapRefreshStatusResponse struct {
+	// Status is the status of the snap refresh/install operation.
+	Status string `json:"status"`
+	// Completed is a boolean indicating if the snap refresh/install operation has completed.
+	// The status should be considered final when this is true.
+	Completed bool `json:"completed"`
+	// ErrorMessage is the error message if the snap refresh/install operation failed.
+	ErrorMessage string `json:"errorMessage"`
+}
+```
+`POST /snap/refresh-status` returns the status of the refresh operation for the given change id.
+
+The operation is considered fully complete once `Completed=true`.
+
+The `Status` field will contain the status of the operation, with `Done` and `Error` being statuses of interest.
+
+The `ErrorMessage` field is populated if the operation could not be completed successfully.
+
+
+### Node Token Authentication 
+
+A node token per node will be generated at bootstrap time, which gets seeded into the node under the `/capi/etc/node-token` file. On bootstrap the token under `/capi/etc/node-token` will be copied over to `/var/snap/k8s/common/node-token` with the help of `k8s x-capi set-node-token <token>` command. The generated token will be stored on the management cluster in the `$clustername-token` secret, with keys formatted as `refresh-token::$nodename`. 
+
+The endpoints will use `ValidateNodeTokenAccessHandler("node-token")` to check the `node-token` header to match against the token in the `/var/snap/k8s/common/node-token` file.
+
 
 ## Bootstrap Provider Changes
 <!--
 This section MUST mention any changes to the bootstrap provider.
 -->
 
-A machine controller called `MachineReconciler` is added which would perform the in-place upgrade if `k8sd.io/in-place-upgrade-to` annotation is set on the machine.
+A machine controller called `MachineReconciler` is added which would perform the in-place upgrade if `v1beta2.k8sd.io/in-place-upgrade-to` annotation is set on the machine.
 
-The controller would use the value of this annotation to make an endpoint call to the `/x/capi/snap-refresh` through `k8sd-proxy`. 
+The controller would use the value of this annotation to make an endpoint call to the `/snap/refresh` through `k8sd-proxy`. The controller then would periodically query the `/snap/refresh-status` with the change id of the operation until the operation fully is completed(`Completed=true`).
 
-The result of this operation will be communicated back to the user via the `k8sd.io/in-place-upgrade-status` annotation. Values being:
+A failed request to `/snap/refresh` endpoint would requeue the requested upgrade without setting any annotations.
+
+The result of the refresh operation will be communicated back to the user via the `v1beta2.k8sd.io/in-place-upgrade-status` annotation. Values being:
 
 * `in-progress` for an upgrade currently in progress
 * `done` for a successful upgrade
 * `failed` for a failed upgrade
 
 After an upgrade process begins:
-* `k8sd.io/in-place-upgrade-status` annotation on the `Machine` would be added/updated with `in-progress`
+* `v1beta2.k8sd.io/in-place-upgrade-status` annotation on the `Machine` would be added/updated with `in-progress`
+* `v1beta2.k8sd.io/in-place-upgrade-change-id` annotation on the `Machine` would be updated with the change id returned from the refresh response.
 * An `InPlaceUpgradeInProgress` event is added to the `Machine` with the `Performing in place upgrade with {upgrade-option}` message.
 
 After a successfull upgrade:
-* `k8sd.io/in-place-upgrade-to` annotation on the `Machine` would be removed
-* `k8sd.io/in-place-upgrade-release` annotation on the `Machine` would be added/updated with the used `{upgrade-option}`.
-* `k8sd.io/in-place-upgrade-status` annotation on the `Machine` would be added/updated with `done`
+* `v1beta2.k8sd.io/in-place-upgrade-to` annotation on the `Machine` would be removed
+* `v1beta2.k8sd.io/in-place-change-id` annotation on the `Machine` would be removed
+* `v1beta2.k8sd.io/in-place-upgrade-release` annotation on the `Machine` would be added/updated with the used `{upgrade-option}`.
+* `v1beta2.k8sd.io/in-place-upgrade-status` annotation on the `Machine` would be added/updated with `done`
 * An `InPlaceUpgradeDone` event is added to the `Machine` with the `Successfully performed in place upgrade with {upgrade-option}` message.
 
 After a failed upgrade:
-* `k8sd.io/in-place-upgrade-status` annotation on the `Machine` would be added/updated with `failed`
+* `v1beta2.k8sd.io/in-place-upgrade-status` annotation on the `Machine` would be added/updated with `failed`
+* `v1beta2.k8sd.io/in-place-change-id` annotation on the `Machine` would be removed
 * An `InPlaceUpgradeFailed` event is added to the `Machine` with the `Failed to perform in place upgrade with option {upgrade-option}: {error}` message.
 
 A custom condition with type `InPlaceUpgradeStatus` can also be added to relay these information. 
 
-The reconciler should ignore the upgrade if `k8sd.io/in-place-upgrade-status` is already set to `in-progress` on the machine. The reconciler should also perform the upgrades one by one, requeuing other requests if an in-place upgrade is already in progress.
+The reconciler should not trigger the upgrade endpoint if `v1beta2.k8sd.io/in-place-upgrade-status` is already set to `in-progress` on the machine. Instead
 
 #### Changes for Rolling Upgrades, Scaling Up and Creating New Machines
-In case of a rolling upgrade or when creating new machines the `CK8sConfigReconciler` should check for the `k8sd.io/in-place-upgrade-release` annotation both on the `Machine` and on the owner `Cluster` object.
+In case of a rolling upgrade or when creating new machines the `CK8sConfigReconciler` should check for the `v1beta2.k8sd.io/in-place-upgrade-release` annotation both on the `Machine` object.
 
-The value of one of these annotations should be used instead of the `version` field while generating a cloud-init script for a machine. The precedence of version fields are:
-1. Annotation on the `Machine`
-2. Annotation on the `Cluster`
-3. The `version` field
-
-Which means the value from the annotation on the `Machine` would be used first if found.
+The value of one of the annotation should be used instead of the `version` field while generating a cloud-init script for a machine.
 
 Using an annotation value requires changing the `install.sh` file to perform the relevant snap operation based on the option.
 * `snap install k8s --classic --channel <channel>` for `Channel`
@@ -234,14 +272,13 @@ updated (e.g. command outputs).
 <!--
 This section MUST explain how the new feature will be tested.
 -->
-The new feature can be tested manually by applying an annotation on the machine/node, waiting for the process to finish by checking for the `k8sd.io/in-place-upgrade-status` annotation and then checking for the version of the node through the Kubernetes API e.g. `kubectl get node`. A timeout should be set for waiting on the upgrade process.
+The new feature can be tested manually by applying an annotation on the machine/node and checking for the `v1beta2.k8sd.io/in-place-upgrade-status` annotation's value to be `done`. A timeout should be set for waiting on the upgrade process.
 
 The tests can be integrated into the CI the same way with the CAPD infrastructure provider.
 
 The upgrade should be performed with the `localPath` option. Under Pebble the process would replace the `kubernetes` binary with the binary provided in the annotation value.
 
 This means a docker image containing 2 versions should be created. The different/new version of the `kubernetes` binary would also be built and put into a path.
-
 
 ## Considerations for backwards compatibility
 <!--
