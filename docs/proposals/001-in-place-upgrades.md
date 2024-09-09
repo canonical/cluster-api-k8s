@@ -1,8 +1,3 @@
-<!--
-To start a new proposal, create a copy of this template on this directory and
-fill out the sections below.
--->
-
 # Proposal information
 
 <!-- Index number -->
@@ -41,7 +36,7 @@ You can also provide examples of how this feature may be used.
 
 The current Cluster API implementation does not provide a way of updating machines in-place and instead follows a rolling upgrade strategy. 
 
-This means that a version upgrade would trigger a rolling upgrade, which is the process of creating new machines with desired configuration and removing older ones. This strategy is acceptable in most-cases for clusters that are provisioned on public or private clouds where having extra resources are not a concern.
+This means that a version upgrade would trigger a rolling upgrade, which is the process of creating new machines with desired configuration and removing older ones. This strategy is acceptable in most cases for clusters that are provisioned on public or private clouds where having extra resources is not a concern.
 
 However this strategy is not viable for smaller bare-metal or edge deployments where resources are limited. This makes Cluster API not suitable out of the box for most of the use cases in industries like telco.
 
@@ -73,7 +68,7 @@ should be considered. If required, add more details about why these alternative
 solutions were discarded.
 -->
 
-We could alternatively use the `version` fields defined in `ControlPlane` and `MachineDeployment` manifests instead of annotations which could be a better/more native user experience.
+We could alternatively use the `version` fields defined in `CK8sControlPlane` and `MachineDeployment` manifests instead of annotations which could be a better/more native user experience.
 
 However at the time of writing CAPI does not have support for changing upgrade strategies which means changes to the `version` fields trigger a rolling update.
 
@@ -195,7 +190,7 @@ This section MUST mention any changes to the bootstrap provider.
 
 A machine controller called `MachineReconciler` is added which would perform the in-place upgrade if `v1beta2.k8sd.io/in-place-upgrade-to` annotation is set on the machine.
 
-The controller would use the value of this annotation to make an endpoint call to the `/snap/refresh` through `k8sd-proxy`. The controller then would periodically query the `/snap/refresh-status` with the change id of the operation until the operation fully is completed(`Completed=true`).
+The controller would use the value of this annotation to make an endpoint call to the `/snap/refresh` through `k8sd-proxy`. The controller then would periodically query the `/snap/refresh-status` with the change id of the operation until the operation is fully completed(`Completed=true`).
 
 A failed request to `/snap/refresh` endpoint would requeue the requested upgrade without setting any annotations.
 
@@ -224,7 +219,7 @@ After a failed upgrade:
 
 A custom condition with type `InPlaceUpgradeStatus` can also be added to relay these information. 
 
-The reconciler should not trigger the upgrade endpoint if `v1beta2.k8sd.io/in-place-upgrade-status` is already set to `in-progress` on the machine. Instead
+The reconciler should not trigger the upgrade endpoint if `v1beta2.k8sd.io/in-place-upgrade-status` is already set to `in-progress` on the machine.
 
 #### Changes for Rolling Upgrades, Scaling Up and Creating New Machines
 In case of a rolling upgrade or when creating new machines the `CK8sConfigReconciler` should check for the `v1beta2.k8sd.io/in-place-upgrade-release` annotation both on the `Machine` object.
