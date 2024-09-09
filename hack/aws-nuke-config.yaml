@@ -1,25 +1,96 @@
 regions:
   - us-east-2
 
-account-blocklist:
-  - "<your prod account number>"
+blocklist:
+  - "999999999999" # A blocklist is required, but this is a placeholder
 
 accounts:
-  "<your account number>": {}
-
+  018302341396: # AWS Account IDs are not considered sensitive information
+    filters:
+        EC2Instance:
+          - property: "tag:sigs.k8s.io/cluster-api-provider-aws/cluster/capick8s-*"
+            type: "glob"
+            invert: true
+        EC2SecurityGroup:
+          - property: "tag:sigs.k8s.io/cluster-api-provider-aws/cluster/capick8s-*"
+            type: "glob"
+            invert: true
+        EC2Volume:
+          - property: "tag:sigs.k8s.io/cluster-api-provider-aws/cluster/capick8s-*"
+            type: "glob"
+            invert: true
+        EC2InternetGateway:
+          - property: "tag:sigs.k8s.io/cluster-api-provider-aws/cluster/capick8s-*"
+            type: "glob"
+            invert: true
+        EC2NATGateway:
+          - property: "tag:sigs.k8s.io/cluster-api-provider-aws/cluster/capick8s-*"
+            type: "glob"
+            invert: true
+        EC2RouteTable:
+          - property: "tag:sigs.k8s.io/cluster-api-provider-aws/cluster/capick8s-*"
+            type: "glob"
+            invert: true
+        EC2Subnet:
+          - property: "tag:sigs.k8s.io/cluster-api-provider-aws/cluster/capick8s-*"
+            type: "glob"
+            invert: true
+        EC2VPC:
+          - property: "tag:sigs.k8s.io/cluster-api-provider-aws/cluster/capick8s-*"
+            type: "glob"
+            invert: true
+        EC2VPCEndpoint:
+          - property: "tag:sigs.k8s.io/cluster-api-provider-aws/cluster/capick8s-*"
+            type: "glob"
+            invert: true
+        EC2VPCEndpointServiceConfiguration:
+          - property: "tag:sigs.k8s.io/cluster-api-provider-aws/cluster/capick8s-*"
+            type: "glob"
+            invert: true
+        EC2ElasticIP:
+          - property: "tag:sigs.k8s.io/cluster-api-provider-aws/cluster/capick8s-*"
+            type: "glob"
+            invert: true
+        EC2NetworkInterface:
+          - property: "tag:sigs.k8s.io/cluster-api-provider-aws/cluster/capick8s-*"
+            type: "glob"
+            invert: true
+        ELBv2:
+          - property: "tag:sigs.k8s.io/cluster-api-provider-aws/cluster/capick8s-*"
+            type: "glob"
+            invert: true
+        ELBv2TargetGroup:
+          - property: "tag:sigs.k8s.io/cluster-api-provider-aws/cluster/capick8s-*"
+            type: "glob"
+            invert: true
+        S3Bucket:
+          - property: "tag:sigs.k8s.io/cluster-api-provider-aws/cluster/capick8s-*"
+            type: "glob"
+            invert: true
+        AutoScalingGroup:
+          - property: "tag:sigs.k8s.io/cluster-api-provider-aws/cluster/capick8s-*"
+            type: "glob"
+            invert: true
+        AutoScalingLaunchConfiguration:
+          - property: "tag:sigs.k8s.io/cluster-api-provider-aws/cluster/capick8s-*"
+            type: "glob"
+            invert: true
 resource-types:
-  targets:
-  - EC2Instance
-  - EC2SecurityGroup
-  - EC2Volume
-  - EC2InternetGateway
-  - EC2NATGateway
-  - EC2RouteTable
-  - EC2Subnet
-  - EC2VPC
-  - EC2VPCEndpoint
-  - EC2VPCEndpointServiceConfiguration
-  - EC2ElasticIP
-  - EC2NetworkInterface
-  - ELBv2
-  - ELBv2TargetGroup
+    includes:
+    - EC2Instance
+    - EC2SecurityGroup
+    - EC2Volume
+    - EC2InternetGateway
+    - EC2NATGateway
+    - EC2RouteTable
+    - EC2Subnet
+    - EC2VPC
+    - EC2VPCEndpoint
+    - EC2VPCEndpointServiceConfiguration
+    - EC2ElasticIP
+    - EC2NetworkInterface
+    - ELBv2
+    - ELBv2TargetGroup
+    - S3Bucket
+    - AutoScalingGroup
+    - AutoScalingLaunchConfiguration

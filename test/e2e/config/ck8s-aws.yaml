@@ -32,7 +32,7 @@ providers:
       # By default, will use the latest version defined in ../data/shared/v1beta1/metadata.yaml
       # to init the management cluster
       - name: v2.6.1 # used during e2e-test
-        value: "../../../../cluster-api-provider-aws/config/default"
+        value: "../../../../cluster-api-provider-aws/config/default" # TODO don't use relative path
         contract: v1beta2
         files:
           - sourcePath: "../data/shared/v1beta1_aws/metadata.yaml"
@@ -46,7 +46,7 @@ providers:
       # default version for docker infrastructure provider
       # name here should match defaultProviderVersion
       - name: v1.9.99
-        value: "../../../../cluster-api-provider-aws/config/default"
+        value: "../../../../cluster-api-provider-aws/config/default" # TODO don't use relative path
         contract: v1beta2
         files:
           - sourcePath: "../data/shared/v1beta1_aws/metadata.yaml"
@@ -95,7 +95,7 @@ variables:
   AWS_NODE_INSTANCE_TYPE: t3.large
   AWS_PUBLIC_IP: false
   AWS_CREATE_BASTION: true
-  AWS_SSH_KEY_NAME: "etienne"
+  AWS_SSH_KEY_NAME: ""
   AWS_AMI_ID: "ami-05145146e3a9db6f3"
   AWS_CONTROL_PLANE_ROOT_VOLUME_SIZE: 16
   AWS_NODE_ROOT_VOLUME_SIZE: 16

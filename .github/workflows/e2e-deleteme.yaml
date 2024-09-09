@@ -5,11 +5,12 @@ on:
 
 permissions:
   contents: read
+  id-token: write
 
 jobs:
   run-e2e-tests:
     name: Run E2E Tests
-    runs-on: [self-hosted, linux, X64, jammy, large]
+    runs-on: ubuntu-latest
     strategy:
       matrix:
         ginkgo_focus:
@@ -19,8 +20,19 @@ jobs:
           #- "Workload cluster scaling"
           #- "Workload cluster upgrade"
     steps:
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          audience: sts.amazonaws.com
+          aws-region: us-east-2
+          role-to-assume: arn:aws:iam::018302341396:role/GithubOIDC
+          role-duration-seconds: 3600
       - name: Check out repo
         uses: actions/checkout@v4
+      - name: Setup tmate session
+        uses: mxschmitt/action-tmate@v3
+        with:
+          detached: true
       - name: Install requirements
         run: |
           sudo apt install make
@@ -35,7 +47,3 @@ jobs:
           sudo -E ./hack/ci-e2e-tests.sh true aws v0.1.2
         env:
           GOPROXY: direct
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          AWS_ACCOUNT_ID: ${{ secrets.AWS_ACCOUNT_ID }}
-          AWS_REGION: us-east-2
