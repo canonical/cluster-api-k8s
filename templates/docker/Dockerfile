@@ -37,6 +37,7 @@ ARG REPO=https://github.com/canonical/k8s-snap
 ARG BRANCH=main
 
 ARG KUBERNETES_VERSION=""
+# This is used to build the kubernetes version to upgrade when testing in place upgrades
 ARG KUBERNETES_VERSION_UPGRADE_TO=""
 
 ## NOTE(neoaggelos): install dependencies needed to build the tools
