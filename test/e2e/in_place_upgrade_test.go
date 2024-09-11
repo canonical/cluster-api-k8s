@@ -48,7 +48,7 @@ var _ = Describe("In place upgrade", func() {
 		Expect(e2eConfig.Variables).To(HaveKey(KubernetesVersion))
 
 		clusterName = fmt.Sprintf("capick8s-in-place-%s", util.RandomString(6))
-		infrastructureProvider = "docker"
+		infrastructureProvider = clusterctl.DefaultInfrastructureProvider
 
 		// Setup a Namespace where to host objects for this spec and create a watcher for the namespace events.
 		namespace, cancelWatches = setupSpecNamespace(ctx, specName, bootstrapClusterProxy, artifactFolder)
@@ -102,6 +102,7 @@ var _ = Describe("In place upgrade", func() {
 				Getter:                  bootstrapProxyClient,
 				ClusterProxy:            bootstrapClusterProxy,
 				Cluster:                 result.Cluster,
+				UpgradeOption:           e2eConfig.GetVariable(InPlaceUpgradeOption),
 				WaitForUpgradeIntervals: e2eConfig.GetIntervals(specName, "wait-machine-upgrade"),
 			})
 
@@ -112,6 +113,7 @@ var _ = Describe("In place upgrade", func() {
 				ClusterProxy:            bootstrapClusterProxy,
 				Cluster:                 result.Cluster,
 				WaitForUpgradeIntervals: e2eConfig.GetIntervals(specName, "wait-machine-upgrade"),
+				UpgradeOption:           e2eConfig.GetVariable(InPlaceUpgradeOption),
 				MachineDeployments:      result.MachineDeployments,
 			})
 		})

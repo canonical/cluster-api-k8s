@@ -89,6 +89,7 @@ variables:
   KUBERNETES_VERSION_UPGRADE_TO: "v1.30.3"
   IP_FAMILY: "IPv4"
   KIND_IMAGE_VERSION: "v1.28.0"
+  IN_PLACE_UPGRADE_OPTION: "localPath=/k8s/upgrade/bin/kubernetes"
 
 intervals:
   # The array is defined as [timeout, polling interval]

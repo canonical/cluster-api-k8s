@@ -557,10 +557,16 @@ type ApplyInPlaceUpgradeAndWaitInput struct {
 	Getter                  framework.Getter
 	Machine                 *clusterv1.Machine
 	ClusterProxy            framework.ClusterProxy
+	UpgradeOption           string
 	WaitForUpgradeIntervals []interface{}
 }
 
 func ApplyInPlaceUpgradeAndWait(ctx context.Context, input ApplyInPlaceUpgradeAndWaitInput) {
+	Expect(ctx).NotTo(BeNil())
+	Expect(input.Machine).ToNot(BeNil())
+	Expect(input.ClusterProxy).ToNot(BeNil())
+	Expect(input.UpgradeOption).ToNot(BeEmpty())
+
 	mgmtClient := input.ClusterProxy.GetClient()
 
 	patchHelper, err := patch.NewHelper(input.Machine, mgmtClient)
@@ -571,7 +577,7 @@ func ApplyInPlaceUpgradeAndWait(ctx context.Context, input ApplyInPlaceUpgradeAn
 		mAnnotations = map[string]string{}
 	}
 
-	mAnnotations[bootstrapv1.InPlaceUpgradeToAnnotation] = "localPath=/k8s/upgrade/bin/kubernetes"
+	mAnnotations[bootstrapv1.InPlaceUpgradeToAnnotation] = input.UpgradeOption
 	input.Machine.SetAnnotations(mAnnotations)
 	err = patchHelper.Patch(ctx, input.Machine)
 	Expect(err).ToNot(HaveOccurred())
@@ -601,13 +607,15 @@ type ApplyInPlaceUpgradeForControlPlaneInput struct {
 	Getter                  framework.Getter
 	ClusterProxy            framework.ClusterProxy
 	Cluster                 *clusterv1.Cluster
+	UpgradeOption           string
 	WaitForUpgradeIntervals []interface{}
 }
 
 func ApplyInPlaceUpgradeForControlPlane(ctx context.Context, input ApplyInPlaceUpgradeForControlPlaneInput) {
-	Expect(ctx).NotTo(BeNil(), "ctx is required for ApplyInPlaceUpgrade")
-	Expect(input.ClusterProxy).ToNot(BeNil(), "Invalid argument. input.ClusterProxy can't be nil when calling ApplyInPlaceUpgradeForControlPlane")
-	Expect(input.Cluster).ToNot(BeNil(), "Invalid argument. input.Cluster can't be nil when calling ApplyInPlaceUpgradeForControlPlane")
+	Expect(ctx).NotTo(BeNil())
+	Expect(input.ClusterProxy).ToNot(BeNil())
+	Expect(input.Cluster).ToNot(BeNil())
+	Expect(input.UpgradeOption).ToNot(BeEmpty())
 
 	// Look up all the control plane machines.
 	inClustersNamespaceListOption := client.InNamespace(input.Cluster.Namespace)
@@ -626,6 +634,7 @@ func ApplyInPlaceUpgradeForControlPlane(ctx context.Context, input ApplyInPlaceU
 			Getter:                  input.Getter,
 			Machine:                 &machine,
 			ClusterProxy:            input.ClusterProxy,
+			UpgradeOption:           input.UpgradeOption,
 			WaitForUpgradeIntervals: input.WaitForUpgradeIntervals,
 		})
 	}
@@ -637,14 +646,16 @@ type ApplyInPlaceUpgradeForWorkerInput struct {
 	ClusterProxy            framework.ClusterProxy
 	Cluster                 *clusterv1.Cluster
 	MachineDeployments      []*clusterv1.MachineDeployment
+	UpgradeOption           string
 	WaitForUpgradeIntervals []interface{}
 }
 
 func ApplyInPlaceUpgradeForWorker(ctx context.Context, input ApplyInPlaceUpgradeForWorkerInput) {
-	Expect(ctx).NotTo(BeNil(), "ctx is required for ApplyInPlaceUpgrade")
-	Expect(input.ClusterProxy).ToNot(BeNil(), "Invalid argument. input.ClusterProxy can't be nil when calling ApplyInPlaceUpgradeForWorker")
-	Expect(input.Cluster).ToNot(BeNil(), "Invalid argument. input.Cluster can't be nil when calling ApplyInPlaceUpgradeForWorker")
-	Expect(input.MachineDeployments).ToNot(BeNil(), "Invalid argument. input.MachineDeployments can't be nil when calling ApplyInPlaceUpgradeForWorker")
+	Expect(ctx).NotTo(BeNil())
+	Expect(input.ClusterProxy).ToNot(BeNil())
+	Expect(input.Cluster).ToNot(BeNil())
+	Expect(input.MachineDeployments).ToNot(BeNil())
+	Expect(input.UpgradeOption).ToNot(BeEmpty())
 
 	for _, md := range input.MachineDeployments {
 		// Look up all the control plane machines.
@@ -664,6 +675,7 @@ func ApplyInPlaceUpgradeForWorker(ctx context.Context, input ApplyInPlaceUpgrade
 				Getter:                  input.Getter,
 				Machine:                 &machine,
 				ClusterProxy:            input.ClusterProxy,
+				UpgradeOption:           input.UpgradeOption,
 				WaitForUpgradeIntervals: input.WaitForUpgradeIntervals,
 			})
 		}
