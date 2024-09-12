@@ -4,7 +4,7 @@
 - **Index**: 001
 
 <!-- Status -->
-- **Status**: **DRAFTING** <!-- **DRAFTING**/**ACCEPTED**/**REJECTED** -->
+- **Status**: **ACCEPTED** <!-- **DRAFTING**/**ACCEPTED**/**REJECTED** -->
 
 <!-- Short description for the feature -->
 - **Name**: ClusterAPI In-Place Upgrades
