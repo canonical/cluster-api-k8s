@@ -32,7 +32,7 @@ providers:
       # By default, will use the latest version defined in ../data/shared/v1beta1/metadata.yaml
       # to init the management cluster
       - name: v2.6.1 # used during e2e-test
-        value: "../../../../cluster-api-provider-aws/config/default" # TODO don't use relative path
+        value: "../../../../cluster-api-provider-aws/config/default" # TODO don't use relative path?
         contract: v1beta2
         files:
           - sourcePath: "../data/shared/v1beta1_aws/metadata.yaml"
@@ -85,6 +85,7 @@ providers:
       - sourcePath: "../../../metadata.yaml"
         targetName: "metadata.yaml"
 
+# These variables replace the variables in test/e2e/data/infrastructure-aws manifests
 variables:
   KUBERNETES_VERSION_MANAGEMENT: "v1.30.0"
   KUBERNETES_VERSION: "v1.30.0"
@@ -102,13 +103,14 @@ variables:
   AWS_REGION: "us-east-2"
   AWS_CCM_IMAGE: "registry.k8s.io/provider-aws/cloud-controller-manager:v1.30.0"
   # https://github.com/kubernetes-sigs/cluster-api-provider-aws/blob/main/test/e2e/data/e2e_conf.yaml#L203C1-L205C27
+  # There is some work to be done here on figuring out which experimental features
+  # we want to enable/disable.
   EXP_CLUSTER_RESOURCE_SET: "true"
   #EXP_RUNTIME_SDK: "true"
   EXP_MACHINE_SET_PREFLIGHT_CHECKS: "false"
   #EXP_MACHINE_POOL: "true"
   #CLUSTER_TOPOLOGY: "true"
   CAPA_LOGLEVEL: "4"
-
 
 intervals:
   # copied from https://github.com/kubernetes-sigs/cluster-api-provider-aws/blob/main/test/e2e/data/e2e_conf.yaml
