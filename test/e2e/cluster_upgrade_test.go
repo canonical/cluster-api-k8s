@@ -25,23 +25,6 @@ import (
 )
 
 var _ = Describe("Workload cluster upgrade [CK8s-Upgrade]", func() {
-	// Skipping this test as in-place upgrades are not supported yet.
-	// TODO(ben): Remove this skip when in-place upgrades are supported.
-	//Context("Upgrading a cluster with 1 control plane", func() {
-	/* 			ClusterUpgradeSpec(ctx, func() ClusterUpgradeSpecInput {
-			return ClusterUpgradeSpecInput{
-				E2EConfig:                e2eConfig,
-				ClusterctlConfigPath:     clusterctlConfigPath,
-				BootstrapClusterProxy:    bootstrapClusterProxy,
-				ArtifactFolder:           artifactFolder,
-				SkipCleanup:              skipCleanup,
-				InfrastructureProvider:   ptr.To("docker"),
-				ControlPlaneMachineCount: ptr.To[int64](1),
-				WorkerMachineCount:       ptr.To[int64](2),
-			}
-	}) */
-	//})
-
 	Context("Upgrading a cluster with HA control plane", func() {
 		ClusterUpgradeSpec(ctx, func() ClusterUpgradeSpecInput {
 			return ClusterUpgradeSpecInput{

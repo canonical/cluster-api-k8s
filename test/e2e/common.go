@@ -41,6 +41,7 @@ const (
 	CPMachineTemplateUpgradeTo      = "CONTROL_PLANE_MACHINE_TEMPLATE_UPGRADE_TO"
 	WorkersMachineTemplateUpgradeTo = "WORKERS_MACHINE_TEMPLATE_UPGRADE_TO"
 	IPFamily                        = "IP_FAMILY"
+	InPlaceUpgradeOption            = "IN_PLACE_UPGRADE_OPTION"
 	KindImageVersion                = "KIND_IMAGE_VERSION"
 )
 

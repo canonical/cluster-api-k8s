@@ -40,6 +40,7 @@ import (
 	"sigs.k8s.io/cluster-api/util/patch"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
+	bootstrapv1 "github.com/canonical/cluster-api-k8s/bootstrap/api/v1beta2"
 	controlplanev1 "github.com/canonical/cluster-api-k8s/controlplane/api/v1beta2"
 )
 
@@ -550,6 +551,135 @@ func WaitForControlPlaneAndMachinesReady(ctx context.Context, input WaitForContr
 		Lister:  input.GetLister,
 		Cluster: input.Cluster,
 	})
+}
+
+type ApplyInPlaceUpgradeAndWaitInput struct {
+	Getter                  framework.Getter
+	Machine                 *clusterv1.Machine
+	ClusterProxy            framework.ClusterProxy
+	UpgradeOption           string
+	WaitForUpgradeIntervals []interface{}
+}
+
+func ApplyInPlaceUpgradeAndWait(ctx context.Context, input ApplyInPlaceUpgradeAndWaitInput) {
+	Expect(ctx).NotTo(BeNil())
+	Expect(input.Machine).ToNot(BeNil())
+	Expect(input.ClusterProxy).ToNot(BeNil())
+	Expect(input.UpgradeOption).ToNot(BeEmpty())
+
+	mgmtClient := input.ClusterProxy.GetClient()
+
+	patchHelper, err := patch.NewHelper(input.Machine, mgmtClient)
+	Expect(err).ToNot(HaveOccurred())
+	mAnnotations := input.Machine.GetAnnotations()
+
+	if mAnnotations == nil {
+		mAnnotations = map[string]string{}
+	}
+
+	mAnnotations[bootstrapv1.InPlaceUpgradeToAnnotation] = input.UpgradeOption
+	input.Machine.SetAnnotations(mAnnotations)
+	err = patchHelper.Patch(ctx, input.Machine)
+	Expect(err).ToNot(HaveOccurred())
+
+	By("Checking for in-place upgrade status to be equal to done")
+
+	Eventually(func() (bool, error) {
+		um := &clusterv1.Machine{}
+		if err := input.Getter.Get(ctx, client.ObjectKey{Namespace: input.Machine.Namespace, Name: input.Machine.Name}, um); err != nil {
+			Byf("Failed to get the machine: %+v", err)
+			return false, err
+		}
+
+		mAnnotations := um.GetAnnotations()
+
+		status, ok := mAnnotations[bootstrapv1.InPlaceUpgradeStatusAnnotation]
+		if !ok {
+			return false, nil
+		}
+
+		return status == bootstrapv1.InPlaceUpgradeDoneStatus, nil
+	}, input.WaitForUpgradeIntervals...).Should(BeTrue(), "In-place upgrade failed for %s", input.Machine.Name)
+}
+
+type ApplyInPlaceUpgradeForControlPlaneInput struct {
+	Lister                  framework.Lister
+	Getter                  framework.Getter
+	ClusterProxy            framework.ClusterProxy
+	Cluster                 *clusterv1.Cluster
+	UpgradeOption           string
+	WaitForUpgradeIntervals []interface{}
+}
+
+func ApplyInPlaceUpgradeForControlPlane(ctx context.Context, input ApplyInPlaceUpgradeForControlPlaneInput) {
+	Expect(ctx).NotTo(BeNil())
+	Expect(input.ClusterProxy).ToNot(BeNil())
+	Expect(input.Cluster).ToNot(BeNil())
+	Expect(input.UpgradeOption).ToNot(BeEmpty())
+
+	// Look up all the control plane machines.
+	inClustersNamespaceListOption := client.InNamespace(input.Cluster.Namespace)
+	matchClusterListOption := client.MatchingLabels{
+		clusterv1.ClusterNameLabel:         input.Cluster.Name,
+		clusterv1.MachineControlPlaneLabel: "",
+	}
+
+	machineList := &clusterv1.MachineList{}
+	Eventually(func() error {
+		return input.Lister.List(ctx, machineList, inClustersNamespaceListOption, matchClusterListOption)
+	}, retryableOperationTimeout, retryableOperationInterval).Should(Succeed(), "Couldn't list control-plane machines for the cluster %q", input.Cluster.Name)
+
+	for _, machine := range machineList.Items {
+		ApplyInPlaceUpgradeAndWait(ctx, ApplyInPlaceUpgradeAndWaitInput{
+			Getter:                  input.Getter,
+			Machine:                 &machine,
+			ClusterProxy:            input.ClusterProxy,
+			UpgradeOption:           input.UpgradeOption,
+			WaitForUpgradeIntervals: input.WaitForUpgradeIntervals,
+		})
+	}
+}
+
+type ApplyInPlaceUpgradeForWorkerInput struct {
+	Lister                  framework.Lister
+	Getter                  framework.Getter
+	ClusterProxy            framework.ClusterProxy
+	Cluster                 *clusterv1.Cluster
+	MachineDeployments      []*clusterv1.MachineDeployment
+	UpgradeOption           string
+	WaitForUpgradeIntervals []interface{}
+}
+
+func ApplyInPlaceUpgradeForWorker(ctx context.Context, input ApplyInPlaceUpgradeForWorkerInput) {
+	Expect(ctx).NotTo(BeNil())
+	Expect(input.ClusterProxy).ToNot(BeNil())
+	Expect(input.Cluster).ToNot(BeNil())
+	Expect(input.MachineDeployments).ToNot(BeNil())
+	Expect(input.UpgradeOption).ToNot(BeEmpty())
+
+	for _, md := range input.MachineDeployments {
+		// Look up all the control plane machines.
+		inClustersNamespaceListOption := client.InNamespace(input.Cluster.Namespace)
+		matchClusterListOption := client.MatchingLabels{
+			clusterv1.ClusterNameLabel:           input.Cluster.Name,
+			clusterv1.MachineDeploymentNameLabel: md.Name,
+		}
+
+		machineList := &clusterv1.MachineList{}
+		Eventually(func() error {
+			return input.Lister.List(ctx, machineList, inClustersNamespaceListOption, matchClusterListOption)
+		}, retryableOperationTimeout, retryableOperationInterval).Should(Succeed(), "Couldn't list control-plane machines for the cluster %q", input.Cluster.Name)
+
+		for _, machine := range machineList.Items {
+			ApplyInPlaceUpgradeAndWait(ctx, ApplyInPlaceUpgradeAndWaitInput{
+				Getter:                  input.Getter,
+				Machine:                 &machine,
+				ClusterProxy:            input.ClusterProxy,
+				UpgradeOption:           input.UpgradeOption,
+				WaitForUpgradeIntervals: input.WaitForUpgradeIntervals,
+			})
+		}
+	}
 }
 
 // UpgradeControlPlaneAndWaitForUpgradeInput is the input type for UpgradeControlPlaneAndWaitForUpgrade.
