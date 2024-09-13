@@ -417,6 +417,7 @@ func WaitForControlPlaneToBeReady(ctx context.Context, input WaitForControlPlane
 			Namespace: input.ControlPlane.GetNamespace(),
 			Name:      input.ControlPlane.GetName(),
 		}
+		Byf("Getting the control plane %s", klog.KObj(input.ControlPlane))
 		if err := input.Getter.Get(ctx, key, controlplane); err != nil {
 			return false, errors.Wrapf(err, "failed to get KCP")
 		}
@@ -431,6 +432,7 @@ func WaitForControlPlaneToBeReady(ctx context.Context, input WaitForControlPlane
 		// * .spec.replicas, .status.replicas, .status.updatedReplicas,
 		//   .status.readyReplicas are not equal and
 		// * unavailableReplicas > 0
+		Byf("Control plane %s: desired=%d, status=%d, updated=%d, ready=%d, unavailable=%d", klog.KObj(controlplane), *desiredReplicas, statusReplicas, updatedReplicas, readyReplicas, unavailableReplicas)
 		if statusReplicas != *desiredReplicas ||
 			updatedReplicas != *desiredReplicas ||
 			readyReplicas != *desiredReplicas ||

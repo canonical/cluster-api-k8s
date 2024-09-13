@@ -93,10 +93,10 @@ jobs:
       - name: Load provider image
         run: sudo docker load -i provider-images.tar
       - name: Load k8s-snap old image
-        if: matrix.ginkgo_focus == 'Workload cluster upgrade'
         run: |
           sudo docker load -i k8s-snap-image-old.tar
       - name: Load k8s-snap new image
+        if: matrix.ginkgo_focus == 'Workload cluster upgrade'
         run: |
           sudo docker load -i k8s-snap-image-new.tar
       - name: Create docker network
