@@ -34,8 +34,7 @@ You can do this by describing user scenarios, and how this feature helps them.
 You can also provide examples of how this feature may be used.
 -->
 
-Currently, cluster-wide rolling upgrades are supported natively by CAPI. By changing the `version` field of control plane or worker nodes, one is able to effortlessly upgrade the kubernetes version of the whole cluster in a rolling manner. Having dedicated controllers in charge of the cluster-wide in-place upgrades for control planes and workers is intended to facilitate this process and gracefully handle any failure that might occur. 
-
+Currently, although single machine in-place upgrade is supported by CK8s, upgrading a cluster with many machines require a lot of manual effort. Having the ability to do an in-place upgrade for every control plane machine, every worker machine or every machine in the cluster with a single command can lead to noticable reductions in administrative headaches. 
 
 ## User facing changes
 <!--
@@ -57,6 +56,8 @@ solutions were discarded.
 -->
 
 - Support for single machine and cluster-wide in-place upgrade can also be added to the upstream CAPI.
+    - This solution was discarded because it takes a significant amount of work which sounds unreasonable right now for us.
+    - Also there is [an ongoing proposal to support in-place upgrades in the upstream CAPI] 
 
 ## Out of scope
 <!--
@@ -97,7 +98,7 @@ none
 This section MUST mention any changes to the controlplane provider.
 -->
 
-`ControlPlaneReconciler` will watch for the `v1beta2.k8sd.io/in-place-upgrade-to` annotation on the `CK8sControlPlane` and will trigger rolling upgrades for every single control plane machine. Upon observing the `v1beta2.k8sd.io/in-place-upgrade-to` on `CK8sControlPlane` the flow will be like:
+`ControlPlaneReconciler` will watch for the `v1beta2.k8sd.io/in-place-upgrade-to` annotation on the `CK8sControlPlane` and will trigger in-place upgrades for every single control plane machine. Upon observing the `v1beta2.k8sd.io/in-place-upgrade-to` on `CK8sControlPlane` the flow will be like:
 
 1. List all the controlplane machines
 2. Apply `v1beta2.k8sd.io/in-place-upgrade-to` on one of the machines
@@ -253,6 +254,7 @@ In the `Reconcile()` function, the reconciler should watch the `v1beta2.k8sd.io/
 
 <!-- LINKS -->
 [the in-place upgrade proposal]: https://github.com/canonical/cluster-api-k8s/pull/30
+[an ongoing proposal to support in-place upgrades in the upstream CAPI]: https://github.com/kubernetes-sigs/cluster-api/pull/11029
 [bootstrap/machine_deployment_controller.go]: ../../bootstrap/machine_deployment_controller.go
 [pkg/ck8s/machine_getter.go]: ../../pkg/ck8s/machine_getter.go
 [bootstrap/main.go]: ../../bootstrap/main.go
