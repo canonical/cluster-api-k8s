@@ -4,7 +4,7 @@
 - **Index**: 002
 
 <!-- Status -->
-- **Status**: **DRAFTING**
+- **Status**: **ACCEPTED**
 
 <!-- Short description for the feature -->
 - **Name**: Cluster-wide In-place Upgrades
