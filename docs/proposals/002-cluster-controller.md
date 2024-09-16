@@ -252,6 +252,13 @@ In the `Reconcile()` function, the reconciler should watch the `v1beta2.k8sd.io/
     - In case of failure, annotate the `Cluster` with `v1beta2.k8sd.io/in-place-upgrade-status: failed` and remove the `v1beta2.k8sd.io/in-place-upgrade-to`
 - If observed `done` status on both `CK8sControlPlane` and `MachineDeployment` objects, annotation the `Cluster` with `v1beta2.k8sd.io/in-place-upgrade-status: done` and `v1beta2.k8sd.io/in-place-upgrade-release` and remove the `v1beta2.k8sd.io/in-place-upgrade-to`
 
+### Miscellaneous
+
+- When iterating the machines, make sure we skip the ones with the `v1beta2.k8sd.io/in-place-upgrade-release` which indicates that the upgrade is already performed on this machine.
+    - Also machines that are going through an upgrade should be ignored.
+- We should add events to the resources to indicate which machine is being worked on, which machine had a failed upgrade etc.
+- If we are not gonna retry the operation we should also make sure to remove the `v1beta2.k8sd.io/in-place-upgrade-to` annotation from the machine that failed since upgrade retries are done on the machine reconciler.
+
 <!-- LINKS -->
 [the in-place upgrade proposal]: https://github.com/canonical/cluster-api-k8s/pull/30
 [an ongoing proposal to support in-place upgrades in the upstream CAPI]: https://github.com/kubernetes-sigs/cluster-api/pull/11029
