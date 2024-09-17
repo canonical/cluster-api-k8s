@@ -6,7 +6,7 @@ fill out the sections below.
 # Proposal information
 
 <!-- Index number -->
-- **Index**: 002
+- **Index**: 003
 
 <!-- Status -->
 - **Status**: **DRAFTING**
@@ -74,12 +74,12 @@ triggering a full rolling update. This can be achieved by annotating the Machine
 object, which will initiate the certificate renewal process:
 
 ```
-kubectl annotate machine <machine-name> k8sd.io/refresh-certificates={expires-in}
+kubectl annotate machine <machine-name> v1beta2.k8sd.io/refresh-certificates={expires-in}
 ```
 
 `expires-in` specifies how long the certificate will remain valid. It can be
-expressed in years, months, days, or any other time unit supported by the
-`time.ParseDuration`.
+expressed in years, months, days, additionally to other time units supported by
+the `time.ParseDuration`.
 
 For tracking the validity of certificates, the Machine object will include a
 `machine.cluster.x-k8s.io/certificates-expiry` annotation that indicates the
@@ -155,11 +155,12 @@ APIs endpoints instead of breaking the existing APIs, such that API clients are
 not affected.
 -->
 
-### `GET /x/capi/certificates-expiry`
+### `GET /k8sd/certificates-expiry`
 
 This endpoint will return the expiry date of the certificates on a specific
 cluster node. The response will include the expiry date of the certificates
-in RFC3339 format.
+in RFC3339 format. The value will be sourced from the Kubernetes API server
+certificate.
 
 ```go
 type CertificatesExpiryResponse struct {
@@ -205,13 +206,13 @@ type RefreshCertificatesRequest struct {
 ### `POST /x/capi/approve-certificates`
 
 This endpoint will approve the renewal of certificates for a worker node and
-will be run by a control plane node. The request will include a list of the CSR
-names to approve, recovered from the `k8sd.io/refresh-certificates-csr-names`.
+will be run by a control plane node. The request will include the seed used to
+generate the CSR.
 
 ```go
 type ApproveCertificatesRequest struct {
-  // CertificateSigningRequests is a list of CSR names to approve.
-  CertificateSigningRequests []string `json:"certificate-signing-requests"`
+  // Seed is the seed used to generate the CSR.
+  Seed string `json:"seed"`
 }
 ```
 
@@ -221,60 +222,64 @@ This section MUST mention any changes to the bootstrap provider.
 -->
 
 A controller called `CertificatesController` will be added to the bootstrap
-provider. This controller will watch for the `k8sd.io/refresh-certificates`
+provider. This controller will watch for the `v1beta2.k8sd.io/refresh-certificates`
 annotation on the Machine object and trigger the certificate renewal process
 when the annotation is present.
 
 ### Control Plane Nodes
 
-The controller would use the value of the `k8sd.io/refresh-certificates` annotation
-to determine the duration after which the certificates will expire. It will then
-call the `POST /x/capi/refresh-certificates` endpoint to trigger the certificate
+The controller would use the value of the
+`v1beta2.k8sd.io/refresh-certificates`annotation to determine the duration
+after which the certificates will expire. It will then call the
+`POST /x/capi/refresh-certificates` endpoint to trigger the certificate
 renewal process.
 
-The controller will share the status of the certificate renewal process with the
-Machine object by updating the `k8sd.io/refresh-certificates-status` annotation
-with the status of the renewal process. The value of this annotation will be
-one of the following:
+The controller will share the status of the certificate renewal process by
+adding events to the Machine object. The events will indicate the progress of
+the renewal process following this pattern:
 
-- `in-progress`: The certificate renewal process is in progress.
-- `done`: The certificate renewal process is complete.
-- `failed`: The certificate renewal process has failed.
+- `RefreshCertsInProgress`: The certificate renewal process is in progress, the
+  event will include the `Refreshing certificates in progress` message.
+- `RefreshCertsDone`: The certificate renewal process is complete, the event
+  will include the `Certificates have been refreshed` message.
+- `RefreshCertsFailed`: The certificate renewal process has failed, the event
+  will include the `Certificates renewal failed: {reason}` message.
 
 After the certificate renewal process is complete, the controller will update
 the `machine.cluster.x-k8s.io/certificates-expiry` annotation on the Machine
 object with the new expiry date of the certificates.
 
-Finally, the controller will remove the `k8sd.io/refresh-certificates` annotation
-from the Machine object to indicate that the certificate renewal process is
-complete.
+Finally, the controller will remove the `v1beta2.k8sd.io/refresh-certificates`
+annotation from the Machine object to indicate that the certificate renewal
+process is complete.
 
 ### Worker Nodes
 
-The controller would use the value of the `k8sd.io/refresh-certificates` annotation
-to determine the duration after which the certificates will expire. It will then
-call the `POST /x/capi/request-certificates` endpoint to create the Certificate
-Signing Request (CSR) for the worker node.
+The controller would use the value of the `k8sd.io/refresh-certificates`
+annotation to determine the duration after which the certificates will expire.
+It will then call the `POST /x/capi/request-certificates` endpoint to create
+the Certificate Signing Request (CSR) for the worker node.
 
-The controller will share the CSR names with the control plane node by updating
-the `k8sd.io/refresh-certificates-csr-names` annotation with the list of CSR names
-to approve. The control plane node will then call the `POST /x/capi/approve-certificates`
-endpoint to approve the Certificate Signing Requests list provided by the annotation
-value.
+Using the `k8sd` proxy, the controller can call the
+`POST /x/capi/approve-certificates` endpoint with the seed generated in the
+previous step to approve the CSRs for the worker node.
 
-The controller will share the status similar to the control plane nodes by updating
-the `k8sd.io/refresh-certificates-status` annotation with the status of the renewal.
-The value of this annotation will be the same as the control plane nodes.
+The controller will share the status similar to the control plane nodes by
+emitting events to the `Machine` object. The events will indicate the progress
+of the renewal process following the same pattern as in the control plane
+nodes.
 
 After the CSR approval process is complete, the worker node will call the
 `POST /x/capi/refresh-certificates` endpoint to trigger the certificate renewal
-process, using the seed generated to recover the certificates.
+process, using the seed generated to recover the certificates from the CSR
+resources.
 
 After the certificate renewal process is complete, the controller will update
 the `machine.cluster.x-k8s.io/certificates-expiry` annotation on the Machine
 object with the new expiry date of the certificates.
 
-Finally, the controller will remove the `k8sd.io/refresh-certificates` annotation
+Finally, the controller will remove the `v1beta2.k8sd.io/refresh-certificates`
+annotation
 from the Machine object to indicate that the certificate renewal process is
 complete.
 
@@ -305,7 +310,7 @@ updated (e.g. command outputs).
 
 This implementation will require adding the following documentation:
 - How-to guide for renewing certificates on cluster nodes
-- Reference page of the `k8sd.io/renew-certificates` annotation
+- Reference page of the `v1beta2.k8sd.io/refresh-certificates` annotation
 
 ## Testing
 <!--
@@ -313,8 +318,9 @@ This section MUST explain how the new feature will be tested.
 -->
 
 Integration tests will be added to the current test suite. The tests will
-create a cluster, annotate the Machine object with the `k8sd.io/renew-certificates`
-annotation, and verify that the certificates are renewed in the target node.
+create a cluster, annotate the Machine object with the
+`v1beta2.k8sd.io/refresh-certificates` annotation, and verify that the
+certificates are renewed in the target node.
 
 ## Considerations for backwards compatibility
 <!--
