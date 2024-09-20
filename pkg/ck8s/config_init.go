@@ -91,6 +91,10 @@ func GenerateInitControlPlaneConfig(cfg InitControlPlaneConfig) (apiv1.Bootstrap
 		out.ClusterConfig.Annotations[apiv1.AnnotationSkipCleanupKubernetesNodeOnRemove] = "true"
 	}
 
+	if _, ok := out.ClusterConfig.Annotations[apiv1.AnnotationSkipStopServicesOnRemove]; !ok {
+		out.ClusterConfig.Annotations[apiv1.AnnotationSkipStopServicesOnRemove] = "true"
+	}
+
 	// features
 	out.ClusterConfig.DNS.Enabled = ptr.To(cfg.InitConfig.GetEnableDefaultDNS())
 	out.ClusterConfig.LocalStorage.Enabled = ptr.To(cfg.InitConfig.GetEnableDefaultLocalStorage())
