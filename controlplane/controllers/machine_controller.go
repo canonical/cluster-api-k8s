@@ -18,7 +18,7 @@ import (
 	"github.com/canonical/cluster-api-k8s/pkg/ck8s"
 )
 
-// CK8sControlPlaneReconciler reconciles a CK8sControlPlane object.
+// MachineReconciler reconciles a Machine object.
 type MachineReconciler struct {
 	client.Client
 	Log    logr.Logger
