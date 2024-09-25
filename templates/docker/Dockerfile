@@ -36,6 +36,10 @@ FROM $BUILD_BASE AS builder
 ARG REPO=https://github.com/canonical/k8s-snap
 ARG BRANCH=main
 
+ARG KUBERNETES_VERSION=""
+# This is used to build the kubernetes version to upgrade when testing in place upgrades
+ARG KUBERNETES_VERSION_UPGRADE_TO=""
+
 ## NOTE(neoaggelos): install dependencies needed to build the tools
 ## !!!IMPORTANT!!! Keep up to date with "snapcraft.yaml:parts.build-deps.build-packages"
 RUN apt-get update \
@@ -86,7 +90,21 @@ RUN /src/k8s-snap/build-scripts/build-component.sh helm
 
 ## kubernetes build
 FROM builder AS build-kubernetes
-RUN /src/k8s-snap/build-scripts/build-component.sh kubernetes
+ENV KUBERNETES_VERSION=${KUBERNETES_VERSION}
+RUN if [ -n "$KUBERNETES_VERSION" ]; then \
+      echo "Overwriting Kubernetes version with $KUBERNETES_VERSION"; \
+      echo "$KUBERNETES_VERSION" > /src/k8s-snap/build-scripts/components/kubernetes/version; \
+    fi
+RUN  /src/k8s-snap/build-scripts/build-component.sh kubernetes
+
+## kubernetes upgrade version build
+FROM builder AS build-kubernetes-upgrade-to
+ENV KUBERNETES_VERSION_UPGRADE_TO=${KUBERNETES_VERSION_UPGRADE_TO}
+RUN if [ -n "$KUBERNETES_VERSION_UPGRADE_TO" ]; then \
+      echo "Overwriting Kubernetes version with $KUBERNETES_VERSION_UPGRADE_TO"; \
+      echo "$KUBERNETES_VERSION_UPGRADE_TO" > /src/k8s-snap/build-scripts/components/kubernetes/version; \
+    fi
+RUN  /src/k8s-snap/build-scripts/build-component.sh kubernetes
 
 ## runc build
 FROM builder AS build-runc
@@ -134,6 +152,7 @@ COPY --from=build-helm /out /snap/k8s/current
 COPY --from=build-containerd /out /snap/k8s/current
 COPY --from=build-cni /out /snap/k8s/current
 COPY --from=build-kubernetes /out /snap/k8s/current
+COPY --from=build-kubernetes-upgrade-to /out /k8s/upgrade
 COPY --from=build-k8sd /out /snap/k8s/current
 COPY --from=build-pebble /out /snap/k8s/current
 COPY --from=build-preload-images /out/images /var/snap/k8s/common/images
@@ -156,3 +175,7 @@ ENV PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/snap/k8s/
 
 ## NOTE(neoaggelos): Required for containerd to properly set up overlayfs for pods
 VOLUME ["/var/snap/k8s/common/var/lib/containerd"]
+
+## NOTE(ben): Remove existing kind image kubectl and kubelet binaries
+# to avoid version confusion.
+RUN rm -f /usr/bin/kubectl /usr/bin/kubelet

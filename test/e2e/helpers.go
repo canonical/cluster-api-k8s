@@ -40,6 +40,7 @@ import (
 	"sigs.k8s.io/cluster-api/util/patch"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
+	bootstrapv1 "github.com/canonical/cluster-api-k8s/bootstrap/api/v1beta2"
 	controlplanev1 "github.com/canonical/cluster-api-k8s/controlplane/api/v1beta2"
 )
 
@@ -416,6 +417,7 @@ func WaitForControlPlaneToBeReady(ctx context.Context, input WaitForControlPlane
 			Namespace: input.ControlPlane.GetNamespace(),
 			Name:      input.ControlPlane.GetName(),
 		}
+		Byf("Getting the control plane %s", klog.KObj(input.ControlPlane))
 		if err := input.Getter.Get(ctx, key, controlplane); err != nil {
 			return false, errors.Wrapf(err, "failed to get KCP")
 		}
@@ -430,6 +432,7 @@ func WaitForControlPlaneToBeReady(ctx context.Context, input WaitForControlPlane
 		// * .spec.replicas, .status.replicas, .status.updatedReplicas,
 		//   .status.readyReplicas are not equal and
 		// * unavailableReplicas > 0
+		Byf("Control plane %s: desired=%d, status=%d, updated=%d, ready=%d, unavailable=%d", klog.KObj(controlplane), *desiredReplicas, statusReplicas, updatedReplicas, readyReplicas, unavailableReplicas)
 		if statusReplicas != *desiredReplicas ||
 			updatedReplicas != *desiredReplicas ||
 			readyReplicas != *desiredReplicas ||
@@ -552,12 +555,142 @@ func WaitForControlPlaneAndMachinesReady(ctx context.Context, input WaitForContr
 	})
 }
 
+type ApplyInPlaceUpgradeAndWaitInput struct {
+	Getter                  framework.Getter
+	Machine                 *clusterv1.Machine
+	ClusterProxy            framework.ClusterProxy
+	UpgradeOption           string
+	WaitForUpgradeIntervals []interface{}
+}
+
+func ApplyInPlaceUpgradeAndWait(ctx context.Context, input ApplyInPlaceUpgradeAndWaitInput) {
+	Expect(ctx).NotTo(BeNil())
+	Expect(input.Machine).ToNot(BeNil())
+	Expect(input.ClusterProxy).ToNot(BeNil())
+	Expect(input.UpgradeOption).ToNot(BeEmpty())
+
+	mgmtClient := input.ClusterProxy.GetClient()
+
+	patchHelper, err := patch.NewHelper(input.Machine, mgmtClient)
+	Expect(err).ToNot(HaveOccurred())
+	mAnnotations := input.Machine.GetAnnotations()
+
+	if mAnnotations == nil {
+		mAnnotations = map[string]string{}
+	}
+
+	mAnnotations[bootstrapv1.InPlaceUpgradeToAnnotation] = input.UpgradeOption
+	input.Machine.SetAnnotations(mAnnotations)
+	err = patchHelper.Patch(ctx, input.Machine)
+	Expect(err).ToNot(HaveOccurred())
+
+	By("Checking for in-place upgrade status to be equal to done")
+
+	Eventually(func() (bool, error) {
+		um := &clusterv1.Machine{}
+		if err := input.Getter.Get(ctx, client.ObjectKey{Namespace: input.Machine.Namespace, Name: input.Machine.Name}, um); err != nil {
+			Byf("Failed to get the machine: %+v", err)
+			return false, err
+		}
+
+		mAnnotations := um.GetAnnotations()
+
+		status, ok := mAnnotations[bootstrapv1.InPlaceUpgradeStatusAnnotation]
+		if !ok {
+			return false, nil
+		}
+
+		return status == bootstrapv1.InPlaceUpgradeDoneStatus, nil
+	}, input.WaitForUpgradeIntervals...).Should(BeTrue(), "In-place upgrade failed for %s", input.Machine.Name)
+}
+
+type ApplyInPlaceUpgradeForControlPlaneInput struct {
+	Lister                  framework.Lister
+	Getter                  framework.Getter
+	ClusterProxy            framework.ClusterProxy
+	Cluster                 *clusterv1.Cluster
+	UpgradeOption           string
+	WaitForUpgradeIntervals []interface{}
+}
+
+func ApplyInPlaceUpgradeForControlPlane(ctx context.Context, input ApplyInPlaceUpgradeForControlPlaneInput) {
+	Expect(ctx).NotTo(BeNil())
+	Expect(input.ClusterProxy).ToNot(BeNil())
+	Expect(input.Cluster).ToNot(BeNil())
+	Expect(input.UpgradeOption).ToNot(BeEmpty())
+
+	// Look up all the control plane machines.
+	inClustersNamespaceListOption := client.InNamespace(input.Cluster.Namespace)
+	matchClusterListOption := client.MatchingLabels{
+		clusterv1.ClusterNameLabel:         input.Cluster.Name,
+		clusterv1.MachineControlPlaneLabel: "",
+	}
+
+	machineList := &clusterv1.MachineList{}
+	Eventually(func() error {
+		return input.Lister.List(ctx, machineList, inClustersNamespaceListOption, matchClusterListOption)
+	}, retryableOperationTimeout, retryableOperationInterval).Should(Succeed(), "Couldn't list control-plane machines for the cluster %q", input.Cluster.Name)
+
+	for _, machine := range machineList.Items {
+		ApplyInPlaceUpgradeAndWait(ctx, ApplyInPlaceUpgradeAndWaitInput{
+			Getter:                  input.Getter,
+			Machine:                 &machine,
+			ClusterProxy:            input.ClusterProxy,
+			UpgradeOption:           input.UpgradeOption,
+			WaitForUpgradeIntervals: input.WaitForUpgradeIntervals,
+		})
+	}
+}
+
+type ApplyInPlaceUpgradeForWorkerInput struct {
+	Lister                  framework.Lister
+	Getter                  framework.Getter
+	ClusterProxy            framework.ClusterProxy
+	Cluster                 *clusterv1.Cluster
+	MachineDeployments      []*clusterv1.MachineDeployment
+	UpgradeOption           string
+	WaitForUpgradeIntervals []interface{}
+}
+
+func ApplyInPlaceUpgradeForWorker(ctx context.Context, input ApplyInPlaceUpgradeForWorkerInput) {
+	Expect(ctx).NotTo(BeNil())
+	Expect(input.ClusterProxy).ToNot(BeNil())
+	Expect(input.Cluster).ToNot(BeNil())
+	Expect(input.MachineDeployments).ToNot(BeNil())
+	Expect(input.UpgradeOption).ToNot(BeEmpty())
+
+	for _, md := range input.MachineDeployments {
+		// Look up all the control plane machines.
+		inClustersNamespaceListOption := client.InNamespace(input.Cluster.Namespace)
+		matchClusterListOption := client.MatchingLabels{
+			clusterv1.ClusterNameLabel:           input.Cluster.Name,
+			clusterv1.MachineDeploymentNameLabel: md.Name,
+		}
+
+		machineList := &clusterv1.MachineList{}
+		Eventually(func() error {
+			return input.Lister.List(ctx, machineList, inClustersNamespaceListOption, matchClusterListOption)
+		}, retryableOperationTimeout, retryableOperationInterval).Should(Succeed(), "Couldn't list control-plane machines for the cluster %q", input.Cluster.Name)
+
+		for _, machine := range machineList.Items {
+			ApplyInPlaceUpgradeAndWait(ctx, ApplyInPlaceUpgradeAndWaitInput{
+				Getter:                  input.Getter,
+				Machine:                 &machine,
+				ClusterProxy:            input.ClusterProxy,
+				UpgradeOption:           input.UpgradeOption,
+				WaitForUpgradeIntervals: input.WaitForUpgradeIntervals,
+			})
+		}
+	}
+}
+
 // UpgradeControlPlaneAndWaitForUpgradeInput is the input type for UpgradeControlPlaneAndWaitForUpgrade.
 type UpgradeControlPlaneAndWaitForUpgradeInput struct {
 	ClusterProxy                framework.ClusterProxy
 	Cluster                     *clusterv1.Cluster
 	ControlPlane                *controlplanev1.CK8sControlPlane
 	KubernetesUpgradeVersion    string
+	UpgradeMachineTemplate      *string
 	WaitForMachinesToBeUpgraded []interface{}
 }
 
@@ -577,6 +710,17 @@ func UpgradeControlPlaneAndWaitForUpgrade(ctx context.Context, input UpgradeCont
 
 	input.ControlPlane.Spec.Version = input.KubernetesUpgradeVersion
 
+	// Create a new ObjectReference for the infrastructure provider
+	newInfrastructureRef := corev1.ObjectReference{
+		APIVersion: "infrastructure.cluster.x-k8s.io/v1beta1",
+		Kind:       "DockerMachineTemplate",
+		Name:       fmt.Sprintf("%s-control-plane-new", input.Cluster.Name),
+		Namespace:  input.ControlPlane.Spec.MachineTemplate.InfrastructureRef.Namespace,
+	}
+
+	// Update the infrastructureRef
+	input.ControlPlane.Spec.MachineTemplate.InfrastructureRef = newInfrastructureRef
+
 	Eventually(func() error {
 		return patchHelper.Patch(ctx, input.ControlPlane)
 	}, retryableOperationTimeout, retryableOperationInterval).Should(Succeed(), "Failed to patch the new kubernetes version to KCP %s", klog.KObj(input.ControlPlane))
@@ -588,6 +732,48 @@ func UpgradeControlPlaneAndWaitForUpgrade(ctx context.Context, input UpgradeCont
 		MachineCount:             int(*input.ControlPlane.Spec.Replicas),
 		KubernetesUpgradeVersion: input.KubernetesUpgradeVersion,
 	}, input.WaitForMachinesToBeUpgraded...)
+}
+
+// UpgradeMachineDeploymentsAndWait upgrades a machine deployment and waits for its machines to be upgraded.
+func UpgradeMachineDeploymentsAndWait(ctx context.Context, input framework.UpgradeMachineDeploymentsAndWaitInput) {
+	Expect(ctx).NotTo(BeNil(), "ctx is required for UpgradeMachineDeploymentsAndWait")
+	Expect(input.ClusterProxy).ToNot(BeNil(), "Invalid argument. input.ClusterProxy can't be nil when calling UpgradeMachineDeploymentsAndWait")
+	Expect(input.Cluster).ToNot(BeNil(), "Invalid argument. input.Cluster can't be nil when calling UpgradeMachineDeploymentsAndWait")
+	Expect(input.UpgradeVersion).ToNot(BeNil(), "Invalid argument. input.UpgradeVersion can't be nil when calling UpgradeMachineDeploymentsAndWait")
+	Expect(input.MachineDeployments).ToNot(BeEmpty(), "Invalid argument. input.MachineDeployments can't be empty when calling UpgradeMachineDeploymentsAndWait")
+
+	mgmtClient := input.ClusterProxy.GetClient()
+
+	for _, deployment := range input.MachineDeployments {
+		patchHelper, err := patch.NewHelper(deployment, mgmtClient)
+		Expect(err).ToNot(HaveOccurred())
+
+		oldVersion := deployment.Spec.Template.Spec.Version
+		deployment.Spec.Template.Spec.Version = &input.UpgradeVersion
+		// Create a new ObjectReference for the infrastructure provider
+		newInfrastructureRef := corev1.ObjectReference{
+			APIVersion: "infrastructure.cluster.x-k8s.io/v1beta1",
+			Kind:       "DockerMachineTemplate",
+			Name:       fmt.Sprintf("%s-md-new-0", input.Cluster.Name),
+			Namespace:  deployment.Spec.Template.Spec.InfrastructureRef.Namespace,
+		}
+
+		// Update the infrastructureRef
+		deployment.Spec.Template.Spec.InfrastructureRef = newInfrastructureRef
+		Eventually(func() error {
+			return patchHelper.Patch(ctx, deployment)
+		}, retryableOperationTimeout, retryableOperationInterval).Should(Succeed(), "Failed to patch Kubernetes version on MachineDeployment %s", klog.KObj(deployment))
+
+		Byf("Waiting for Kubernetes versions of machines in MachineDeployment %s to be upgraded from %s to %s",
+			klog.KObj(deployment), *oldVersion, input.UpgradeVersion)
+		framework.WaitForMachineDeploymentMachinesToBeUpgraded(ctx, framework.WaitForMachineDeploymentMachinesToBeUpgradedInput{
+			Lister:                   mgmtClient,
+			Cluster:                  input.Cluster,
+			MachineCount:             int(*deployment.Spec.Replicas),
+			KubernetesUpgradeVersion: input.UpgradeVersion,
+			MachineDeployment:        *deployment,
+		}, input.WaitForMachinesToBeUpgraded...)
+	}
 }
 
 type WaitForNodesReadyInput struct {
@@ -607,14 +793,17 @@ func WaitForNodesReady(ctx context.Context, input WaitForNodesReadyInput) {
 		}
 		nodeReadyCount := 0
 		for _, node := range nodeList.Items {
+			fmt.Fprintf(GinkgoWriter, "KubeletVersions: %s, KubernetesVersion: %s\n", semver.MajorMinor(node.Status.NodeInfo.KubeletVersion), semver.MajorMinor(input.KubernetesVersion))
 			if !(semver.MajorMinor(node.Status.NodeInfo.KubeletVersion) == semver.MajorMinor(input.KubernetesVersion)) {
 				return false, nil
 			}
+			fmt.Fprintf(GinkgoWriter, "node %s is ready: %t\n", node.Name, noderefutil.IsNodeReady(&node))
 			if !noderefutil.IsNodeReady(&node) {
 				return false, nil
 			}
 			nodeReadyCount++
 		}
+		fmt.Fprintf(GinkgoWriter, "nodeReadyCount: %d, expected count: %d\n", nodeReadyCount, input.Count)
 		return input.Count == nodeReadyCount, nil
 	}, input.WaitForNodesReady...).Should(BeTrue())
 }

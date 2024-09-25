@@ -49,6 +49,7 @@ func NewJoinControlPlane(input JoinControlPlaneInput) (CloudConfig, error) {
 		"/capi/scripts/load-images.sh",
 		"/capi/scripts/join-cluster.sh",
 		"/capi/scripts/wait-apiserver-ready.sh",
+		"/capi/scripts/configure-node-token.sh",
 		"/capi/scripts/create-sentinel-bootstrap.sh",
 	)
 	config.RunCommands = append(config.RunCommands, input.PostRunCommands...)
