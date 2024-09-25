@@ -2,6 +2,8 @@ name: E2E Tests
 
 on:
   pull_request:
+    branches:
+      - does-not-exist
 
 permissions:
   contents: read
@@ -14,11 +16,11 @@ jobs:
     strategy:
       matrix:
         ginkgo_focus:
-          #- "KCP remediation"
-          #- "MachineDeployment remediation"
+          - "KCP remediation"
+          - "MachineDeployment remediation"
           - "Workload cluster creation"
-          #- "Workload cluster scaling"
-          #- "Workload cluster upgrade"
+          - "Workload cluster scaling"
+          - "Workload cluster upgrade"
     steps:
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v4
@@ -35,8 +37,7 @@ jobs:
           detached: true
       - name: Install requirements
         run: |
-          sudo apt install make
-          sudo apt install wget
+          sudo apt install make wget
       - name: Increase inotify watches
         run: |
           # Prevents https://cluster-api.sigs.k8s.io/user/troubleshooting#cluster-api-with-docker----too-many-open-files
@@ -44,6 +45,6 @@ jobs:
           sudo sysctl fs.inotify.max_user_instances=8192
       - name: Run e2e tests
         run: |
-          sudo -E ./hack/ci-e2e-tests.sh true aws v0.1.2
+          sudo -E ./hack/ci-e2e-tests.sh aws v0.1.2
         env:
           GOPROXY: direct
