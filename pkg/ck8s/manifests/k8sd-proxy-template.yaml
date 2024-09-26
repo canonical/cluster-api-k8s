@@ -45,8 +45,9 @@ spec:
               name: k8sd-proxy-config
               key: k8sd-port
         args:
-        - TCP4-LISTEN:2380,fork,reuseaddr
-        - TCP4:$(HOSTIP):$(K8SD_PORT)
+        - -t 5
+        - TCP4-LISTEN:2380,fork,reuseaddr,nodelay
+        - TCP4:$(HOSTIP):$(K8SD_PORT),nodelay
         resources:
           limits:
             memory: 200Mi
