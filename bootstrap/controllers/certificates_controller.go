@@ -174,8 +174,8 @@ func (r *CertificatesReconciler) refreshControlPlaneCertificates(ctx context.Con
 	controlPlaneConfig := scope.Config.Spec.ControlPlaneConfig
 	controlPlaneEndpoint := scope.Cluster.Spec.ControlPlaneEndpoint.Host
 
-	extraSANS := controlPlaneConfig.ExtraSANs
-	extraSANs := append(extraSANS, controlPlaneEndpoint)
+	extraSANs := controlPlaneConfig.ExtraSANs
+	extraSANs = append(extraSANs, controlPlaneEndpoint)
 
 	expirySecondsUnix, err := scope.Workload.RefreshCertificates(ctx, scope.Machine, *nodeToken, seconds, extraSANs)
 	if err != nil {
@@ -183,8 +183,6 @@ func (r *CertificatesReconciler) refreshControlPlaneCertificates(ctx context.Con
 		r.recorder.Eventf(scope.Machine, corev1.EventTypeWarning, bootstrapv1.CertificatesRefreshFailedEvent, "Failed to refresh certificates: %v", err)
 		return ctrl.Result{}, err
 	}
-
-	scope.Log.Info("Certificates refreshed", "expiry", expirySecondsUnix)
 
 	expiryTime := time.Unix(int64(expirySecondsUnix), 0)
 
@@ -196,6 +194,12 @@ func (r *CertificatesReconciler) refreshControlPlaneCertificates(ctx context.Con
 	}
 
 	r.recorder.Eventf(scope.Machine, corev1.EventTypeNormal, bootstrapv1.CertificatesRefreshDoneEvent, "Certificates refreshed, will expire at %s", expiryTime)
+
+	scope.Log.Info("Certificates refreshed",
+		"cluster", scope.Cluster.Name,
+		"machine", scope.Machine.Name,
+		"expiry", expiryTime.Format(time.RFC3339),
+	)
 
 	return ctrl.Result{}, nil
 }
