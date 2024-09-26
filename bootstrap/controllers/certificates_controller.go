@@ -5,10 +5,6 @@ import (
 	"fmt"
 	"time"
 
-	bootstrapv1 "github.com/canonical/cluster-api-k8s/bootstrap/api/v1beta2"
-	"github.com/canonical/cluster-api-k8s/pkg/ck8s"
-	utiltime "github.com/canonical/cluster-api-k8s/pkg/time"
-	"github.com/canonical/cluster-api-k8s/pkg/token"
 	"github.com/go-logr/logr"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -22,6 +18,11 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
+
+	bootstrapv1 "github.com/canonical/cluster-api-k8s/bootstrap/api/v1beta2"
+	"github.com/canonical/cluster-api-k8s/pkg/ck8s"
+	utiltime "github.com/canonical/cluster-api-k8s/pkg/time"
+	"github.com/canonical/cluster-api-k8s/pkg/token"
 )
 
 // CertificatesReconciler reconciles a Machine's certificates.
