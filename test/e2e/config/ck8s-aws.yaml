@@ -2,10 +2,8 @@
 managementClusterName: capi-test
 
 # E2E test scenario using local dev images and manifests built from the source tree for following providers:
-# - cluster-api
 # - bootstrap ck8s
 # - control-plane ck8s
-# - aws
 images:
   # Use local dev images built source tree;
   - name: ghcr.io/canonical/cluster-api-k8s/controlplane-controller:dev
@@ -13,12 +11,14 @@ images:
   - name: ghcr.io/canonical/cluster-api-k8s/bootstrap-controller:dev
     loadBehavior: mustLoad
 
+# List of providers that will be installed into the management cluster
+# See InitManagementClusterAndWatchControllerLogs function call
 providers:
   - name: cluster-api
     type: CoreProvider
     versions:
-      - name: v1.7.1
-        value: https://github.com/kubernetes-sigs/cluster-api/releases/download/v1.7.1/core-components.yaml
+      - name: v1.8.3
+        value: https://github.com/kubernetes-sigs/cluster-api/releases/download/v1.8.3/core-components.yaml
         type: url
         contract: v1beta1
         files:
@@ -29,10 +29,9 @@ providers:
   - name: aws
     type: InfrastructureProvider
     versions:
-      # By default, will use the latest version defined in ../data/shared/v1beta1/metadata.yaml
-      # to init the management cluster
-      - name: v2.6.1 # used during e2e-test
-        value: "../../../../cluster-api-provider-aws/config/default" # TODO don't use relative path?
+      - name: v2.6.1
+        value: "https://github.com/kubernetes-sigs/cluster-api-provider-aws/releases/download/v2.6.1/infrastructure-components.yaml"
+        type: url
         contract: v1beta2
         files:
           - sourcePath: "../data/shared/v1beta1_aws/metadata.yaml"
@@ -40,13 +39,12 @@ providers:
           - old: "imagePullPolicy: Always"
             new: "imagePullPolicy: IfNotPresent"
 
-      # Add v1.9.99 to support tilt (not presented in ../data/shared/v1beta1/metadata.yaml)
       # when bootstrapping with tilt, it will use
-      # the defaultProviderVersion in https://github.com/kubernetes-sigs/cluster-api/blob/main/hack/tools/internal/tilt-prepare/main.go as
-      # default version for docker infrastructure provider
+      # https://github.com/kubernetes-sigs/cluster-api/blob/main/hack/tools/internal/tilt-prepare/main.go
       # name here should match defaultProviderVersion
       - name: v1.9.99
-        value: "../../../../cluster-api-provider-aws/config/default" # TODO don't use relative path
+        value: "https://github.com/kubernetes-sigs/cluster-api-provider-aws/releases/download/v2.6.1/infrastructure-components.yaml"
+        type: url
         contract: v1beta2
         files:
           - sourcePath: "../data/shared/v1beta1_aws/metadata.yaml"
@@ -69,10 +67,9 @@ providers:
         value: "../../../bootstrap/config/default"
         replacements:
           - old: "ghcr.io/canonical/cluster-api-k8s/bootstrap-controller:latest"
-            new: "ghcr.io/canonical/cluster-api-k8s/bootstrap-controller:dev"
+            new: "ghcr.io/canonical/cluster-api-k8s/bootstrap-controller:v0.1.2-amd64"
     files:
       - sourcePath: "../../../metadata.yaml"
-        targetName: "metadata.yaml"
   - name: ck8s
     type: ControlPlaneProvider
     versions:
@@ -80,12 +77,12 @@ providers:
         value: "../../../controlplane/config/default"
         replacements:
           - old: "ghcr.io/canonical/cluster-api-k8s/controlplane-controller:latest"
-            new: "ghcr.io/canonical/cluster-api-k8s/controlplane-controller:dev"
+            new: "ghcr.io/canonical/cluster-api-k8s/controlplane-controller:v0.1.2-amd64"
     files:
       - sourcePath: "../../../metadata.yaml"
-        targetName: "metadata.yaml"
 
 # These variables replace the variables in test/e2e/data/infrastructure-aws manifests
+# They are used during clusterctl generate cluster
 variables:
   KUBERNETES_VERSION_MANAGEMENT: "v1.30.0"
   KUBERNETES_VERSION: "v1.30.0"
@@ -96,7 +93,7 @@ variables:
   AWS_NODE_INSTANCE_TYPE: t3.large
   AWS_PUBLIC_IP: false
   AWS_CREATE_BASTION: true
-  AWS_SSH_KEY_NAME: ""
+  AWS_SSH_KEY_NAME: "etienne"
   AWS_AMI_ID: "ami-05145146e3a9db6f3"
   AWS_CONTROL_PLANE_ROOT_VOLUME_SIZE: 16
   AWS_NODE_ROOT_VOLUME_SIZE: 16
@@ -113,7 +110,7 @@ variables:
   CAPA_LOGLEVEL: "4"
 
 intervals:
-  # copied from https://github.com/kubernetes-sigs/cluster-api-provider-aws/blob/main/test/e2e/data/e2e_conf.yaml
+  # Ref: https://github.com/kubernetes-sigs/cluster-api-provider-aws/blob/main/test/e2e/data/e2e_conf.yaml
   default/wait-cluster: [ "35m", "10s" ]
   default/wait-control-plane: [ "35m", "10s" ]
   default/wait-worker-nodes: [ "20m", "10s" ]
