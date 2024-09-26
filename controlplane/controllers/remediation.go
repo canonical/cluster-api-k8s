@@ -373,7 +373,7 @@ func (r *CK8sControlPlaneReconciler) checkRetryLimits(log logr.Logger, machineTo
 	return remediationInProgressData, true, nil
 }
 
-// maxDuration calculates the maximum duration.
+// maxDuration returns the longer of two time.Duration values.
 func maxDuration(x, y time.Duration) time.Duration {
 	if x < y {
 		return y
