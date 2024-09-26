@@ -24,7 +24,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
-// CertificatesReconciler reconciles a Machine object
+// CertificatesReconciler reconciles a Machine's certificates.
 type CertificatesReconciler struct {
 	client.Client
 	Log      logr.Logger
@@ -87,21 +87,21 @@ func (r *CertificatesReconciler) Reconcile(ctx context.Context, req ctrl.Request
 
 	mAnnotations := m.GetAnnotations()
 
-	var refreshCertificates, updateExpiryDate bool
+	var refreshCertificates, hasExpiryDateAnnotation bool
 	_, refreshCertificates = mAnnotations[bootstrapv1.CertificatesRefreshAnnotation]
-	_, updateExpiryDate = mAnnotations[bootstrapv1.MachineCertificatesExpiryDateAnnotation]
-	if !refreshCertificates && updateExpiryDate {
+	_, hasExpiryDateAnnotation = mAnnotations[bootstrapv1.MachineCertificatesExpiryDateAnnotation]
+	if !refreshCertificates && hasExpiryDateAnnotation {
 		// No need to refresh certificates or update expiry date, return early.
 		return ctrl.Result{}, nil
 	}
 
-	// Look up the Cluster Config
+	// Look up for the CK8sConfig.
 	config := &bootstrapv1.CK8sConfig{}
 	if err := r.Client.Get(ctx, types.NamespacedName{Namespace: m.Namespace, Name: m.Spec.Bootstrap.ConfigRef.Name}, config); err != nil {
 		return ctrl.Result{}, err
 	}
 
-	// Look up for the owner
+	// Get the owner of the CK8sConfig to determine if it's a control plane or worker node.
 	configOwner, err := bsutil.GetConfigOwner(ctx, r.Client, config)
 	if err != nil {
 		log.Error(err, "Failed to get config owner")
@@ -112,6 +112,9 @@ func (r *CertificatesReconciler) Reconcile(ctx context.Context, req ctrl.Request
 	}
 
 	cluster, err := util.GetClusterByName(ctx, r.Client, m.GetNamespace(), m.Spec.ClusterName)
+	if err != nil {
+		return ctrl.Result{}, err
+	}
 
 	microclusterPort := config.Spec.ControlPlaneConfig.GetMicroclusterPort()
 	workload, err := r.managementCluster.GetWorkloadCluster(ctx, util.ObjectKey(cluster), microclusterPort)
@@ -137,11 +140,11 @@ func (r *CertificatesReconciler) Reconcile(ctx context.Context, req ctrl.Request
 		if configOwner.IsControlPlaneMachine() {
 			return r.refreshControlPlaneCertificates(ctx, scope)
 		} else {
-			return ctrl.Result{}, fmt.Errorf("Worker nodes are not supported yet")
+			return ctrl.Result{}, fmt.Errorf("worker nodes are not supported yet")
 		}
 	}
 
-	if !updateExpiryDate {
+	if !hasExpiryDateAnnotation {
 		return r.updateExpiryDateAnnotation(ctx, scope)
 	}
 
@@ -170,7 +173,9 @@ func (r *CertificatesReconciler) refreshControlPlaneCertificates(ctx context.Con
 
 	controlPlaneConfig := scope.Config.Spec.ControlPlaneConfig
 	controlPlaneEndpoint := scope.Cluster.Spec.ControlPlaneEndpoint.Host
-	extraSANs := append(controlPlaneConfig.ExtraSANs, controlPlaneEndpoint)
+
+	extraSANS := controlPlaneConfig.ExtraSANs
+	extraSANs := append(extraSANS, controlPlaneEndpoint)
 
 	expirySecondsUnix, err := scope.Workload.RefreshCertificates(ctx, scope.Machine, *nodeToken, seconds, extraSANs)
 	if err != nil {

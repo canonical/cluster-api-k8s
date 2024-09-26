@@ -243,8 +243,8 @@ func (w *Workload) GetCertificatesExpiryDate(ctx context.Context, machine *clust
 }
 
 func (w *Workload) RefreshCertificates(ctx context.Context, machine *clusterv1.Machine, nodeToken string, expirationSeconds int, extraSANs []string) (int, error) {
-	planRequest := apiv1.RefreshCertificatesPlanRequest{}
-	planResponse := &apiv1.RefreshCertificatesPlanResponse{}
+	planRequest := apiv1.ClusterAPICertificatesPlanRequest{}
+	planResponse := &apiv1.ClusterAPICertificatesPlanResponse{}
 
 	header := map[string][]string{
 		"node-token": {nodeToken},
@@ -259,12 +259,12 @@ func (w *Workload) RefreshCertificates(ctx context.Context, machine *clusterv1.M
 		return 0, fmt.Errorf("failed to refresh certificates: %w", err)
 	}
 
-	runRequest := apiv1.RefreshCertificatesRunRequest{
+	runRequest := apiv1.ClusterAPICertificatesRunRequest{
 		ExpirationSeconds: expirationSeconds,
 		Seed:              planResponse.Seed,
 		ExtraSANs:         extraSANs,
 	}
-	runResponse := &apiv1.RefreshCertificatesRunResponse{}
+	runResponse := &apiv1.ClusterAPICertificatesRunResponse{}
 	if err := w.doK8sdRequest(ctx, k8sdProxy, http.MethodPost, "1.0/x/capi/refresh-certs/run", header, runRequest, runResponse); err != nil {
 		return 0, fmt.Errorf("failed to run refresh certificates: %w", err)
 	}
