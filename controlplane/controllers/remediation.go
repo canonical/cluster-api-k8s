@@ -326,7 +326,7 @@ func (r *CK8sControlPlaneReconciler) checkRetryLimits(log logr.Logger, machineTo
 	// NOTE: this could potentially lead to executing more retries than expected or to executing retries before than
 	// expected, but this is considered acceptable when the system recovers from someone/something changes or deletes
 	// the RemediationForAnnotation on Machines.
-	lastRemediationTime := reconciliationTime.Add(-2 * max(minHealthyPeriod, retryPeriod))
+	lastRemediationTime := reconciliationTime.Add(-2 * clamp(minHealthyPeriod, retryPeriod))
 	if !lastRemediationData.Timestamp.IsZero() {
 		lastRemediationTime = lastRemediationData.Timestamp.Time
 	}
@@ -373,8 +373,8 @@ func (r *CK8sControlPlaneReconciler) checkRetryLimits(log logr.Logger, machineTo
 	return remediationInProgressData, true, nil
 }
 
-// max calculates the maximum duration.
-func max(x, y time.Duration) time.Duration {
+// clamp calculates the maximum duration.
+func clamp(x, y time.Duration) time.Duration {
 	if x < y {
 		return y
 	}
