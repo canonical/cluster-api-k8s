@@ -45,6 +45,8 @@ spec:
               name: k8sd-proxy-config
               key: k8sd-port
         args:
+        # socat was closing the connection after 0.5s of inactivity, some
+        # queries were taking longer than that.
         - -t 5
         - TCP4-LISTEN:2380,fork,reuseaddr,nodelay
         - TCP4:$(HOSTIP):$(K8SD_PORT),nodelay

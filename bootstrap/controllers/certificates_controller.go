@@ -69,6 +69,7 @@ type CertificatesScope struct {
 // +kubebuilder:rbac:groups=cluster.x-k8s.io,resources=clusters;clusters/status;machines;machines/status,verbs=get;list;watch
 // +kubebuilder:rbac:groups=exp.cluster.x-k8s.io,resources=machinepools;machinepools/status,verbs=get;list;watch
 // +kubebuilder:rbac:groups="",resources=secrets;events;configmaps,verbs=get;list;watch;create;update;patch;delete
+
 func (r *CertificatesReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	log := r.Log.WithValues("namespace", req.Namespace, "machine", req.Name)
 
@@ -137,16 +138,20 @@ func (r *CertificatesReconciler) Reconcile(ctx context.Context, req ctrl.Request
 		Workload: workload,
 	}
 
+	if !hasExpiryDateAnnotation {
+		result, err := r.updateExpiryDateAnnotation(ctx, scope)
+		if err != nil {
+			return result, err
+		}
+	}
+
 	if refreshCertificates {
 		if configOwner.IsControlPlaneMachine() {
 			return r.refreshControlPlaneCertificates(ctx, scope)
 		} else {
-			return ctrl.Result{}, fmt.Errorf("worker nodes are not supported yet")
+			log.Info("worker nodes are not supported yet")
+			return ctrl.Result{}, nil
 		}
-	}
-
-	if !hasExpiryDateAnnotation {
-		return r.updateExpiryDateAnnotation(ctx, scope)
 	}
 
 	return ctrl.Result{}, nil
@@ -165,10 +170,15 @@ func (r *CertificatesReconciler) refreshControlPlaneCertificates(ctx context.Con
 		return ctrl.Result{}, nil
 	}
 
+	r.recorder.Eventf(
+		scope.Machine,
+		corev1.EventTypeNormal,
+		bootstrapv1.CertificatesRefreshInProgressEvent,
+		"Certificates refresh in progress. TTL: %s", refreshAnnotation,
+	)
 	seconds, err := utiltime.TTLToSeconds(refreshAnnotation)
-	scope.Log.Info("Refreshing Certificates", "TTL", refreshAnnotation, "seconds", seconds)
 	if err != nil {
-		scope.Log.Error(err, "Failed to parse TTL annotation")
+		scope.Log.Error(err, "Failed to parse expires-in annotation value")
 		return ctrl.Result{}, err
 	}
 
