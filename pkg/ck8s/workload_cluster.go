@@ -207,12 +207,69 @@ func (w *Workload) GetK8sdProxyForControlPlane(ctx context.Context, options k8sd
 
 // GetK8sdProxyForMachine returns a k8sd proxy client for the machine.
 func (w *Workload) GetK8sdProxyForMachine(ctx context.Context, machine *clusterv1.Machine) (*K8sdClient, error) {
+	if machine == nil {
+		return nil, fmt.Errorf("machine object is nil")
+	}
+
+	if machine.Status.NodeRef == nil {
+		return nil, fmt.Errorf("machine %s has no node reference", machine.Name)
+	}
+
 	node := &corev1.Node{}
 	if err := w.Client.Get(ctx, ctrlclient.ObjectKey{Name: machine.Status.NodeRef.Name}, node); err != nil {
 		return nil, fmt.Errorf("failed to get node: %w", err)
 	}
 
 	return w.K8sdClientGenerator.forNode(ctx, node)
+}
+
+func (w *Workload) GetCertificatesExpiryDate(ctx context.Context, machine *clusterv1.Machine, nodeToken string) (string, error) {
+	request := apiv1.CertificatesExpiryRequest{}
+	response := &apiv1.CertificatesExpiryResponse{}
+
+	header := map[string][]string{
+		"node-token": {nodeToken},
+	}
+	k8sdProxy, err := w.GetK8sdProxyForMachine(ctx, machine)
+	if err != nil {
+		return "", fmt.Errorf("failed to create k8sd proxy: %w", err)
+	}
+
+	if err := w.doK8sdRequest(ctx, k8sdProxy, http.MethodPost, "1.0/x/capi/certificates-expiry", header, request, response); err != nil {
+		return "", fmt.Errorf("failed to get certificates expiry date: %w", err)
+	}
+
+	return response.ExpiryDate, nil
+}
+
+func (w *Workload) RefreshCertificates(ctx context.Context, machine *clusterv1.Machine, nodeToken string, expirationSeconds int, extraSANs []string) (int, error) {
+	planRequest := apiv1.ClusterAPICertificatesPlanRequest{}
+	planResponse := &apiv1.ClusterAPICertificatesPlanResponse{}
+
+	header := map[string][]string{
+		"node-token": {nodeToken},
+	}
+
+	k8sdProxy, err := w.GetK8sdProxyForMachine(ctx, machine)
+	if err != nil {
+		return 0, fmt.Errorf("failed to create k8sd proxy: %w", err)
+	}
+
+	if err := w.doK8sdRequest(ctx, k8sdProxy, http.MethodPost, "1.0/x/capi/refresh-certs/plan", header, planRequest, planResponse); err != nil {
+		return 0, fmt.Errorf("failed to refresh certificates: %w", err)
+	}
+
+	runRequest := apiv1.ClusterAPICertificatesRunRequest{
+		ExpirationSeconds: expirationSeconds,
+		Seed:              planResponse.Seed,
+		ExtraSANs:         extraSANs,
+	}
+	runResponse := &apiv1.ClusterAPICertificatesRunResponse{}
+	if err := w.doK8sdRequest(ctx, k8sdProxy, http.MethodPost, "1.0/x/capi/refresh-certs/run", header, runRequest, runResponse); err != nil {
+		return 0, fmt.Errorf("failed to run refresh certificates: %w", err)
+	}
+
+	return runResponse.ExpirationSeconds, nil
 }
 
 func (w *Workload) RefreshMachine(ctx context.Context, machine *clusterv1.Machine, nodeToken string, upgradeOption string) (string, error) {
