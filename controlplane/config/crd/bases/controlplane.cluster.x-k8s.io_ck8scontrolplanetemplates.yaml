@@ -366,6 +366,11 @@ spec:
                                   to enable the default CNI.
                                 type: boolean
                             type: object
+                          localPath:
+                            description: |-
+                              LocalPath is the local path to use for the snap install.
+                              If Track or Revision are set, this will be ignored.
+                            type: string
                           nodeName:
                             description: |-
                               NodeName is the name to use for the kubelet of this node. It is needed for clouds
@@ -398,6 +403,14 @@ spec:
                             enum:
                             - http
                             - https
+                          revision:
+                            description: |-
+                              Revision is the revision to use for the snap install.
+                              If Track is set, this will be ignored.
+                            type: string
+                          track:
+                            description: Track is the channel to use for the snap
+                              install.
                             type: string
                           version:
                             description: Version specifies the Kubernetes version.

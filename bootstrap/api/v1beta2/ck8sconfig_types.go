@@ -66,6 +66,20 @@ type CK8sConfigSpec struct {
 	// +optional
 	SnapstoreProxyID string `json:"snapstoreProxyId,omitempty"`
 
+	// Track is the channel to use for the snap install.
+	// +optional
+	Track string `json:"track,omitempty"`
+
+	// Revision is the revision to use for the snap install.
+	// If Track is set, this will be ignored.
+	// +optional
+	Revision string `json:"revision,omitempty"`
+
+	// LocalPath is the local path to use for the snap install.
+	// If Track or Revision are set, this will be ignored.
+	// +optional
+	LocalPath string `json:"localPath,omitempty"`
+
 	// CK8sControlPlaneConfig is configuration for the control plane node.
 	// +optional
 	ControlPlaneConfig CK8sControlPlaneConfig `json:"controlPlane,omitempty"`
