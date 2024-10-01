@@ -497,6 +497,10 @@ func (r *CK8sControlPlaneReconciler) reconcile(ctx context.Context, cluster *clu
 		return reconcile.Result{}, err
 	}
 
+	if err := r.syncMachines(ctx, kcp, controlPlane); err != nil {
+		return ctrl.Result{}, errors.Wrap(err, "failed to sync Machines")
+	}
+
 	// Aggregate the operational state of all the machines; while aggregating we are adding the
 	// source ref (reason@machine/name) so the problem can be easily tracked down to its source machine.
 	conditions.SetAggregate(controlPlane.KCP, controlplanev1.MachinesReadyCondition, ownedMachines.ConditionGetters(), conditions.AddSourceRef(), conditions.WithStepCounterIf(false))
@@ -682,6 +686,34 @@ func (r *CK8sControlPlaneReconciler) reconcileControlPlaneConditions(ctx context
 	}
 
 	// KCP will be patched at the end of Reconcile to reflect updated conditions, so we can return now.
+	return nil
+}
+
+func (r *CK8sControlPlaneReconciler) syncMachines(ctx context.Context, kcp *controlplanev1.CK8sControlPlane, controlPlane *ck8s.ControlPlane) error {
+	for machineName := range controlPlane.Machines {
+		m := controlPlane.Machines[machineName]
+		// If the machine is already being deleted, we don't need to update it.
+		if !m.DeletionTimestamp.IsZero() {
+			continue
+		}
+
+		patchHelper, err := patch.NewHelper(m, r.Client)
+		if err != nil {
+			return err
+		}
+
+		// Set annotations
+		// Add the annotations from the MachineTemplate.
+		for k, v := range kcp.Spec.MachineTemplate.ObjectMeta.Annotations {
+			m.Annotations[k] = v
+		}
+
+		if err := patchHelper.Patch(ctx, m); err != nil {
+			return fmt.Errorf("failed to patch machine annotations: %w", err)
+		}
+
+		controlPlane.Machines[machineName] = m
+	}
 	return nil
 }
 
