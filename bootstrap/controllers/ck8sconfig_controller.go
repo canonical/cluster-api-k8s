@@ -258,15 +258,13 @@ func (r *CK8sConfigReconciler) joinControlplane(ctx context.Context, scope *Scop
 		return err
 	}
 
-	// If the machine has an in-place upgrade annotation, use it to determine the snap install data.
-	snapInstallData := r.resolveInPlaceUpgradeRelease(machine)
+	snapInstallData := r.setSnapInstallDataFromSpec(scope.Config.Spec)
 
-	// If the snap install data is not set, use the config spec to determine the snap install data.
-	if snapInstallData == (cloudinit.SnapInstallData{}) {
-		snapInstallData = r.setSnapInstallDataFromSpec(scope.Config.Spec)
+	inPlaceInstallData := r.resolveInPlaceUpgradeRelease(machine)
+
+	if inPlaceInstallData != (cloudinit.SnapInstallData{}) {
+		snapInstallData = inPlaceInstallData
 	}
-
-	r.Log.Info("Snap install data", "data", snapInstallData)
 
 	input := cloudinit.JoinControlPlaneInput{
 		BaseUserData: cloudinit.BaseUserData{
@@ -351,12 +349,12 @@ func (r *CK8sConfigReconciler) joinWorker(ctx context.Context, scope *Scope) err
 		return err
 	}
 
-	// If the machine has an in-place upgrade annotation, use it to determine the snap install data.
-	snapInstallData := r.resolveInPlaceUpgradeRelease(machine)
+	snapInstallData := r.setSnapInstallDataFromSpec(scope.Config.Spec)
 
-	// If the snap install data is not set, use the config spec to determine the snap install data.
-	if snapInstallData == (cloudinit.SnapInstallData{}) {
-		snapInstallData = r.setSnapInstallDataFromSpec(scope.Config.Spec)
+	inPlaceInstallData := r.resolveInPlaceUpgradeRelease(machine)
+
+	if inPlaceInstallData != (cloudinit.SnapInstallData{}) {
+		snapInstallData = inPlaceInstallData
 	}
 
 	input := cloudinit.JoinWorkerInput{
