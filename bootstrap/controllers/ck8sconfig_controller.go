@@ -258,12 +258,15 @@ func (r *CK8sConfigReconciler) joinControlplane(ctx context.Context, scope *Scop
 		return err
 	}
 
+	snapInstallData := r.resolveInPlaceUpgradeRelease(machine)
+
 	input := cloudinit.JoinControlPlaneInput{
 		BaseUserData: cloudinit.BaseUserData{
 			BootCommands:        scope.Config.Spec.BootCommands,
 			PreRunCommands:      scope.Config.Spec.PreRunCommands,
 			PostRunCommands:     scope.Config.Spec.PostRunCommands,
 			KubernetesVersion:   scope.Config.Spec.Version,
+			SnapInstallData:     snapInstallData,
 			ExtraFiles:          cloudinit.FilesFromAPI(files),
 			ConfigFileContents:  string(joinConfig),
 			MicroclusterAddress: scope.Config.Spec.ControlPlaneConfig.MicroclusterAddress,
@@ -337,12 +340,15 @@ func (r *CK8sConfigReconciler) joinWorker(ctx context.Context, scope *Scope) err
 		return err
 	}
 
+	snapInstallData := r.resolveInPlaceUpgradeRelease(machine)
+
 	input := cloudinit.JoinWorkerInput{
 		BaseUserData: cloudinit.BaseUserData{
 			BootCommands:        scope.Config.Spec.BootCommands,
 			PreRunCommands:      scope.Config.Spec.PreRunCommands,
 			PostRunCommands:     scope.Config.Spec.PostRunCommands,
 			KubernetesVersion:   scope.Config.Spec.Version,
+			SnapInstallData:     snapInstallData,
 			ExtraFiles:          cloudinit.FilesFromAPI(files),
 			ConfigFileContents:  string(joinConfig),
 			MicroclusterAddress: scope.Config.Spec.ControlPlaneConfig.MicroclusterAddress,
@@ -389,6 +395,39 @@ func (r *CK8sConfigReconciler) resolveFiles(ctx context.Context, cfg *bootstrapv
 	}
 
 	return collected, nil
+}
+
+func (r *CK8sConfigReconciler) resolveInPlaceUpgradeRelease(machine *clusterv1.Machine) cloudinit.SnapInstallData {
+	mAnnotations := machine.GetAnnotations()
+
+	if mAnnotations != nil {
+		val, ok := mAnnotations[bootstrapv1.InPlaceUpgradeReleaseAnnotation]
+		if ok {
+			optionKv := strings.Split(val, "=")
+
+			switch optionKv[0] {
+			case "channel":
+				return cloudinit.SnapInstallData{
+					Option: cloudinit.InstallOptionChannel,
+					Value:  optionKv[1],
+				}
+			case "revision":
+				return cloudinit.SnapInstallData{
+					Option: cloudinit.InstallOptionRevision,
+					Value:  optionKv[1],
+				}
+			case "localPath":
+				return cloudinit.SnapInstallData{
+					Option: cloudinit.InstallOptionLocalPath,
+					Value:  optionKv[1],
+				}
+			default:
+				r.Log.Info("Unknown in-place upgrade release option, ignoring", "option", optionKv[0])
+			}
+		}
+	}
+
+	return cloudinit.SnapInstallData{}
 }
 
 // resolveSecretFileContent returns file content fetched from a referenced secret object.

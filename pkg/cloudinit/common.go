@@ -9,9 +9,26 @@ import (
 	"k8s.io/apimachinery/pkg/util/version"
 )
 
+type InstallOption string
+
+const (
+	InstallOptionChannel   InstallOption = "track"
+	InstallOptionRevision  InstallOption = "revision"
+	InstallOptionLocalPath InstallOption = "local-path"
+)
+
+type SnapInstallData struct {
+	// Option is the snap install option e.g. --channel, --revision.
+	Option InstallOption
+	// Value is the snap install value e.g. 1.30/stable, 123, /path/to/k8s.snap.
+	Value string
+}
+
 type BaseUserData struct {
 	// KubernetesVersion is the Kubernetes version from the cluster object.
 	KubernetesVersion string
+	// SnapInstallData is the snap install data.
+	SnapInstallData SnapInstallData
 	// BootCommands is a list of commands to run early in the boot process.
 	BootCommands []string
 	// PreRunCommands is a list of commands to run prior to k8s installation.
@@ -38,6 +55,13 @@ func NewBaseCloudConfig(data BaseUserData) (CloudConfig, error) {
 	kubernetesVersion, err := version.ParseSemantic(data.KubernetesVersion)
 	if err != nil {
 		return CloudConfig{}, fmt.Errorf("failed to parse kubernetes version %q: %w", data.KubernetesVersion, err)
+	}
+
+	snapInstall := data.SnapInstallData
+	// Default to k8s version if snap install option is not set or empty.
+	if snapInstall.Option == "" || snapInstall.Value == "" {
+		snapInstall.Option = InstallOptionChannel
+		snapInstall.Value = fmt.Sprintf("%d.%d-classic/stable", kubernetesVersion.Major(), kubernetesVersion.Minor())
 	}
 
 	config := CloudConfig{
@@ -84,8 +108,8 @@ func NewBaseCloudConfig(data BaseUserData) (CloudConfig, error) {
 				Owner:       "root:root",
 			},
 			File{
-				Path:        "/capi/etc/snap-track",
-				Content:     fmt.Sprintf("%d.%d-classic/stable", kubernetesVersion.Major(), kubernetesVersion.Minor()),
+				Path:        fmt.Sprintf("/capi/etc/snap-%s", snapInstall.Option),
+				Content:     snapInstall.Value,
 				Permissions: "0400",
 				Owner:       "root:root",
 			},
