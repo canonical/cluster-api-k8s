@@ -42,6 +42,9 @@ func NewJoinControlPlane(input JoinControlPlaneInput) (CloudConfig, error) {
 
 	// run commands
 	config.RunCommands = append(config.RunCommands, input.PreRunCommands...)
+
+	config.RunCommands = append(config.RunCommands, "/capi/scripts/configure-snapstore-proxy.sh")
+
 	if !input.AirGapped {
 		config.RunCommands = append(config.RunCommands, "/capi/scripts/install.sh")
 	}

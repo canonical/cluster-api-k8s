@@ -258,22 +258,22 @@ func (r *CK8sConfigReconciler) joinControlplane(ctx context.Context, scope *Scop
 		return err
 	}
 
-	snapInstallData := r.resolveInPlaceUpgradeRelease(machine)
-
 	input := cloudinit.JoinControlPlaneInput{
 		BaseUserData: cloudinit.BaseUserData{
-			BootCommands:        scope.Config.Spec.BootCommands,
-			PreRunCommands:      scope.Config.Spec.PreRunCommands,
-			PostRunCommands:     scope.Config.Spec.PostRunCommands,
-			KubernetesVersion:   scope.Config.Spec.Version,
-			SnapInstallData:     snapInstallData,
-			ExtraFiles:          cloudinit.FilesFromAPI(files),
-			ConfigFileContents:  string(joinConfig),
-			MicroclusterAddress: scope.Config.Spec.ControlPlaneConfig.MicroclusterAddress,
-			MicroclusterPort:    microclusterPort,
-			AirGapped:           scope.Config.Spec.AirGapped,
-			NodeName:            scope.Config.Spec.NodeName,
-			NodeToken:           *nodeToken,
+			BootCommands:         scope.Config.Spec.BootCommands,
+			PreRunCommands:       scope.Config.Spec.PreRunCommands,
+			PostRunCommands:      scope.Config.Spec.PostRunCommands,
+			KubernetesVersion:    scope.Config.Spec.Version,
+			ExtraFiles:           cloudinit.FilesFromAPI(files),
+			ConfigFileContents:   string(joinConfig),
+			MicroclusterAddress:  scope.Config.Spec.ControlPlaneConfig.MicroclusterAddress,
+			MicroclusterPort:     microclusterPort,
+			AirGapped:            scope.Config.Spec.AirGapped,
+			SnapstoreProxyScheme: scope.Config.Spec.SnapstoreProxyScheme,
+			SnapstoreProxyDomain: scope.Config.Spec.SnapstoreProxyDomain,
+			SnapstoreProxyId:     scope.Config.Spec.SnapstoreProxyId,
+			NodeName:             scope.Config.Spec.NodeName,
+			NodeToken:            *nodeToken,
 		},
 		JoinToken: joinToken,
 	}

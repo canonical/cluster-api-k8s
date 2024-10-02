@@ -219,6 +219,21 @@ spec:
                         items:
                           type: string
                         type: array
+                      snapstoreProxyDomain:
+                        description: The snap store proxy domain
+                        type: string
+                      snapstoreProxyId:
+                        description: The snap store proxy ID
+                        type: string
+                      snapstoreProxyScheme:
+                        default: http
+                        description: |-
+                          The snap store proxy domain's scheme, e.g. "http" or "https" without "://"
+                          Defaults to "http".
+                        enum:
+                        - http
+                        - https
+                        type: string
                       version:
                         description: Version specifies the Kubernetes version.
                         type: string

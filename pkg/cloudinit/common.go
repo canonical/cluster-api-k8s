@@ -41,6 +41,12 @@ type BaseUserData struct {
 	ConfigFileContents string
 	// AirGapped declares that a custom installation script is to be used.
 	AirGapped bool
+	// The snap store proxy domain's scheme, e.g. "http" or "https" without "://"
+	SnapstoreProxyScheme string
+	// The snap store proxy domain
+	SnapstoreProxyDomain string
+	// The snap store proxy ID
+	SnapstoreProxyId string
 	// MicroclusterAddress is the address to use for microcluster.
 	MicroclusterAddress string
 	// MicroclusterPort is the port to use for microcluster.
@@ -78,6 +84,11 @@ func NewBaseCloudConfig(data BaseUserData) (CloudConfig, error) {
 			Owner:       "root:root",
 		})
 	}
+
+	// snapstore proxy config files
+	snapStoreConfigFiles := getSnapstoreProxyConfigFiles(data.SnapstoreProxyScheme, data.SnapstoreProxyDomain, data.SnapstoreProxyId)
+	config.WriteFiles = append(config.WriteFiles, snapStoreConfigFiles...)
+
 	// write files
 	config.WriteFiles = append(
 		config.WriteFiles,
@@ -124,4 +135,38 @@ func NewBaseCloudConfig(data BaseUserData) (CloudConfig, error) {
 
 func makeMicroclusterAddress(address string, port int) string {
 	return net.JoinHostPort(address, strconv.Itoa(port))
+}
+
+func getSnapstoreProxyConfigFiles(snapstoreProxyScheme, snapstoreProxyDomain, snapstoreProxyId string) []File {
+	scheme := "http"
+	if snapstoreProxyScheme != "" {
+		scheme = snapstoreProxyScheme
+	}
+
+	if snapstoreProxyDomain == "" || snapstoreProxyId == "" {
+		return nil
+	}
+
+	schemeFile := File{
+		Path:        "/capi/etc/snapstore-proxy-scheme",
+		Content:     scheme,
+		Permissions: "0400",
+		Owner:       "root:root",
+	}
+
+	domainFile := File{
+		Path:        "/capi/etc/snapstore-proxy-domain",
+		Content:     snapstoreProxyDomain,
+		Permissions: "0400",
+		Owner:       "root:root",
+	}
+
+	storeIdFile := File{
+		Path:        "/capi/etc/snapstore-proxy-id",
+		Content:     snapstoreProxyId,
+		Permissions: "0400",
+		Owner:       "root:root",
+	}
+
+	return []File{schemeFile, domainFile, storeIdFile}
 }
