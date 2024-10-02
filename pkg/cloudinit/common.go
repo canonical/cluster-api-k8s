@@ -46,7 +46,7 @@ type BaseUserData struct {
 	// The snap store proxy domain
 	SnapstoreProxyDomain string
 	// The snap store proxy ID
-	SnapstoreProxyId string
+	SnapstoreProxyID string
 	// MicroclusterAddress is the address to use for microcluster.
 	MicroclusterAddress string
 	// MicroclusterPort is the port to use for microcluster.
@@ -86,7 +86,7 @@ func NewBaseCloudConfig(data BaseUserData) (CloudConfig, error) {
 	}
 
 	// snapstore proxy config files
-	snapStoreConfigFiles := getSnapstoreProxyConfigFiles(data.SnapstoreProxyScheme, data.SnapstoreProxyDomain, data.SnapstoreProxyId)
+	snapStoreConfigFiles := getSnapstoreProxyConfigFiles(data.SnapstoreProxyScheme, data.SnapstoreProxyDomain, data.SnapstoreProxyID)
 	config.WriteFiles = append(config.WriteFiles, snapStoreConfigFiles...)
 
 	// write files
@@ -137,13 +137,13 @@ func makeMicroclusterAddress(address string, port int) string {
 	return net.JoinHostPort(address, strconv.Itoa(port))
 }
 
-func getSnapstoreProxyConfigFiles(snapstoreProxyScheme, snapstoreProxyDomain, snapstoreProxyId string) []File {
+func getSnapstoreProxyConfigFiles(snapstoreProxyScheme, snapstoreProxyDomain, snapstoreProxyID string) []File {
 	scheme := "http"
 	if snapstoreProxyScheme != "" {
 		scheme = snapstoreProxyScheme
 	}
 
-	if snapstoreProxyDomain == "" || snapstoreProxyId == "" {
+	if snapstoreProxyDomain == "" || snapstoreProxyID == "" {
 		return nil
 	}
 
@@ -161,12 +161,12 @@ func getSnapstoreProxyConfigFiles(snapstoreProxyScheme, snapstoreProxyDomain, sn
 		Owner:       "root:root",
 	}
 
-	storeIdFile := File{
+	storeIDFile := File{
 		Path:        "/capi/etc/snapstore-proxy-id",
-		Content:     snapstoreProxyId,
+		Content:     snapstoreProxyID,
 		Permissions: "0400",
 		Owner:       "root:root",
 	}
 
-	return []File{schemeFile, domainFile, storeIdFile}
+	return []File{schemeFile, domainFile, storeIDFile}
 }

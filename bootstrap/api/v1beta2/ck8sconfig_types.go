@@ -64,7 +64,7 @@ type CK8sConfigSpec struct {
 
 	// The snap store proxy ID
 	// +optional
-	SnapstoreProxyId string `json:"snapstoreProxyId,omitempty"`
+	SnapstoreProxyID string `json:"snapstoreProxyId,omitempty"`
 
 	// CK8sControlPlaneConfig is configuration for the control plane node.
 	// +optional

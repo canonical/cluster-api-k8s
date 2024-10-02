@@ -271,7 +271,7 @@ func (r *CK8sConfigReconciler) joinControlplane(ctx context.Context, scope *Scop
 			AirGapped:            scope.Config.Spec.AirGapped,
 			SnapstoreProxyScheme: scope.Config.Spec.SnapstoreProxyScheme,
 			SnapstoreProxyDomain: scope.Config.Spec.SnapstoreProxyDomain,
-			SnapstoreProxyId:     scope.Config.Spec.SnapstoreProxyId,
+			SnapstoreProxyID:     scope.Config.Spec.SnapstoreProxyID,
 			NodeName:             scope.Config.Spec.NodeName,
 			NodeToken:            *nodeToken,
 		},
