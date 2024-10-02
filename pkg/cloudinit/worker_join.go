@@ -49,7 +49,6 @@ func NewJoinWorker(input JoinWorkerInput) (CloudConfig, error) {
 		config.RunCommands = append(config.RunCommands, "/capi/scripts/install.sh")
 	}
 	config.RunCommands = append(config.RunCommands,
-		"/capi/scripts/configure-snapstore-proxy.sh",
 		"/capi/scripts/load-images.sh",
 		"/capi/scripts/join-cluster.sh",
 		"/capi/scripts/configure-node-token.sh",

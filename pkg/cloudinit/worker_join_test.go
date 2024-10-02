@@ -15,10 +15,13 @@ func TestNewJoinWorker(t *testing.T) {
 
 	config, err := cloudinit.NewJoinWorker(cloudinit.JoinWorkerInput{
 		BaseUserData: cloudinit.BaseUserData{
-			KubernetesVersion: "v1.30.0",
-			BootCommands:      []string{"bootcmd"},
-			PreRunCommands:    []string{"prerun1", "prerun2"},
-			PostRunCommands:   []string{"postrun1", "postrun2"},
+			KubernetesVersion:    "v1.30.0",
+			BootCommands:         []string{"bootcmd"},
+			PreRunCommands:       []string{"prerun1", "prerun2"},
+			PostRunCommands:      []string{"postrun1", "postrun2"},
+			SnapstoreProxyScheme: "http",
+			SnapstoreProxyDomain: "snapstore.io",
+			SnapstoreProxyID:     "abcd-1234-xyz",
 			ExtraFiles: []cloudinit.File{{
 				Path:        "/tmp/file",
 				Content:     "test file",
@@ -42,6 +45,7 @@ func TestNewJoinWorker(t *testing.T) {
 		"set -x",
 		"prerun1",
 		"prerun2",
+		"/capi/scripts/configure-snapstore-proxy.sh",
 		"/capi/scripts/install.sh",
 		"/capi/scripts/load-images.sh",
 		"/capi/scripts/join-cluster.sh",
@@ -67,7 +71,10 @@ func TestNewJoinWorker(t *testing.T) {
 		HaveField("Path", "/capi/etc/node-name"),
 		HaveField("Path", "/capi/etc/node-token"),
 		HaveField("Path", "/capi/etc/join-token"),
-		HaveField("Path", "/capi/etc/snap-channel"),
+		HaveField("Path", "/capi/etc/snap-track"),
+		HaveField("Path", "/capi/etc/snapstore-proxy-scheme"),
+		HaveField("Path", "/capi/etc/snapstore-proxy-domain"),
+		HaveField("Path", "/capi/etc/snapstore-proxy-id"),
 		HaveField("Path", "/tmp/file"),
 	), "Some /capi/scripts files are missing")
 }
