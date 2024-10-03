@@ -75,6 +75,7 @@ func TestNewInitControlPlane(t *testing.T) {
 	}))
 
 	// NOTE (mateoflorido): Keep this test in sync with the expected paths in the controlplane_init.go file.
+	// NOTE (eac): If you use a script from pkg/cloudinit/scripts in the run commands, it should be in the write files.
 	g.Expect(config.WriteFiles).To(ConsistOf(
 		HaveField("Path", "/capi/scripts/install.sh"),
 		HaveField("Path", "/capi/scripts/bootstrap.sh"),
@@ -85,6 +86,7 @@ func TestNewInitControlPlane(t *testing.T) {
 		HaveField("Path", "/capi/scripts/configure-auth-token.sh"),
 		HaveField("Path", "/capi/scripts/configure-node-token.sh"),
 		HaveField("Path", "/capi/scripts/create-sentinel-bootstrap.sh"),
+		HaveField("Path", "/capi/scripts/configure-snapstore-proxy.sh"),
 		HaveField("Path", "/capi/etc/config.yaml"),
 		HaveField("Path", "/capi/etc/microcluster-address"),
 		HaveField("Path", "/capi/etc/node-name"),

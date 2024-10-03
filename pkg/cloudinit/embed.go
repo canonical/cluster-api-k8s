@@ -12,6 +12,7 @@ var (
 
 type script string
 
+// NOTE(eac): If you want to use a script in the cloud-init, you need to add it to the scripts map.
 var (
 	scriptInstall                 script = "install.sh"
 	scriptBootstrap               script = "bootstrap.sh"
@@ -22,6 +23,7 @@ var (
 	scriptWaitAPIServerReady      script = "wait-apiserver-ready.sh"
 	scriptDeployManifests         script = "deploy-manifests.sh"
 	scriptCreateSentinelBootstrap script = "create-sentinel-bootstrap.sh"
+	scriptConfigureSnapstoreProxy script = "configure-snapstore-proxy.sh"
 )
 
 func mustEmbed(s script) string {
@@ -44,5 +46,6 @@ var (
 		scriptWaitAPIServerReady:      mustEmbed(scriptWaitAPIServerReady),
 		scriptDeployManifests:         mustEmbed(scriptDeployManifests),
 		scriptCreateSentinelBootstrap: mustEmbed(scriptCreateSentinelBootstrap),
+		scriptConfigureSnapstoreProxy: mustEmbed(scriptConfigureSnapstoreProxy),
 	}
 )
