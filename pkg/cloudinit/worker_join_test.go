@@ -67,7 +67,7 @@ func TestNewJoinWorker(t *testing.T) {
 		HaveField("Path", "/capi/etc/node-name"),
 		HaveField("Path", "/capi/etc/node-token"),
 		HaveField("Path", "/capi/etc/join-token"),
-		HaveField("Path", "/capi/etc/snap-track"),
+		HaveField("Path", "/capi/etc/snap-channel"),
 		HaveField("Path", "/tmp/file"),
 	), "Some /capi/scripts files are missing")
 }

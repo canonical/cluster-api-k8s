@@ -86,7 +86,7 @@ func TestNewInitControlPlane(t *testing.T) {
 		HaveField("Path", "/capi/etc/node-name"),
 		HaveField("Path", "/capi/etc/node-token"),
 		HaveField("Path", "/capi/etc/token"),
-		HaveField("Path", "/capi/etc/snap-track"),
+		HaveField("Path", "/capi/etc/snap-chanel"),
 		HaveField("Path", "/capi/manifests/00-k8sd-proxy.yaml"),
 		HaveField("Path", "/tmp/file"),
 	), "Some /capi/scripts files are missing")
