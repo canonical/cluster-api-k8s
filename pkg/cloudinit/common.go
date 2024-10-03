@@ -12,7 +12,7 @@ import (
 type InstallOption string
 
 const (
-	InstallOptionChannel   InstallOption = "track"
+	InstallOptionChannel   InstallOption = "channel"
 	InstallOptionRevision  InstallOption = "revision"
 	InstallOptionLocalPath InstallOption = "local-path"
 )
