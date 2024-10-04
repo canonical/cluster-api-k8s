@@ -41,9 +41,9 @@ type MachineDeploymentReconciler struct {
 // MachineDeploymentUpgradeScope is a struct that holds the context of the upgrade process.
 type MachineDeploymentUpgradeScope struct {
 	MachineDeployment *clusterv1.MachineDeployment
+	PatchHelper       *patch.Helper
 	UpgradeTo         string
 	OwnedMachines     []*clusterv1.Machine
-	PatchHelper       *patch.Helper
 }
 
 // NewMachineDeploymentReconciler creates a new MachineDeploymentReconciler.
@@ -108,7 +108,8 @@ func (r *MachineDeploymentReconciler) Reconcile(ctx context.Context, req ctrl.Re
 	}
 
 	if !r.hasUpgradeInstructions(scope) {
-		if err := r.removeUpgradeToFromMachines(ctx, scope); err != nil {
+		log.Info("MachineDeployment has no upgrade instructions, removing upgrade-to annotation from machines and stopping reconciliation")
+		if err := r.removeUpgradeToFromMachines(ctx, log, scope); err != nil {
 			return ctrl.Result{}, fmt.Errorf("failed to remove upgrade-to annotation from machines: %w", err)
 		}
 		return ctrl.Result{}, nil
@@ -123,20 +124,24 @@ func (r *MachineDeploymentReconciler) Reconcile(ctx context.Context, req ctrl.Re
 			continue
 		}
 
-		if !m.DeletionTimestamp.IsZero() || r.isMachineUpgrading(m) {
+		if !m.DeletionTimestamp.IsZero() {
 			if !m.DeletionTimestamp.IsZero() {
-				log.Info("Machine is being deleted, requeuing...", "machine", m.Name)
-			} else {
-				log.Info("Machine is upgrading, requeuing...", "machine", m.Name)
+				log.Info("Machine is being deleted", "machine", m.Name)
 			}
-			return ctrl.Result{RequeueAfter: 10 * time.Second}, nil
+			continue
 		}
 
 		if r.isMachineUpradeFailed(m) {
+			log.Info("Machine upgrade failed for machine, requeuing...", "machine", m.Name)
 			if err := r.markUpgradeFailed(ctx, scope, m); err != nil {
 				return ctrl.Result{}, fmt.Errorf("failed to mark upgrade as failed: %w", err)
 			}
 
+			return ctrl.Result{RequeueAfter: 10 * time.Second}, nil
+		}
+
+		if r.isMachineUpgrading(m) {
+			log.Info("Machine is upgrading, requeuing...", "machine", m.Name)
 			return ctrl.Result{RequeueAfter: 10 * time.Second}, nil
 		}
 
@@ -157,7 +162,7 @@ func (r *MachineDeploymentReconciler) Reconcile(ctx context.Context, req ctrl.Re
 			return ctrl.Result{}, fmt.Errorf("failed to mark upgrade as done: %w", err)
 		}
 
-		// All machines are upgraded, we can stop the reconciliation
+		log.Info("All machines are upgraded")
 		return ctrl.Result{}, nil
 	}
 
@@ -252,7 +257,8 @@ func (r *MachineDeploymentReconciler) createScope(md *clusterv1.MachineDeploymen
 		return nil, fmt.Errorf("failed to create new patch helper: %w", err)
 	}
 
-	// NOTE(Hue): TODO
+	// NOTE(Hue): The reason we are checking the `Release` annotation as well is that we want to make sure
+	// we upgrade the new machines that joined after the initial upgrade process.
 	upgradeTo := md.Annotations[bootstrapv1.InPlaceUpgradeReleaseAnnotation]
 	if to, ok := md.Annotations[bootstrapv1.InPlaceUpgradeToAnnotation]; ok {
 		upgradeTo = to
@@ -319,6 +325,14 @@ func (r *MachineDeploymentReconciler) getOwnedMachines(ctx context.Context, md *
 		i++
 	}
 
+	// NOTE(Hue): Sorting machines by their UID to make sure we have a deterministic order.
+	// This is to (kind of) make sure we upgrade the machines in the same order every time.
+	// Meaning that if in the previous reconciliation we annotated a machine with upgrade-to,
+	// In the next reconciliation we will make sure that upgrade was successful before moving
+	// to the next machine.
+	// This is not the most robust way to do this, but it's good enough.
+	// A better way to do this might be to use some kind of lock (via a secret or something),
+	// similar to control plane init lock.
 	slices.SortStableFunc(ownedMachines, func(m1, m2 *clusterv1.Machine) int {
 		switch {
 		case m1.UID < m2.UID:
@@ -386,11 +400,13 @@ func (r *MachineDeploymentReconciler) markMachineToUpgrade(ctx context.Context, 
 }
 
 // removeUpgradeToFromMachines removes the upgrade-to annotation from the machines.
-func (r *MachineDeploymentReconciler) removeUpgradeToFromMachines(ctx context.Context, scope *MachineDeploymentUpgradeScope) error {
+func (r *MachineDeploymentReconciler) removeUpgradeToFromMachines(ctx context.Context, log logr.Logger, scope *MachineDeploymentUpgradeScope) error {
 	for _, m := range scope.OwnedMachines {
 		if m.Annotations == nil || m.Annotations[bootstrapv1.InPlaceUpgradeToAnnotation] == "" {
 			continue
 		}
+
+		log.Info("Removing upgrade-to annotation from machine", "machine", m.Name)
 
 		patchHelper, err := patch.NewHelper(m, r.Client)
 		if err != nil {
