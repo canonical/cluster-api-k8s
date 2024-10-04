@@ -150,17 +150,18 @@ func (r *MachineDeploymentReconciler) Reconcile(ctx context.Context, req ctrl.Re
 		if err := r.markUpgradeInProgress(ctx, scope); err != nil {
 			return ctrl.Result{}, fmt.Errorf("failed to mark upgrade as in-progress: %w", err)
 		}
-
-		return ctrl.Result{RequeueAfter: 5 * time.Second}, nil
 	}
 
 	if upgradedMachines == len(ownedMachines) {
 		if err := r.markUpgradeDone(ctx, scope); err != nil {
 			return ctrl.Result{}, fmt.Errorf("failed to mark upgrade as done: %w", err)
 		}
+
+		// All machines are upgraded, we can stop the reconciliation
+		return ctrl.Result{}, nil
 	}
 
-	return ctrl.Result{}, nil
+	return ctrl.Result{RequeueAfter: 5 * time.Second}, nil
 }
 
 // markUpgradeInProgress marks the MachineDeployment as in-place upgrade in-progress.
@@ -387,7 +388,7 @@ func (r *MachineDeploymentReconciler) markMachineToUpgrade(ctx context.Context, 
 // removeUpgradeToFromMachines removes the upgrade-to annotation from the machines.
 func (r *MachineDeploymentReconciler) removeUpgradeToFromMachines(ctx context.Context, scope *MachineDeploymentUpgradeScope) error {
 	for _, m := range scope.OwnedMachines {
-		if m.Annotations == nil {
+		if m.Annotations == nil || m.Annotations[bootstrapv1.InPlaceUpgradeToAnnotation] == "" {
 			continue
 		}
 
@@ -396,22 +397,19 @@ func (r *MachineDeploymentReconciler) removeUpgradeToFromMachines(ctx context.Co
 			return fmt.Errorf("failed to create new patch helper: %w", err)
 		}
 
-		_, hasAnnotation := m.Annotations[bootstrapv1.InPlaceUpgradeToAnnotation]
 		delete(m.Annotations, bootstrapv1.InPlaceUpgradeToAnnotation)
 
 		if err := patchHelper.Patch(ctx, m); err != nil {
 			return fmt.Errorf("failed to patch: %w", err)
 		}
 
-		if hasAnnotation {
-			r.recorder.Eventf(
-				scope.MachineDeployment,
-				corev1.EventTypeNormal,
-				bootstrapv1.InPlaceUpgradeCanceledEvent,
-				"Machine %q upgrade-to annotation was removed",
-				m.Name,
-			)
-		}
+		r.recorder.Eventf(
+			scope.MachineDeployment,
+			corev1.EventTypeNormal,
+			bootstrapv1.InPlaceUpgradeCanceledEvent,
+			"Machine %q upgrade-to annotation was removed",
+			m.Name,
+		)
 	}
 
 	return nil
@@ -419,5 +417,5 @@ func (r *MachineDeploymentReconciler) removeUpgradeToFromMachines(ctx context.Co
 
 // hasUpgradeInstructions checks if the MachineDeployment has no upgrade instructions.
 func (r *MachineDeploymentReconciler) hasUpgradeInstructions(scope *MachineDeploymentUpgradeScope) bool {
-	return scope.UpgradeTo == ""
+	return scope.UpgradeTo != ""
 }
