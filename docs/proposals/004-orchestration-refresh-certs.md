@@ -177,7 +177,7 @@ The status of the certificate refresh process will be shared via the
 This section MUST mention any changes to the controlplane provider.
 -->
 
-A controller `CK8sCertificatesReconciler` will be added to the control plane
+A controller `ControlPlaneCertificatesReconciler` will be added to the control plane
 provider. This controller will watch for the `CK8sControlPlane` objects and
 will trigger the certificate refresh for all the control plane nodes in the
 cluster when the `v1beta2.k8sd.io/refresh-certificates` annotation is present.
