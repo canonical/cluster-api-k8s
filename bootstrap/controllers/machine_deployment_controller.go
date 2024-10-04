@@ -299,7 +299,8 @@ func (r *MachineDeploymentReconciler) getOwnedMachines(ctx context.Context, md *
 	}
 
 	var ms clusterv1.MachineSet
-	for _, _ms := range msList.Items {
+	// NOTE(Hue): The nosec is due to a false positive: https://stackoverflow.com/questions/62446118/implicit-memory-aliasing-in-for-loop
+	for _, _ms := range msList.Items { // #nosec G601
 		if util.IsOwnedByObject(&_ms, md) {
 			ms = _ms
 		}
