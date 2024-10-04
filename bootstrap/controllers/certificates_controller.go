@@ -231,6 +231,9 @@ func (r *CertificatesReconciler) updateExpiryDateAnnotation(ctx context.Context,
 	}
 
 	mAnnotations := scope.Machine.GetAnnotations()
+	if mAnnotations == nil {
+		mAnnotations = map[string]string{}
+	}
 
 	expiryDateString, err := scope.Workload.GetCertificatesExpiryDate(ctx, scope.Machine, *nodeToken)
 	if err != nil {
