@@ -128,7 +128,7 @@ func (r *MachineDeploymentReconciler) Reconcile(ctx context.Context, req ctrl.Re
 			continue
 		}
 
-		if r.isMachineUprgadeFailed(m) {
+		if r.isMachineUpgradeFailed(m) {
 			log.Info("Machine upgrade failed for machine, requeuing...", "machine", m.Name)
 			if err := r.markUpgradeFailed(ctx, scope, m); err != nil {
 				return ctrl.Result{}, fmt.Errorf("failed to mark upgrade as failed: %w", err)
@@ -355,8 +355,8 @@ func (r *MachineDeploymentReconciler) isMachineUpgrading(m *clusterv1.Machine) b
 		m.Annotations[bootstrapv1.InPlaceUpgradeToAnnotation] != ""
 }
 
-// isMachineUprgadeFailed checks if the machine upgrade failed.
-func (r *MachineDeploymentReconciler) isMachineUprgadeFailed(m *clusterv1.Machine) bool {
+// isMachineUpgradeFailed checks if the machine upgrade failed.
+func (r *MachineDeploymentReconciler) isMachineUpgradeFailed(m *clusterv1.Machine) bool {
 	return m.Annotations[bootstrapv1.InPlaceUpgradeLastFailedAttemptAtAnnotation] != ""
 }
 
