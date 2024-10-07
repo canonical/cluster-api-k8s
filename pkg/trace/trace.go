@@ -7,6 +7,8 @@ import (
 
 const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
 
+// NewID generates a random string of length 8.
+// This string consists of numbers as well as uppercase and lowercase letters.
 func NewID() string {
 	b := make([]byte, 8)
 	for i := range b {
