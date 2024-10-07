@@ -161,7 +161,7 @@ func TestNewInitControlPlaneSnapInstall(t *testing.T) {
 			name: "ChannelOverride",
 			snapInstall: cloudinit.SnapInstallData{
 				Option: cloudinit.InstallOptionChannel,
-				Value:  "v1.30/stable",
+				Value:  "v1.30/edge",
 			},
 		},
 		{
