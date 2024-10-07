@@ -322,11 +322,17 @@ func (w *Workload) RefreshWorkerCertificates(ctx context.Context, machine *clust
 	eg, ctx := errgroup.WithContext(ctx)
 	eg.Go(func() error {
 		seconds, err = w.refreshCertificatesRun(ctx, machine, nodeToken, &request)
-		return err
+		if err != nil {
+			return fmt.Errorf("failed to run refresh certificates: %w", err)
+		}
+		return nil
 	})
 
 	eg.Go(func() error {
-		return w.ApproveCertificates(ctx, machine, nodeToken, seed)
+		if err := w.ApproveCertificates(ctx, machine, nodeToken, seed); err != nil {
+			return fmt.Errorf("failed to approve certificates: %w", err)
+		}
+		return nil
 	})
 
 	if err := eg.Wait(); err != nil {
@@ -334,7 +340,6 @@ func (w *Workload) RefreshWorkerCertificates(ctx context.Context, machine *clust
 	}
 
 	return seconds, nil
-
 }
 
 func (w *Workload) RefreshControlPlaneCertificates(ctx context.Context, machine *clusterv1.Machine, nodeToken string, expirationSeconds int, extraSANs []string) (int, error) {
