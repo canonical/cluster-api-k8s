@@ -9,7 +9,7 @@ fill out the sections below.
 - **Index**: 003
 
 <!-- Status -->
-- **Status**: **DRAFTING**
+- **Status**: **ACCEPTED**
 <!-- **DRAFTING**/**ACCEPTED**/**REJECTED** -->
 
 <!-- Short description for the feature -->
@@ -182,7 +182,25 @@ type RequestCertificatesRequest struct {
 }
 ```
 
-### `POST /x/capi/refresh-certificates`
+### `POST /x/capi/refresh-certificates/plan`
+
+This endpoint returns the renewal plan for certificates on a specific node. The
+response will include the seed used to generate the Certificate Signing Request
+(CSR) and a list of CSRs that need to be approved (for worker nodes).
+
+This endpoint utilizes the same structures and endpoints as the
+`POST /k8sd/refresh-certs/plan`.
+
+```go
+type RefreshCertificatesPlanResponse struct {
+	// Seed should be passed by clients to the RefreshCertificatesRun RPC.
+	Seed int `json:"seed"`
+	// CertificateSigningRequests is a list of names of the CertificateSigningRequests that need to be signed externally (for worker nodes).
+	CertificateSigningRequests []string `json:"certificate-signing-requests"`
+}
+```
+
+### `POST /x/capi/refresh-certificates/run`
 
 This endpoint will trigger the renewal of certificates on a specific node.
 The request will include the duration after which the certificates will expire
@@ -190,7 +208,9 @@ and a list of additional Subject Alternative Names (SANs) to include in the
 certificate.
 
 This endpoint is applicable to both control plane and worker nodes. For worker
-nodes, the request will include the seed used to generate the CSR.
+nodes, the request will include the seed used to generate the CSR. This
+endpoint uses the same structures and endpoints as the
+`POST /k8sd/refresh-certs/run`.
 
 ```go
 type RefreshCertificatesRequest struct {
