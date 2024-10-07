@@ -149,7 +149,9 @@ func (r *CertificatesReconciler) Reconcile(ctx context.Context, req ctrl.Request
 				return ctrl.Result{}, err
 			}
 		} else {
-			log.Info("worker nodes are not supported yet")
+			if err := r.refreshWorkerCertificates(ctx, scope); err != nil {
+				return ctrl.Result{}, err
+			}
 			return ctrl.Result{}, nil
 		}
 	}
@@ -188,7 +190,7 @@ func (r *CertificatesReconciler) refreshControlPlaneCertificates(ctx context.Con
 	extraSANs := controlPlaneConfig.ExtraSANs
 	extraSANs = append(extraSANs, controlPlaneEndpoint)
 
-	expirySecondsUnix, err := scope.Workload.RefreshCertificates(ctx, scope.Machine, *nodeToken, seconds, extraSANs)
+	expirySecondsUnix, err := scope.Workload.RefreshControlPlaneCertificates(ctx, scope.Machine, *nodeToken, seconds, extraSANs)
 	if err != nil {
 		r.recorder.Eventf(
 			scope.Machine,
@@ -242,6 +244,67 @@ func (r *CertificatesReconciler) updateExpiryDateAnnotation(ctx context.Context,
 	if err := scope.Patcher.Patch(ctx, scope.Machine); err != nil {
 		return fmt.Errorf("failed to patch machine annotations: %w", err)
 	}
+
+	return nil
+}
+
+func (r *CertificatesReconciler) refreshWorkerCertificates(ctx context.Context, scope *CertificatesScope) error {
+	nodeToken, err := token.LookupNodeToken(ctx, r.Client, util.ObjectKey(scope.Cluster), scope.Machine.Name)
+	if err != nil {
+		return fmt.Errorf("failed to lookup node token: %w", err)
+	}
+
+	mAnnotations := scope.Machine.GetAnnotations()
+
+	refreshAnnotation, ok := mAnnotations[bootstrapv1.CertificatesRefreshAnnotation]
+	if !ok {
+		return nil
+	}
+
+	r.recorder.Eventf(
+		scope.Machine,
+		corev1.EventTypeNormal,
+		bootstrapv1.CertificatesRefreshInProgressEvent,
+		"Certificates refresh in progress. TTL: %s", refreshAnnotation,
+	)
+
+	seconds, err := utiltime.TTLToSeconds(refreshAnnotation)
+	if err != nil {
+		return fmt.Errorf("failed to parse expires-in annotation value: %w", err)
+	}
+
+	expirySecondsUnix, err := scope.Workload.RefreshWorkerCertificates(ctx, scope.Machine, *nodeToken, seconds)
+	if err != nil {
+		r.recorder.Eventf(
+			scope.Machine,
+			corev1.EventTypeWarning,
+			bootstrapv1.CertificatesRefreshFailedEvent,
+			"Failed to refresh certificates: %v", err,
+		)
+		return fmt.Errorf("failed to refresh certificates: %w", err)
+	}
+
+	expiryTime := time.Unix(int64(expirySecondsUnix), 0)
+
+	delete(mAnnotations, bootstrapv1.CertificatesRefreshAnnotation)
+	mAnnotations[bootstrapv1.MachineCertificatesExpiryDateAnnotation] = expiryTime.Format(time.RFC3339)
+	scope.Machine.SetAnnotations(mAnnotations)
+	if err := scope.Patcher.Patch(ctx, scope.Machine); err != nil {
+		return fmt.Errorf("failed to patch machine annotations: %w", err)
+	}
+
+	r.recorder.Eventf(
+		scope.Machine,
+		corev1.EventTypeNormal,
+		bootstrapv1.CertificatesRefreshDoneEvent,
+		"Certificates refreshed, will expire at %s", expiryTime,
+	)
+
+	scope.Log.Info("Certificates refreshed",
+		"cluster", scope.Cluster.Name,
+		"machine", scope.Machine.Name,
+		"expiry", expiryTime.Format(time.RFC3339),
+	)
 
 	return nil
 }
