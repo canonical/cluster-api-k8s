@@ -699,7 +699,12 @@ func (r *CK8sControlPlaneReconciler) syncMachines(ctx context.Context, kcp *cont
 
 		patchHelper, err := patch.NewHelper(m, r.Client)
 		if err != nil {
-			return err
+			return fmt.Errorf("failed to create patch helper for machine: %w", err)
+		}
+
+		// Create a new map if machine has no annotations.
+		if m.Annotations == nil {
+			m.Annotations = map[string]string{}
 		}
 
 		// Set annotations
