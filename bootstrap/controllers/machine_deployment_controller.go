@@ -80,24 +80,24 @@ func (r *MachineDeploymentReconciler) SetupWithManager(mgr ctrl.Manager) error {
 func (r *MachineDeploymentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	traceID := trace.NewID()
 	log := r.Log.WithValues("machine_deployment", req.NamespacedName, "trace_id", traceID)
-	log.Info("Reconciliation started...")
+	log.V(1).Info("Reconciliation started...")
 
 	machineDeployment := &clusterv1.MachineDeployment{}
 	if err := r.Get(ctx, req.NamespacedName, machineDeployment); err != nil {
 		if apierrors.IsNotFound(err) {
-			log.Info("MachineDeployment resource not found. Ignoring since object must be deleted.")
+			log.V(1).Info("MachineDeployment resource not found. Ignoring since object must be deleted.")
 			return ctrl.Result{}, nil
 		}
 		return ctrl.Result{}, fmt.Errorf("failed to get MachineDeployment: %w", err)
 	}
 
-	if machineDeployment.Annotations[bootstrapv1.InPlaceUpgradeToAnnotation] == "" {
-		log.Info("MachineDeployment has no upgrade instructions, skipping reconciliation")
+	if r.getUpgradeInstructions(machineDeployment) == "" {
+		log.V(1).Info("MachineDeployment has no upgrade instructions, skipping reconciliation")
 		return ctrl.Result{}, nil
 	}
 
 	if !machineDeployment.DeletionTimestamp.IsZero() {
-		log.Info("MachineDeployment is being deleted, skipping reconciliation")
+		log.V(1).Info("MachineDeployment is being deleted, skipping reconciliation")
 		return ctrl.Result{}, nil
 	}
 
@@ -115,13 +115,13 @@ func (r *MachineDeploymentReconciler) Reconcile(ctx context.Context, req ctrl.Re
 	var upgradedMachines int
 	for _, m := range ownedMachines {
 		if r.isMachineUpgraded(scope, m) {
-			log.Info("Machine is already upgraded", "machine", m.Name)
+			log.V(1).Info("Machine is already upgraded", "machine", m.Name)
 			upgradedMachines++
 			continue
 		}
 
 		if !m.DeletionTimestamp.IsZero() {
-			log.Info("Machine is being deleted, requeuing...", "machine", m.Name)
+			log.V(1).Info("Machine is being deleted, requeuing...", "machine", m.Name)
 			return ctrl.Result{RequeueAfter: 5 * time.Second}, nil
 		}
 
@@ -135,7 +135,7 @@ func (r *MachineDeploymentReconciler) Reconcile(ctx context.Context, req ctrl.Re
 		}
 
 		if r.isMachineUpgrading(m) {
-			log.Info("Machine is upgrading, requeuing...", "machine", m.Name)
+			log.V(1).Info("Machine is upgrading, requeuing...", "machine", m.Name)
 			return ctrl.Result{RequeueAfter: 5 * time.Second}, nil
 		}
 
@@ -144,7 +144,7 @@ func (r *MachineDeploymentReconciler) Reconcile(ctx context.Context, req ctrl.Re
 			return ctrl.Result{}, fmt.Errorf("failed to mark machine to upgrade: %w", err)
 		}
 
-		log.Info("Machine marked for upgrade", "machine", m.Name)
+		log.V(1).Info("Machine marked for upgrade", "machine", m.Name)
 
 		if err := r.markUpgradeInProgress(ctx, scope, m); err != nil {
 			return ctrl.Result{}, fmt.Errorf("failed to mark upgrade as in-progress: %w", err)
@@ -158,7 +158,7 @@ func (r *MachineDeploymentReconciler) Reconcile(ctx context.Context, req ctrl.Re
 			return ctrl.Result{}, fmt.Errorf("failed to mark upgrade as done: %w", err)
 		}
 
-		log.Info("All machines are upgraded")
+		log.V(1).Info("All machines are upgraded")
 		return ctrl.Result{}, nil
 	}
 
@@ -172,19 +172,13 @@ func (r *MachineDeploymentReconciler) markUpgradeInProgress(ctx context.Context,
 		mdAnnotations = make(map[string]string)
 	}
 
-	templateAnnotations := scope.MachineDeployment.Spec.Template.Annotations
-	if templateAnnotations == nil {
-		templateAnnotations = make(map[string]string)
-	}
-
 	// clean up
 	delete(mdAnnotations, bootstrapv1.InPlaceUpgradeReleaseAnnotation)
-	delete(templateAnnotations, bootstrapv1.InPlaceUpgradeReleaseAnnotation)
 
 	mdAnnotations[bootstrapv1.InPlaceUpgradeStatusAnnotation] = bootstrapv1.InPlaceUpgradeInProgressStatus
+	mdAnnotations[bootstrapv1.InPlaceUpgradeToAnnotation] = scope.UpgradeTo
 
 	scope.MachineDeployment.SetAnnotations(mdAnnotations)
-	scope.MachineDeployment.Spec.Template.Annotations = templateAnnotations
 
 	if err := scope.PatchHelper.Patch(ctx, scope.MachineDeployment); err != nil {
 		return fmt.Errorf("failed to patch: %w", err)
@@ -207,21 +201,13 @@ func (r *MachineDeploymentReconciler) markUpgradeDone(ctx context.Context, scope
 		annotations = make(map[string]string)
 	}
 
-	templateAnnotations := scope.MachineDeployment.Spec.Template.Annotations
-	if templateAnnotations == nil {
-		templateAnnotations = make(map[string]string)
-	}
-
 	// clean up
 	delete(annotations, bootstrapv1.InPlaceUpgradeToAnnotation)
-	delete(templateAnnotations, bootstrapv1.InPlaceUpgradeToAnnotation)
 
 	annotations[bootstrapv1.InPlaceUpgradeStatusAnnotation] = bootstrapv1.InPlaceUpgradeDoneStatus
 	annotations[bootstrapv1.InPlaceUpgradeReleaseAnnotation] = scope.UpgradeTo
-	templateAnnotations[bootstrapv1.InPlaceUpgradeReleaseAnnotation] = scope.UpgradeTo
 
 	scope.MachineDeployment.SetAnnotations(annotations)
-	scope.MachineDeployment.Spec.Template.Annotations = templateAnnotations
 
 	if err := scope.PatchHelper.Patch(ctx, scope.MachineDeployment); err != nil {
 		return fmt.Errorf("failed to patch: %w", err)
@@ -243,19 +229,11 @@ func (r *MachineDeploymentReconciler) markUpgradeFailed(ctx context.Context, sco
 		annotations = make(map[string]string)
 	}
 
-	templateAnnotations := scope.MachineDeployment.Spec.Template.Annotations
-	if templateAnnotations == nil {
-		templateAnnotations = make(map[string]string)
-	}
-
 	// clean up
 	delete(annotations, bootstrapv1.InPlaceUpgradeReleaseAnnotation)
-	delete(templateAnnotations, bootstrapv1.InPlaceUpgradeReleaseAnnotation)
 
 	annotations[bootstrapv1.InPlaceUpgradeStatusAnnotation] = bootstrapv1.InPlaceUpgradeFailedStatus
-
 	scope.MachineDeployment.SetAnnotations(annotations)
-	scope.MachineDeployment.Spec.Template.Annotations = templateAnnotations
 
 	if err := scope.PatchHelper.Patch(ctx, scope.MachineDeployment); err != nil {
 		return fmt.Errorf("failed to patch: %w", err)
@@ -280,7 +258,7 @@ func (r *MachineDeploymentReconciler) createScope(md *clusterv1.MachineDeploymen
 
 	return &MachineDeploymentUpgradeScope{
 		MachineDeployment: md,
-		UpgradeTo:         md.Annotations[bootstrapv1.InPlaceUpgradeToAnnotation],
+		UpgradeTo:         r.getUpgradeInstructions(md),
 		OwnedMachines:     ownedMachines,
 		PatchHelper:       patchHelper,
 	}, nil
@@ -420,4 +398,17 @@ func (r *MachineDeploymentReconciler) markMachineToUpgrade(ctx context.Context, 
 	)
 
 	return nil
+}
+
+func (r *MachineDeploymentReconciler) getUpgradeInstructions(md *clusterv1.MachineDeployment) string {
+	// NOTE(Hue): The reason we are checking the `release` annotation as well is that we want to make sure
+	// we upgrade the new machines that joined after the initial upgrade process.
+	// The `upgrade-to` overwrites the `release` annotation, because we might have both in case
+	// the user decides to do another in-place upgrade after a successful one.
+	upgradeTo := md.Annotations[bootstrapv1.InPlaceUpgradeReleaseAnnotation]
+	if to, ok := md.Annotations[bootstrapv1.InPlaceUpgradeToAnnotation]; ok {
+		upgradeTo = to
+	}
+
+	return upgradeTo
 }
