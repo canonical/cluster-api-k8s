@@ -85,8 +85,8 @@ func NewBaseCloudConfig(data BaseUserData) (CloudConfig, error) {
 		})
 	}
 
-	// snapstore proxy config files
-	if snapStoreConfigFiles := getSnapstoreProxyConfigFiles(data.SnapstoreProxyScheme, data.SnapstoreProxyDomain, data.SnapstoreProxyID); snapStoreConfigFiles != nil {
+	// snapstore proxy configuration
+	if snapStoreConfigFiles := getSnapstoreProxyConfigFiles(data); snapStoreConfigFiles != nil {
 		config.WriteFiles = append(config.WriteFiles, snapStoreConfigFiles...)
 		config.RunCommands = append(config.RunCommands, "/capi/scripts/configure-snapstore-proxy.sh")
 	}
@@ -139,7 +139,14 @@ func makeMicroclusterAddress(address string, port int) string {
 	return net.JoinHostPort(address, strconv.Itoa(port))
 }
 
-func getSnapstoreProxyConfigFiles(snapstoreProxyScheme, snapstoreProxyDomain, snapstoreProxyID string) []File {
+// getSnapstoreProxyConfigFiles returns the snapstore proxy config files.
+// If the snapstore proxy domain or ID is not set, it returns nil.
+// Nil indicates that no files are returned.
+func getSnapstoreProxyConfigFiles(data BaseUserData) []File {
+	snapstoreProxyScheme := data.SnapstoreProxyScheme
+	snapstoreProxyDomain := data.SnapstoreProxyDomain
+	snapstoreProxyID := data.SnapstoreProxyID
+
 	scheme := "http"
 	if snapstoreProxyScheme != "" {
 		scheme = snapstoreProxyScheme
