@@ -397,6 +397,41 @@ func (r *CK8sConfigReconciler) resolveFiles(ctx context.Context, cfg *bootstrapv
 	return collected, nil
 }
 
+func (r *CK8sConfigReconciler) resolveInPlaceUpgradeRelease(machine *clusterv1.Machine) cloudinit.SnapInstallData {
+	mAnnotations := machine.GetAnnotations()
+
+	if mAnnotations != nil {
+		return cloudinit.SnapInstallData{}
+	}
+
+	val, ok := mAnnotations[bootstrapv1.InPlaceUpgradeReleaseAnnotation]
+	if ok {
+		optionKv := strings.Split(val, "=")
+
+		switch optionKv[0] {
+		case "channel":
+			return cloudinit.SnapInstallData{
+				Option: cloudinit.InstallOptionChannel,
+				Value:  optionKv[1],
+			}
+		case "revision":
+			return cloudinit.SnapInstallData{
+				Option: cloudinit.InstallOptionRevision,
+				Value:  optionKv[1],
+			}
+		case "localPath":
+			return cloudinit.SnapInstallData{
+				Option: cloudinit.InstallOptionLocalPath,
+				Value:  optionKv[1],
+			}
+		default:
+			r.Log.Info("Unknown in-place upgrade release option, ignoring", "option", optionKv[0])
+		}
+	}
+
+	return cloudinit.SnapInstallData{}
+}
+
 // resolveSecretFileContent returns file content fetched from a referenced secret object.
 func (r *CK8sConfigReconciler) resolveSecretFileContent(ctx context.Context, ns string, source bootstrapv1.File) ([]byte, error) {
 	secret := &corev1.Secret{}
