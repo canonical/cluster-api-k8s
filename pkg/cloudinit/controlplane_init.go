@@ -52,9 +52,7 @@ func NewInitControlPlane(input InitControlPlaneInput) (CloudConfig, error) {
 	)
 
 	// run commands
-	config.RunCommands = append(config.RunCommands, input.PreRunCommands...)
-
-	config.RunCommands = append(config.RunCommands, "/capi/scripts/configure-snapstore-proxy.sh")
+	config.RunCommands = append(input.PreRunCommands, config.RunCommands...)
 
 	if !input.AirGapped {
 		config.RunCommands = append(config.RunCommands, "/capi/scripts/install.sh")

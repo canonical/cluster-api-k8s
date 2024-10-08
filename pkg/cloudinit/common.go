@@ -86,8 +86,10 @@ func NewBaseCloudConfig(data BaseUserData) (CloudConfig, error) {
 	}
 
 	// snapstore proxy config files
-	snapStoreConfigFiles := getSnapstoreProxyConfigFiles(data.SnapstoreProxyScheme, data.SnapstoreProxyDomain, data.SnapstoreProxyID)
-	config.WriteFiles = append(config.WriteFiles, snapStoreConfigFiles...)
+	if snapStoreConfigFiles := getSnapstoreProxyConfigFiles(data.SnapstoreProxyScheme, data.SnapstoreProxyDomain, data.SnapstoreProxyID); snapStoreConfigFiles != nil {
+		config.WriteFiles = append(config.WriteFiles, snapStoreConfigFiles...)
+		config.RunCommands = append(config.RunCommands, "/capi/scripts/configure-snapstore-proxy.sh")
+	}
 
 	// write files
 	config.WriteFiles = append(
