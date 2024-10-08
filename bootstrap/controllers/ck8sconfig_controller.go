@@ -419,33 +419,35 @@ func (r *CK8sConfigReconciler) resolveInPlaceUpgradeRelease(machine *clusterv1.M
 
 	if mAnnotations != nil {
 		val, ok := mAnnotations[bootstrapv1.InPlaceUpgradeReleaseAnnotation]
-		if ok {
-			optionKv := strings.Split(val, "=")
+		if !ok {
+			return cloudinit.SnapInstallData{}
+		}
 
-			if len(optionKv) != 2 {
-				r.Log.Info("Invalid in-place upgrade release annotation, ignoring", "annotation", val)
-				return cloudinit.SnapInstallData{}
-			}
+		optionKv := strings.Split(val, "=")
 
-			switch optionKv[0] {
-			case "channel":
-				return cloudinit.SnapInstallData{
-					Option: cloudinit.InstallOptionChannel,
-					Value:  optionKv[1],
-				}
-			case "revision":
-				return cloudinit.SnapInstallData{
-					Option: cloudinit.InstallOptionRevision,
-					Value:  optionKv[1],
-				}
-			case "localPath":
-				return cloudinit.SnapInstallData{
-					Option: cloudinit.InstallOptionLocalPath,
-					Value:  optionKv[1],
-				}
-			default:
-				r.Log.Info("Unknown in-place upgrade release option, ignoring", "option", optionKv[0])
+		if len(optionKv) != 2 {
+			r.Log.Info("Invalid in-place upgrade release annotation, ignoring", "annotation", val)
+			return cloudinit.SnapInstallData{}
+		}
+
+		switch optionKv[0] {
+		case "channel":
+			return cloudinit.SnapInstallData{
+				Option: cloudinit.InstallOptionChannel,
+				Value:  optionKv[1],
 			}
+		case "revision":
+			return cloudinit.SnapInstallData{
+				Option: cloudinit.InstallOptionRevision,
+				Value:  optionKv[1],
+			}
+		case "localPath":
+			return cloudinit.SnapInstallData{
+				Option: cloudinit.InstallOptionLocalPath,
+				Value:  optionKv[1],
+			}
+		default:
+			r.Log.Info("Unknown in-place upgrade release option, ignoring", "option", optionKv[0])
 		}
 	}
 
