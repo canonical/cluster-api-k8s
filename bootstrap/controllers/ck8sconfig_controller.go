@@ -422,6 +422,11 @@ func (r *CK8sConfigReconciler) resolveInPlaceUpgradeRelease(machine *clusterv1.M
 		if ok {
 			optionKv := strings.Split(val, "=")
 
+			if len(optionKv) != 2 {
+				r.Log.Info("Invalid in-place upgrade release annotation, ignoring", "annotation", val)
+				return cloudinit.SnapInstallData{}
+			}
+
 			switch optionKv[0] {
 			case "channel":
 				return cloudinit.SnapInstallData{
