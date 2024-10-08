@@ -261,8 +261,7 @@ func (r *CK8sConfigReconciler) joinControlplane(ctx context.Context, scope *Scop
 	snapInstallData := r.getSnapInstallDataFromSpec(scope.Config.Spec)
 
 	inPlaceInstallData := r.resolveInPlaceUpgradeRelease(machine)
-
-	if inPlaceInstallData != (cloudinit.SnapInstallData{}) {
+	if inPlaceInstallData.Option != "" || inPlaceInstallData.Value != "" {
 		snapInstallData = inPlaceInstallData
 	}
 
