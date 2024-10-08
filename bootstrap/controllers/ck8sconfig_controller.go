@@ -258,12 +258,15 @@ func (r *CK8sConfigReconciler) joinControlplane(ctx context.Context, scope *Scop
 		return err
 	}
 
+	snapInstallData := r.resolveInPlaceUpgradeRelease(machine)
+
 	input := cloudinit.JoinControlPlaneInput{
 		BaseUserData: cloudinit.BaseUserData{
 			BootCommands:         scope.Config.Spec.BootCommands,
 			PreRunCommands:       scope.Config.Spec.PreRunCommands,
 			PostRunCommands:      scope.Config.Spec.PostRunCommands,
 			KubernetesVersion:    scope.Config.Spec.Version,
+			SnapInstallData:      snapInstallData,
 			ExtraFiles:           cloudinit.FilesFromAPI(files),
 			ConfigFileContents:   string(joinConfig),
 			MicroclusterAddress:  scope.Config.Spec.ControlPlaneConfig.MicroclusterAddress,
@@ -340,12 +343,15 @@ func (r *CK8sConfigReconciler) joinWorker(ctx context.Context, scope *Scope) err
 		return err
 	}
 
+	snapInstallData := r.resolveInPlaceUpgradeRelease(machine)
+
 	input := cloudinit.JoinWorkerInput{
 		BaseUserData: cloudinit.BaseUserData{
 			BootCommands:         scope.Config.Spec.BootCommands,
 			PreRunCommands:       scope.Config.Spec.PreRunCommands,
 			PostRunCommands:      scope.Config.Spec.PostRunCommands,
 			KubernetesVersion:    scope.Config.Spec.Version,
+			SnapInstallData:      snapInstallData,
 			ExtraFiles:           cloudinit.FilesFromAPI(files),
 			ConfigFileContents:   string(joinConfig),
 			MicroclusterAddress:  scope.Config.Spec.ControlPlaneConfig.MicroclusterAddress,
@@ -570,12 +576,15 @@ func (r *CK8sConfigReconciler) handleClusterNotInitialized(ctx context.Context, 
 		return ctrl.Result{}, fmt.Errorf("failed to render k8sd-proxy daemonset: %w", err)
 	}
 
+	snapInstallData := r.resolveInPlaceUpgradeRelease(machine)
+
 	cpinput := cloudinit.InitControlPlaneInput{
 		BaseUserData: cloudinit.BaseUserData{
 			BootCommands:         scope.Config.Spec.BootCommands,
 			PreRunCommands:       scope.Config.Spec.PreRunCommands,
 			PostRunCommands:      scope.Config.Spec.PostRunCommands,
 			KubernetesVersion:    scope.Config.Spec.Version,
+			SnapInstallData:      snapInstallData,
 			ExtraFiles:           cloudinit.FilesFromAPI(files),
 			ConfigFileContents:   string(initConfig),
 			MicroclusterAddress:  scope.Config.Spec.ControlPlaneConfig.MicroclusterAddress,
