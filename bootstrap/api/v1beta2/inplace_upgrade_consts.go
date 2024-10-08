@@ -18,5 +18,5 @@ const (
 	InPlaceUpgradeInProgressEvent = "InPlaceUpgradeInProgress"
 	InPlaceUpgradeDoneEvent       = "InPlaceUpgradeDone"
 	InPlaceUpgradeFailedEvent     = "InPlaceUpgradeFailed"
-	InPlaceUpgradeCanceledEvent   = "InPlaceUpgradeCanceled"
+	InPlaceUpgradeCancelledEvent  = "InPlaceUpgradeCancelled"
 )
