@@ -75,7 +75,6 @@ func TestNewInitControlPlane(t *testing.T) {
 	}))
 
 	// NOTE (mateoflorido): Keep this test in sync with the expected paths in the controlplane_init.go file.
-	// NOTE (eac): If you use a script from pkg/cloudinit/scripts in the run commands, it should be in the write files.
 	g.Expect(config.WriteFiles).To(ConsistOf(
 		HaveField("Path", "/capi/scripts/install.sh"),
 		HaveField("Path", "/capi/scripts/bootstrap.sh"),
