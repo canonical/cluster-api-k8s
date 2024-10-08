@@ -183,6 +183,9 @@ func (r *MachineDeploymentReconciler) markUpgradeInProgress(ctx context.Context,
 
 	mdAnnotations[bootstrapv1.InPlaceUpgradeStatusAnnotation] = bootstrapv1.InPlaceUpgradeInProgressStatus
 
+	scope.MachineDeployment.SetAnnotations(mdAnnotations)
+	scope.MachineDeployment.Spec.Template.Annotations = templateAnnotations
+
 	if err := scope.PatchHelper.Patch(ctx, scope.MachineDeployment); err != nil {
 		return fmt.Errorf("failed to patch: %w", err)
 	}
@@ -204,7 +207,7 @@ func (r *MachineDeploymentReconciler) markUpgradeDone(ctx context.Context, scope
 		annotations = make(map[string]string)
 	}
 
-	templateAnnotations := scope.MachineDeployment.Spec.Template.ObjectMeta.Annotations
+	templateAnnotations := scope.MachineDeployment.Spec.Template.Annotations
 	if templateAnnotations == nil {
 		templateAnnotations = make(map[string]string)
 	}
@@ -216,6 +219,9 @@ func (r *MachineDeploymentReconciler) markUpgradeDone(ctx context.Context, scope
 	annotations[bootstrapv1.InPlaceUpgradeStatusAnnotation] = bootstrapv1.InPlaceUpgradeDoneStatus
 	annotations[bootstrapv1.InPlaceUpgradeReleaseAnnotation] = scope.UpgradeTo
 	templateAnnotations[bootstrapv1.InPlaceUpgradeReleaseAnnotation] = scope.UpgradeTo
+
+	scope.MachineDeployment.SetAnnotations(annotations)
+	scope.MachineDeployment.Spec.Template.Annotations = templateAnnotations
 
 	if err := scope.PatchHelper.Patch(ctx, scope.MachineDeployment); err != nil {
 		return fmt.Errorf("failed to patch: %w", err)
@@ -247,6 +253,9 @@ func (r *MachineDeploymentReconciler) markUpgradeFailed(ctx context.Context, sco
 	delete(templateAnnotations, bootstrapv1.InPlaceUpgradeReleaseAnnotation)
 
 	annotations[bootstrapv1.InPlaceUpgradeStatusAnnotation] = bootstrapv1.InPlaceUpgradeFailedStatus
+
+	scope.MachineDeployment.SetAnnotations(annotations)
+	scope.MachineDeployment.Spec.Template.Annotations = templateAnnotations
 
 	if err := scope.PatchHelper.Patch(ctx, scope.MachineDeployment); err != nil {
 		return fmt.Errorf("failed to patch: %w", err)
