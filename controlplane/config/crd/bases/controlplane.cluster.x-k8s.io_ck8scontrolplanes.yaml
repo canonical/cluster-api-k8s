@@ -246,6 +246,9 @@ spec:
                     items:
                       type: string
                     type: array
+                  channel:
+                    description: Channel is the channel to use for the snap install.
+                    type: string
                   controlPlane:
                     description: CK8sControlPlaneConfig is configuration for the control
                       plane node.
@@ -392,7 +395,7 @@ spec:
                   localPath:
                     description: |-
                       LocalPath is the local path to use for the snap install.
-                      If Track or Revision are set, this will be ignored.
+                      If Channel or Revision are set, this will be ignored.
                     type: string
                   nodeName:
                     description: |-
@@ -429,10 +432,7 @@ spec:
                   revision:
                     description: |-
                       Revision is the revision to use for the snap install.
-                      If Track is set, this will be ignored.
-                    type: string
-                  track:
-                    description: Track is the channel to use for the snap install.
+                      If Channel is set, this will be ignored.
                     type: string
                   version:
                     description: Version specifies the Kubernetes version.

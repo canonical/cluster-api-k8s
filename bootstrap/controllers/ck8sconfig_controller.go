@@ -450,10 +450,10 @@ func (r *CK8sConfigReconciler) resolveInPlaceUpgradeRelease(machine *clusterv1.M
 
 func (r *CK8sConfigReconciler) setSnapInstallDataFromSpec(spec bootstrapv1.CK8sConfigSpec) cloudinit.SnapInstallData {
 	switch {
-	case spec.Track != "":
+	case spec.Channel != "":
 		return cloudinit.SnapInstallData{
 			Option: cloudinit.InstallOptionChannel,
-			Value:  spec.Track,
+			Value:  spec.Channel,
 		}
 	case spec.Revision != "":
 		return cloudinit.SnapInstallData{
