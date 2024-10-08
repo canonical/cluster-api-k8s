@@ -42,7 +42,6 @@ func NewJoinControlPlane(input JoinControlPlaneInput) (CloudConfig, error) {
 
 	// run commands
 	config.RunCommands = append(config.RunCommands, input.PreRunCommands...)
-
 	if !input.AirGapped {
 		config.RunCommands = append(config.RunCommands, "/capi/scripts/install.sh")
 	}
