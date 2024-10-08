@@ -51,6 +51,13 @@ spec:
       name: ${CLUSTER_NAME}-control-plane
   spec:
     nodeName: "{{ ds.meta_data.local_hostname }}"
+    bootstrapConfig:
+      content:
+        service-cidr: 192.168.0.1
+      contentFrom:
+        secretRef:
+          name: ${CLUSTER_NAME}-control-plane-kubeconfig
+          key: value
     files:
       # note(ben): This is only required as long as k8s does not have a stable release.
       - path: /capi/scripts/install.sh

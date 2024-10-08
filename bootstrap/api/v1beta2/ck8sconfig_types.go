@@ -33,6 +33,9 @@ type CK8sConfigSpec struct {
 	// +optional
 	Files []File `json:"files,omitempty"`
 
+	// BootstrapConfig is the data to be passed to the bootstrap script.
+	BootstrapConfig *BootstrapConfig `json:"bootstrapConfig,omitempty"`
+
 	// BootCommands specifies extra commands to run in cloud-init early in the boot process.
 	// +optional
 	BootCommands []string `json:"bootCommands,omitempty"`
@@ -280,6 +283,17 @@ const (
 	// GzipBase64 implies the contents of the file are first base64 encoded and then gzip encoded.
 	GzipBase64 Encoding = "gzip+base64"
 )
+
+type BootstrapConfig struct {
+	// Content is the actual content of the file.
+	// If this is set, ContentFrom is ignored.
+	// +optional
+	Content string `json:"content,omitempty"`
+
+	// ContentFrom is a referenced source of content to populate the file.
+	// +optional
+	ContentFrom *FileSource `json:"contentFrom,omitempty"`
+}
 
 // File defines the input for generating write_files in cloud-init.
 type File struct {
