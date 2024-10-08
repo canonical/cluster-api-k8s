@@ -351,9 +351,9 @@ func (r *CK8sConfigReconciler) joinWorker(ctx context.Context, scope *Scope) err
 
 	snapInstallData := r.setSnapInstallDataFromSpec(scope.Config.Spec)
 
+	// If the machine has an in-place upgrade annotation, use it to set the snap install data
 	inPlaceInstallData := r.resolveInPlaceUpgradeRelease(machine)
-
-	if inPlaceInstallData != (cloudinit.SnapInstallData{}) {
+	if inPlaceInstallData.Option != "" || inPlaceInstallData.Value != "" {
 		snapInstallData = inPlaceInstallData
 	}
 
