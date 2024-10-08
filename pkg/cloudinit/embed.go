@@ -12,7 +12,8 @@ var (
 
 type script string
 
-// NOTE(eac): If you want to use a script in the cloud-init, you need to add it to the scripts map.
+// NOTE(eac): If you want to use a script from pkg/cloudinit/scripts in your code (for example, you want to include a script in the user-data.txt),
+// you need to add it to the scripts map below.
 var (
 	scriptInstall                 script = "install.sh"
 	scriptBootstrap               script = "bootstrap.sh"
