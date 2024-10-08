@@ -258,7 +258,7 @@ func (r *CK8sConfigReconciler) joinControlplane(ctx context.Context, scope *Scop
 		return err
 	}
 
-	snapInstallData := r.setSnapInstallDataFromSpec(scope.Config.Spec)
+	snapInstallData := r.getSnapInstallDataFromSpec(scope.Config.Spec)
 
 	inPlaceInstallData := r.resolveInPlaceUpgradeRelease(machine)
 
@@ -349,7 +349,7 @@ func (r *CK8sConfigReconciler) joinWorker(ctx context.Context, scope *Scope) err
 		return err
 	}
 
-	snapInstallData := r.setSnapInstallDataFromSpec(scope.Config.Spec)
+	snapInstallData := r.getSnapInstallDataFromSpec(scope.Config.Spec)
 
 	// If the machine has an in-place upgrade annotation, use it to set the snap install data
 	inPlaceInstallData := r.resolveInPlaceUpgradeRelease(machine)
@@ -448,7 +448,7 @@ func (r *CK8sConfigReconciler) resolveInPlaceUpgradeRelease(machine *clusterv1.M
 	return cloudinit.SnapInstallData{}
 }
 
-func (r *CK8sConfigReconciler) setSnapInstallDataFromSpec(spec bootstrapv1.CK8sConfigSpec) cloudinit.SnapInstallData {
+func (r *CK8sConfigReconciler) getSnapInstallDataFromSpec(spec bootstrapv1.CK8sConfigSpec) cloudinit.SnapInstallData {
 	switch {
 	case spec.Channel != "":
 		return cloudinit.SnapInstallData{
@@ -608,7 +608,7 @@ func (r *CK8sConfigReconciler) handleClusterNotInitialized(ctx context.Context, 
 		return ctrl.Result{}, fmt.Errorf("failed to render k8sd-proxy daemonset: %w", err)
 	}
 
-	snapInstallData := r.setSnapInstallDataFromSpec(scope.Config.Spec)
+	snapInstallData := r.getSnapInstallDataFromSpec(scope.Config.Spec)
 
 	inPlaceInstallData := r.resolveInPlaceUpgradeRelease(machine)
 
