@@ -42,9 +42,9 @@ func TestNewJoinControlPlane(t *testing.T) {
 	// Verify the run commands.
 	g.Expect(config.RunCommands).To(Equal([]string{
 		"set -x",
+		"/capi/scripts/configure-snapstore-proxy.sh",
 		"prerun1",
 		"prerun2",
-		"/capi/scripts/configure-snapstore-proxy.sh",
 		"/capi/scripts/install.sh",
 		"/capi/scripts/load-images.sh",
 		"/capi/scripts/join-cluster.sh",
@@ -73,7 +73,7 @@ func TestNewJoinControlPlane(t *testing.T) {
 		HaveField("Path", "/capi/etc/node-name"),
 		HaveField("Path", "/capi/etc/node-token"),
 		HaveField("Path", "/capi/etc/join-token"),
-		HaveField("Path", "/capi/etc/snap-track"),
+		HaveField("Path", "/capi/etc/snap-channel"),
 		HaveField("Path", "/capi/etc/snapstore-proxy-scheme"),
 		HaveField("Path", "/capi/etc/snapstore-proxy-domain"),
 		HaveField("Path", "/capi/etc/snapstore-proxy-id"),

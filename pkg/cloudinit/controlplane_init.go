@@ -52,8 +52,7 @@ func NewInitControlPlane(input InitControlPlaneInput) (CloudConfig, error) {
 	)
 
 	// run commands
-	config.RunCommands = append(input.PreRunCommands, config.RunCommands...)
-
+	config.RunCommands = append(config.RunCommands, input.PreRunCommands...)
 	if !input.AirGapped {
 		config.RunCommands = append(config.RunCommands, "/capi/scripts/install.sh")
 	}

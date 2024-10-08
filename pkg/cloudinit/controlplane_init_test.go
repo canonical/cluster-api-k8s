@@ -59,9 +59,9 @@ func TestNewInitControlPlane(t *testing.T) {
 	// Verify the run commands.
 	g.Expect(config.RunCommands).To(Equal([]string{
 		"set -x",
+		"/capi/scripts/configure-snapstore-proxy.sh",
 		"prerun1",
 		"prerun2",
-		"/capi/scripts/configure-snapstore-proxy.sh",
 		"/capi/scripts/install.sh",
 		"/capi/scripts/bootstrap.sh",
 		"/capi/scripts/load-images.sh",
