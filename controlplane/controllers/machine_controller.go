@@ -2,10 +2,10 @@ package controllers
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/go-logr/logr"
-	"github.com/pkg/errors"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
@@ -34,15 +34,10 @@ func (r *MachineReconciler) SetupWithManager(ctx context.Context, mgr ctrl.Manag
 		For(&clusterv1.Machine{}).
 		Build(r)
 
-	// NOTE(neoaggelos): See note below
 	if r.managementCluster == nil {
 		r.managementCluster = &ck8s.Management{
 			Client:          r.Client,
 			K8sdDialTimeout: r.K8sdDialTimeout,
-			/*
-				EtcdDialTimeout: r.EtcdDialTimeout,
-				EtcdCallTimeout: r.EtcdCallTimeout,
-			*/
 		}
 	}
 
@@ -51,6 +46,7 @@ func (r *MachineReconciler) SetupWithManager(ctx context.Context, mgr ctrl.Manag
 
 // +kubebuilder:rbac:groups=cluster.x-k8s.io,resources=clusters;clusters/status,verbs=get;list;watch
 // +kubebuilder:rbac:groups=cluster.x-k8s.io,resources=machines;machines/status,verbs=get;list;watch;create;update;patch;delete
+
 func (r *MachineReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	logger := r.Log.WithValues("namespace", req.Namespace, "machine", req.Name)
 
@@ -95,42 +91,16 @@ func (r *MachineReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 		// Note that this currently makes the annotation a no-op in the code here. However, we still keep the logic in the code is case it
 		// is needed in the future.
 
-		/**
-		cluster, err := util.GetClusterFromMetadata(ctx, r.Client, m.ObjectMeta)
-		if err != nil {
-			logger.Info("unable to get cluster.")
-			return ctrl.Result{}, errors.Wrapf(err, "unable to get cluster")
-		}
-		workloadCluster, err := r.managementCluster.GetWorkloadCluster(ctx, util.ObjectKey(cluster))
-		if err != nil {
-			logger.Error(err, "failed to create client to workload cluster")
-			return ctrl.Result{}, errors.Wrapf(err, "failed to create client to workload cluster")
-		}
-
-		etcdRemoved, err := workloadCluster.RemoveEtcdMemberForMachine(ctx, m)
-		if err != nil {
-			logger.Error(err, "failed to remove etcd member for machine")
-			return ctrl.Result{}, err
-		}
-		if !etcdRemoved {
-			logger.Info("wait embedded etcd controller to remove etcd")
-			return ctrl.Result{Requeue: true}, err
-		}
-
-		// It is possible that the machine has no machine ref yet, will record the machine name in log
-		logger.Info("etcd remove etcd member succeeded", "machine name", m.Name)
-		**/
-
 		patchHelper, err := patch.NewHelper(m, r.Client)
 		if err != nil {
-			return ctrl.Result{}, errors.Wrapf(err, "failed to create patch helper for machine")
+			return ctrl.Result{}, fmt.Errorf("failed to create patch helper for machine: %w", err)
 		}
 
 		mAnnotations := m.GetAnnotations()
 		delete(mAnnotations, clusterv1.PreTerminateDeleteHookAnnotationPrefix)
 		m.SetAnnotations(mAnnotations)
 		if err := patchHelper.Patch(ctx, m); err != nil {
-			return ctrl.Result{}, errors.Wrapf(err, "failed patch machine")
+			return ctrl.Result{}, fmt.Errorf("failed to patch machine: %w", err)
 		}
 	}
 

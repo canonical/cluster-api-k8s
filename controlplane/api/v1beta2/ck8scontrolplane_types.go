@@ -34,9 +34,6 @@ const (
 	// This annotation is used to detect any changes in ClusterConfiguration and trigger machine rollout in KCP.
 	CK8sServerConfigurationAnnotation = "controlplane.cluster.x-k8s.io/ck8s-server-configuration"
 
-	// SkipCoreDNSAnnotation annotation explicitly skips reconciling CoreDNS if set.
-	SkipCoreDNSAnnotation = "controlplane.cluster.x-k8s.io/skip-coredns"
-
 	// RemediationInProgressAnnotation is used to keep track that a KCP remediation is in progress, and more
 	// specifically it tracks that the system is in between having deleted an unhealthy machine and recreating its replacement.
 	// NOTE: if something external to CAPI removes this annotation the system cannot detect the above situation; this can lead to

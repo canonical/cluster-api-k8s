@@ -98,30 +98,6 @@ const (
 )
 
 const (
-	// EtcdClusterHealthyCondition documents the overall etcd cluster's health.
-	EtcdClusterHealthyCondition clusterv1.ConditionType = "EtcdClusterHealthyCondition"
-
-	// EtcdClusterInspectionFailedReason documents a failure in inspecting the etcd cluster status.
-	EtcdClusterInspectionFailedReason = "EtcdClusterInspectionFailed"
-
-	// EtcdClusterUnknownReason reports an etcd cluster in unknown status.
-	EtcdClusterUnknownReason = "EtcdClusterUnknown"
-
-	// EtcdClusterUnhealthyReason (Severity=Error) is set when the etcd cluster is unhealthy.
-	EtcdClusterUnhealthyReason = "EtcdClusterUnhealthy"
-
-	// MachineEtcdMemberHealthyCondition report the machine's etcd member's health status.
-	// NOTE: This conditions exists only if a stacked etcd cluster is used.
-	MachineEtcdMemberHealthyCondition clusterv1.ConditionType = "EtcdMemberHealthy"
-
-	// EtcdMemberInspectionFailedReason documents a failure in inspecting the etcd member status.
-	EtcdMemberInspectionFailedReason = "MemberInspectionFailed"
-
-	// EtcdMemberUnhealthyReason (Severity=Error) documents a Machine's etcd member is unhealthy.
-	EtcdMemberUnhealthyReason = "EtcdMemberUnhealthy"
-)
-
-const (
 	// TokenAvailableCondition documents whether the token required for nodes to join the cluster is available.
 	TokenAvailableCondition clusterv1.ConditionType = "TokenAvailable"
 
