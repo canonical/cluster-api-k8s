@@ -9,7 +9,7 @@ fill out the sections below.
 - **Index**: 004
 
 <!-- Status -->
-- **Status**: DRAFTING
+- **Status**: ACCEPTED
 <!-- **DRAFTING**/**ACCEPTED**/**REJECTED** -->
 
 <!-- Short description for the feature -->
