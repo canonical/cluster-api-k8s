@@ -635,7 +635,7 @@ func (r *CK8sControlPlaneReconciler) reconcileKubeconfig(ctx context.Context, cl
 	return reconcile.Result{}, nil
 }
 
-// reconcileControlPlaneConditions is responsible of reconciling conditions reporting the status of static pods
+// reconcileControlPlaneConditions is responsible of reconciling conditions reporting the status of static pods.
 func (r *CK8sControlPlaneReconciler) reconcileControlPlaneConditions(ctx context.Context, controlPlane *ck8s.ControlPlane) error {
 	// If the cluster is not yet initialized, there is no way to connect to the workload cluster and fetch information
 	// for updating conditions. Return early.

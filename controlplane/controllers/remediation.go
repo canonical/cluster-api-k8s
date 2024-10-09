@@ -161,7 +161,6 @@ func (r *CK8sControlPlaneReconciler) reconcileUnhealthyMachines(ctx context.Cont
 			conditions.MarkFalse(machineToBeRemediated, clusterv1.MachineOwnerRemediatedCondition, clusterv1.WaitingForRemediationReason, clusterv1.ConditionSeverityWarning, "KCP waiting for control plane machine deletion to complete before triggering remediation")
 			return ctrl.Result{}, nil
 		}
-
 	}
 
 	microclusterPort := controlPlane.KCP.Spec.CK8sConfigSpec.ControlPlaneConfig.GetMicroclusterPort()
