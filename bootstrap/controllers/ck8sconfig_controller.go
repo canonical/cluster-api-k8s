@@ -260,8 +260,9 @@ func (r *CK8sConfigReconciler) joinControlplane(ctx context.Context, scope *Scop
 
 	snapInstallData := r.getSnapInstallDataFromSpec(scope.Config.Spec)
 
+	// If the machine has an in-place upgrade annotation, use it to set the snap install data
 	inPlaceInstallData := r.resolveInPlaceUpgradeRelease(machine)
-	if inPlaceInstallData.Option != "" || inPlaceInstallData.Value != "" {
+	if inPlaceInstallData.Option == "" || inPlaceInstallData.Value == "" {
 		snapInstallData = inPlaceInstallData
 	}
 
@@ -352,7 +353,7 @@ func (r *CK8sConfigReconciler) joinWorker(ctx context.Context, scope *Scope) err
 
 	// If the machine has an in-place upgrade annotation, use it to set the snap install data
 	inPlaceInstallData := r.resolveInPlaceUpgradeRelease(machine)
-	if inPlaceInstallData.Option != "" || inPlaceInstallData.Value != "" {
+	if inPlaceInstallData.Option == "" || inPlaceInstallData.Value == "" {
 		snapInstallData = inPlaceInstallData
 	}
 
@@ -417,38 +418,40 @@ func (r *CK8sConfigReconciler) resolveFiles(ctx context.Context, cfg *bootstrapv
 func (r *CK8sConfigReconciler) resolveInPlaceUpgradeRelease(machine *clusterv1.Machine) cloudinit.SnapInstallData {
 	mAnnotations := machine.GetAnnotations()
 
-	if mAnnotations != nil {
-		val, ok := mAnnotations[bootstrapv1.InPlaceUpgradeReleaseAnnotation]
-		if !ok {
-			return cloudinit.SnapInstallData{}
-		}
+	if mAnnotations == nil {
+		return cloudinit.SnapInstallData{}
+	}
 
-		optionKv := strings.Split(val, "=")
+	val, ok := mAnnotations[bootstrapv1.InPlaceUpgradeReleaseAnnotation]
+	if !ok {
+		return cloudinit.SnapInstallData{}
+	}
 
-		if len(optionKv) != 2 {
-			r.Log.Info("Invalid in-place upgrade release annotation, ignoring", "annotation", val)
-			return cloudinit.SnapInstallData{}
-		}
+	optionKv := strings.Split(val, "=")
 
-		switch optionKv[0] {
-		case "channel":
-			return cloudinit.SnapInstallData{
-				Option: cloudinit.InstallOptionChannel,
-				Value:  optionKv[1],
-			}
-		case "revision":
-			return cloudinit.SnapInstallData{
-				Option: cloudinit.InstallOptionRevision,
-				Value:  optionKv[1],
-			}
-		case "localPath":
-			return cloudinit.SnapInstallData{
-				Option: cloudinit.InstallOptionLocalPath,
-				Value:  optionKv[1],
-			}
-		default:
-			r.Log.Info("Unknown in-place upgrade release option, ignoring", "option", optionKv[0])
+	if len(optionKv) != 2 {
+		r.Log.Info("Invalid in-place upgrade release annotation, ignoring", "annotation", val)
+		return cloudinit.SnapInstallData{}
+	}
+
+	switch optionKv[0] {
+	case "channel":
+		return cloudinit.SnapInstallData{
+			Option: cloudinit.InstallOptionChannel,
+			Value:  optionKv[1],
 		}
+	case "revision":
+		return cloudinit.SnapInstallData{
+			Option: cloudinit.InstallOptionRevision,
+			Value:  optionKv[1],
+		}
+	case "localPath":
+		return cloudinit.SnapInstallData{
+			Option: cloudinit.InstallOptionLocalPath,
+			Value:  optionKv[1],
+		}
+	default:
+		r.Log.Info("Unknown in-place upgrade release option, ignoring", "option", optionKv[0])
 	}
 
 	return cloudinit.SnapInstallData{}
@@ -615,12 +618,6 @@ func (r *CK8sConfigReconciler) handleClusterNotInitialized(ctx context.Context, 
 	}
 
 	snapInstallData := r.getSnapInstallDataFromSpec(scope.Config.Spec)
-
-	inPlaceInstallData := r.resolveInPlaceUpgradeRelease(machine)
-
-	if inPlaceInstallData != (cloudinit.SnapInstallData{}) {
-		snapInstallData = inPlaceInstallData
-	}
 
 	cpinput := cloudinit.InitControlPlaneInput{
 		BaseUserData: cloudinit.BaseUserData{
