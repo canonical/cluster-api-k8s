@@ -51,6 +51,21 @@ type CK8sConfigSpec struct {
 	// +optional
 	AirGapped bool `json:"airGapped,omitempty"`
 
+	// The snap store proxy domain's scheme, e.g. "http" or "https" without "://"
+	// Defaults to "http".
+	// +optional
+	// +kubebuilder:default=http
+	// +kubebuilder:validation:Enum=http;https
+	SnapstoreProxyScheme string `json:"snapstoreProxyScheme,omitempty"`
+
+	// The snap store proxy domain
+	// +optional
+	SnapstoreProxyDomain string `json:"snapstoreProxyDomain,omitempty"`
+
+	// The snap store proxy ID
+	// +optional
+	SnapstoreProxyID string `json:"snapstoreProxyId,omitempty"`
+
 	// CK8sControlPlaneConfig is configuration for the control plane node.
 	// +optional
 	ControlPlaneConfig CK8sControlPlaneConfig `json:"controlPlane,omitempty"`

@@ -41,6 +41,12 @@ type BaseUserData struct {
 	ConfigFileContents string
 	// AirGapped declares that a custom installation script is to be used.
 	AirGapped bool
+	// The snap store proxy domain's scheme, e.g. "http" or "https" without "://"
+	SnapstoreProxyScheme string
+	// The snap store proxy domain
+	SnapstoreProxyDomain string
+	// The snap store proxy ID
+	SnapstoreProxyID string
 	// MicroclusterAddress is the address to use for microcluster.
 	MicroclusterAddress string
 	// MicroclusterPort is the port to use for microcluster.
@@ -78,6 +84,13 @@ func NewBaseCloudConfig(data BaseUserData) (CloudConfig, error) {
 			Owner:       "root:root",
 		})
 	}
+
+	// snapstore proxy configuration
+	if snapStoreConfigFiles := getSnapstoreProxyConfigFiles(data); snapStoreConfigFiles != nil {
+		config.WriteFiles = append(config.WriteFiles, snapStoreConfigFiles...)
+		config.RunCommands = append(config.RunCommands, "/capi/scripts/configure-snapstore-proxy.sh")
+	}
+
 	// write files
 	config.WriteFiles = append(
 		config.WriteFiles,
@@ -124,4 +137,45 @@ func NewBaseCloudConfig(data BaseUserData) (CloudConfig, error) {
 
 func makeMicroclusterAddress(address string, port int) string {
 	return net.JoinHostPort(address, strconv.Itoa(port))
+}
+
+// getSnapstoreProxyConfigFiles returns the snapstore proxy config files.
+// If the snapstore proxy domain or ID is not set, it returns nil.
+// Nil indicates that no files are returned.
+func getSnapstoreProxyConfigFiles(data BaseUserData) []File {
+	snapstoreProxyScheme := data.SnapstoreProxyScheme
+	snapstoreProxyDomain := data.SnapstoreProxyDomain
+	snapstoreProxyID := data.SnapstoreProxyID
+
+	scheme := "http"
+	if snapstoreProxyScheme != "" {
+		scheme = snapstoreProxyScheme
+	}
+
+	if snapstoreProxyDomain == "" || snapstoreProxyID == "" {
+		return nil
+	}
+
+	schemeFile := File{
+		Path:        "/capi/etc/snapstore-proxy-scheme",
+		Content:     scheme,
+		Permissions: "0400",
+		Owner:       "root:root",
+	}
+
+	domainFile := File{
+		Path:        "/capi/etc/snapstore-proxy-domain",
+		Content:     snapstoreProxyDomain,
+		Permissions: "0400",
+		Owner:       "root:root",
+	}
+
+	storeIDFile := File{
+		Path:        "/capi/etc/snapstore-proxy-id",
+		Content:     snapstoreProxyID,
+		Permissions: "0400",
+		Owner:       "root:root",
+	}
+
+	return []File{schemeFile, domainFile, storeIDFile}
 }
