@@ -66,7 +66,6 @@ type CK8sConfigSpec struct {
 	// +optional
 	SnapstoreProxyID string `json:"snapstoreProxyId,omitempty"`
 
-	// Track is the channel to use for the snap install.
 	// Channel is the channel to use for the snap install.
 	// +optional
 	Channel string `json:"channel,omitempty"`
