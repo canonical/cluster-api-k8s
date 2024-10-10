@@ -191,6 +191,9 @@ func (r *InPlaceUpgradeReconciler) markUpgradeFailed(ctx context.Context, scope 
 	mAnnotations := scope.Machine.GetAnnotations()
 
 	mAnnotations[bootstrapv1.InPlaceUpgradeStatusAnnotation] = bootstrapv1.InPlaceUpgradeFailedStatus
+	// NOTE(Hue): Add an annotation here to indicate that the upgrade failed
+	// and we are not going to retry it.
+	mAnnotations[bootstrapv1.InPlaceUpgradeLastFailedAttemptAtAnnotation] = time.Now().Format(time.RFC1123Z)
 	scope.Machine.SetAnnotations(mAnnotations)
 	if err := scope.PatchHelper.Patch(ctx, scope.Machine); err != nil {
 		return fmt.Errorf("failed to patch machine annotations: %w", err)
@@ -275,6 +278,7 @@ func (r *InPlaceUpgradeReconciler) handleUpgradeDone(ctx context.Context, scope 
 
 	delete(mAnnotations, bootstrapv1.InPlaceUpgradeToAnnotation)
 	delete(mAnnotations, bootstrapv1.InPlaceUpgradeChangeIDAnnotation)
+	delete(mAnnotations, bootstrapv1.InPlaceUpgradeLastFailedAttemptAtAnnotation)
 	mAnnotations[bootstrapv1.InPlaceUpgradeReleaseAnnotation] = scope.UpgradeOption
 	scope.Machine.SetAnnotations(mAnnotations)
 	if err := scope.PatchHelper.Patch(ctx, scope.Machine); err != nil {
@@ -286,6 +290,13 @@ func (r *InPlaceUpgradeReconciler) handleUpgradeDone(ctx context.Context, scope 
 
 func (r *InPlaceUpgradeReconciler) handleUpgradeFailed(ctx context.Context, scope *UpgradeScope) (reconcile.Result, error) {
 	mAnnotations := scope.Machine.GetAnnotations()
+
+	// NOTE(Hue): We don't remove the `LastFailedAttemptAt` annotation here
+	// because we want to know if the upgrade failed at some point in the `MachineDeploymentReconciler`.
+	// This function triggers a retry by removing the `Status` and `ChangeID` annotations,
+	// but the `LastFailedAttemptAt` lets us descriminiate between a retry and a fresh upgrade.
+	// Overall, we don't remove the `LastFailedAttemptAt` annotation in the `InPlaceUpgradeReconciler`.
+	// That's the responsibility of the `MachineDeploymentReconciler`.
 
 	delete(mAnnotations, bootstrapv1.InPlaceUpgradeStatusAnnotation)
 	delete(mAnnotations, bootstrapv1.InPlaceUpgradeChangeIDAnnotation)
