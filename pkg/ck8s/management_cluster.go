@@ -104,69 +104,9 @@ func (m *Management) GetWorkloadCluster(ctx context.Context, clusterKey client.O
 		ClientRestConfig:    restConfig,
 		K8sdClientGenerator: g,
 		microclusterPort:    microclusterPort,
-
-		/**
-		CoreDNSMigrator: &CoreDNSMigrator{},
-		**/
 	}
-	// NOTE(neoaggelos): Upstream creates an etcd client generator, so that users can reach etcd on each node.
-	//
-	// TODO(neoaggelos): For Canonical Kubernetes, we need to create a client generator for the k8sd endpoints on the control plane nodes.
-
-	/**
-	// Retrieves the etcd CA key Pair
-	crtData, keyData, err := m.getEtcdCAKeyPair(ctx, clusterKey)
-	if err != nil {
-		return nil, err
-	}
-
-	// If etcd CA is not nil, then it's managed etcd
-	if crtData != nil {
-		clientCert, err := generateClientCert(crtData, keyData)
-		if err != nil {
-			return nil, err
-		}
-
-		caPool := x509.NewCertPool()
-		caPool.AppendCertsFromPEM(crtData)
-		tlsConfig := &tls.Config{
-			RootCAs:      caPool,
-			Certificates: []tls.Certificate{clientCert},
-			MinVersion:   tls.VersionTLS12,
-		}
-		tlsConfig.InsecureSkipVerify = true
-		workload.etcdClientGenerator = NewEtcdClientGenerator(restConfig, tlsConfig, m.EtcdDialTimeout, m.EtcdCallTimeout)
-	}
-	**/
 
 	return workload, nil
 }
-
-//nolint:godot
-/**
-func (m *Management) getEtcdCAKeyPair(ctx context.Context, clusterKey client.ObjectKey) ([]byte, []byte, error) {
-	etcdCASecret := &corev1.Secret{}
-	etcdCAObjectKey := client.ObjectKey{
-		Namespace: clusterKey.Namespace,
-		Name:      fmt.Sprintf("%s-etcd", clusterKey.Name),
-	}
-
-	// Try to get the certificate via the uncached client.
-	if err := m.Client.Get(ctx, etcdCAObjectKey, etcdCASecret); err != nil {
-		if apierrors.IsNotFound(err) {
-			return nil, nil, nil
-		} else {
-			return nil, nil, errors.Wrapf(err, "failed to get secret; etcd CA bundle %s/%s", etcdCAObjectKey.Namespace, etcdCAObjectKey.Name)
-		}
-	}
-
-	crtData, ok := etcdCASecret.Data[secret.TLSCrtDataName]
-	if !ok {
-		return nil, nil, errors.Errorf("etcd tls crt does not exist for cluster %s/%s", clusterKey.Namespace, clusterKey.Name)
-	}
-	keyData := etcdCASecret.Data[secret.TLSKeyDataName]
-	return crtData, keyData, nil
-}
-**/
 
 var _ ManagementCluster = &Management{}

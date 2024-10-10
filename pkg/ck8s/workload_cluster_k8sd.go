@@ -4,11 +4,11 @@ import (
 	"context"
 	"crypto/tls"
 	_ "embed"
+	"errors"
 	"fmt"
 	"net/http"
 	"time"
 
-	"github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
@@ -71,7 +71,7 @@ func (g *k8sdClientGenerator) forNode(ctx context.Context, node *corev1.Node) (*
 func (g *k8sdClientGenerator) getProxyPods(ctx context.Context) (map[string]string, error) {
 	pods, err := g.clientset.CoreV1().Pods("kube-system").List(ctx, metav1.ListOptions{LabelSelector: "app=k8sd-proxy"})
 	if err != nil {
-		return nil, errors.Wrap(err, "unable to list k8sd-proxy pods in target cluster")
+		return nil, fmt.Errorf("unable to list k8sd-proxy pods in target cluster: %w", err)
 	}
 
 	if len(pods.Items) == 0 {

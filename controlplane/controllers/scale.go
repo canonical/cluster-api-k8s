@@ -19,10 +19,10 @@ package controllers
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"strings"
 
-	"github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -119,52 +119,12 @@ func (r *CK8sControlPlaneReconciler) scaleDownControlPlane(
 		return ctrl.Result{}, fmt.Errorf("failed to pick control plane Machine to delete: %w", err)
 	}
 
-	// NOTE(neoaggelos): Here, upstream will check whether the node that is about to be removed is the leader of the etcd cluster, and will
-	// attempt to forward the leadership to a different active node before proceeding. This is so that continuous operation of the cluster
-	// is preserved.
-	//
-	// TODO(neoaggelos): For Canonical Kubernetes, we should instead use the RemoveNode endpoint of the k8sd service from a different control
-	// plane node (through the k8sd-proxy), which will handle this operation for us. If that fails, we must not proceed.
-	//
-	// Finally, note that upstream only acts if the cluster has a managed etcd. For Canonical Kubernetes, we must always perform this action,
-	// since we must delete the node from microcluster as well.
-
-	/**
-	// If KCP should manage etcd, If etcd leadership is on machine that is about to be deleted, move it to the newest member available.
-	if controlPlane.IsEtcdManaged() {
-		workloadCluster, err := r.managementCluster.GetWorkloadCluster(ctx, util.ObjectKey(cluster))
-		if err != nil {
-			logger.Error(err, "Failed to create client to workload cluster")
-			return ctrl.Result{}, fmt.Errorf("failed to create client to workload cluster: %w", err)
-		}
-
-		etcdLeaderCandidate := controlPlane.Machines.Newest()
-		if err := workloadCluster.ForwardEtcdLeadership(ctx, machineToDelete, etcdLeaderCandidate); err != nil {
-			logger.Error(err, "Failed to move leadership to candidate machine", "candidate", etcdLeaderCandidate.Name)
-			return ctrl.Result{}, err
-		}
-
-		patchHelper, err := patch.NewHelper(machineToDelete, r.Client)
-		if err != nil {
-			return ctrl.Result{}, errors.Wrapf(err, "failed to create patch helper for machine")
-		}
-
-		mAnnotations := machineToDelete.GetAnnotations()
-		mAnnotations[clusterv1.PreTerminateDeleteHookAnnotationPrefix] = ck8sHookName
-		machineToDelete.SetAnnotations(mAnnotations)
-
-		if err := patchHelper.Patch(ctx, machineToDelete); err != nil {
-			return ctrl.Result{}, errors.Wrapf(err, "failed patch machine for adding preTerminate hook")
-		}
-	}
-	**/
-
 	microclusterPort := controlPlane.KCP.Spec.CK8sConfigSpec.ControlPlaneConfig.GetMicroclusterPort()
 	clusterObjectKey := util.ObjectKey(cluster)
 	workloadCluster, err := r.managementCluster.GetWorkloadCluster(ctx, clusterObjectKey, microclusterPort)
 	if err != nil {
 		logger.Error(err, "failed to create client to workload cluster")
-		return ctrl.Result{}, errors.Wrapf(err, "failed to create client to workload cluster")
+		return ctrl.Result{}, fmt.Errorf("failed to create client to workload cluster: %w", err)
 	}
 
 	if err := workloadCluster.RemoveMachineFromCluster(ctx, machineToDelete); err != nil {
@@ -208,11 +168,6 @@ func (r *CK8sControlPlaneReconciler) preflightChecks(_ context.Context, controlP
 
 	// Check machine health conditions; if there are conditions with False or Unknown, then wait.
 	allMachineHealthConditions := []clusterv1.ConditionType{controlplanev1.MachineAgentHealthyCondition}
-	if controlPlane.IsEtcdManaged() {
-		allMachineHealthConditions = append(allMachineHealthConditions,
-			controlplanev1.MachineEtcdMemberHealthyCondition,
-		)
-	}
 
 	machineErrors := []error{}
 
