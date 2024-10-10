@@ -51,6 +51,9 @@ spec:
                 items:
                   type: string
                 type: array
+              channel:
+                description: Channel is the channel to use for the snap install.
+                type: string
               controlPlane:
                 description: CK8sControlPlaneConfig is configuration for the control
                   plane node.
@@ -192,6 +195,11 @@ spec:
                       the default CNI.
                     type: boolean
                 type: object
+              localPath:
+                description: |-
+                  LocalPath is the path of a local snap file in the workload cluster to use for the snap install.
+                  If Channel or Revision are set, this will be ignored.
+                type: string
               nodeName:
                 description: |-
                   NodeName is the name to use for the kubelet of this node. It is needed for clouds
@@ -210,6 +218,11 @@ spec:
                 items:
                   type: string
                 type: array
+              revision:
+                description: |-
+                  Revision is the revision to use for the snap install.
+                  If Channel is set, this will be ignored.
+                type: string
               snapstoreProxyDomain:
                 description: The snap store proxy domain
                 type: string
