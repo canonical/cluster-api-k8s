@@ -22,9 +22,30 @@ package e2e
 import (
 	. "github.com/onsi/ginkgo/v2"
 	"k8s.io/utils/ptr"
+	"sigs.k8s.io/cluster-api/test/framework/clusterctl"
 )
 
 var _ = Describe("Workload cluster upgrade [CK8s-Upgrade]", func() {
+	BeforeEach(func() {
+		// TODO(bschimke): Remove once we find a way to run e2e tests with other infrastructure providers that support snap.
+		Skip("Skipping the upgrade tests as snap does not work on CAPD.")
+	})
+
+	Context("Upgrading a cluster with 1 control plane", func() {
+		ClusterUpgradeSpec(ctx, func() ClusterUpgradeSpecInput {
+			return ClusterUpgradeSpecInput{
+				E2EConfig:                e2eConfig,
+				ClusterctlConfigPath:     clusterctlConfigPath,
+				BootstrapClusterProxy:    bootstrapClusterProxy,
+				ArtifactFolder:           artifactFolder,
+				SkipCleanup:              skipCleanup,
+				InfrastructureProvider:   ptr.To(clusterctl.DefaultInfrastructureProvider),
+				ControlPlaneMachineCount: ptr.To[int64](1),
+				WorkerMachineCount:       ptr.To[int64](2),
+			}
+		})
+	})
+
 	Context("Upgrading a cluster with HA control plane", func() {
 		ClusterUpgradeSpec(ctx, func() ClusterUpgradeSpecInput {
 			return ClusterUpgradeSpecInput{
@@ -33,7 +54,7 @@ var _ = Describe("Workload cluster upgrade [CK8s-Upgrade]", func() {
 				BootstrapClusterProxy:    bootstrapClusterProxy,
 				ArtifactFolder:           artifactFolder,
 				SkipCleanup:              skipCleanup,
-				InfrastructureProvider:   ptr.To("docker"),
+				InfrastructureProvider:   ptr.To(clusterctl.DefaultInfrastructureProvider),
 				ControlPlaneMachineCount: ptr.To[int64](3),
 				WorkerMachineCount:       ptr.To[int64](1),
 			}
