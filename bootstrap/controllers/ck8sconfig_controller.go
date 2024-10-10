@@ -262,7 +262,7 @@ func (r *CK8sConfigReconciler) joinControlplane(ctx context.Context, scope *Scop
 
 	// If the machine has an in-place upgrade annotation, use it to set the snap install data
 	inPlaceInstallData := r.resolveInPlaceUpgradeRelease(machine)
-	if inPlaceInstallData.Option == "" || inPlaceInstallData.Value == "" {
+	if inPlaceInstallData.Option != "" && inPlaceInstallData.Value != "" {
 		snapInstallData = inPlaceInstallData
 	}
 
@@ -353,7 +353,7 @@ func (r *CK8sConfigReconciler) joinWorker(ctx context.Context, scope *Scope) err
 
 	// If the machine has an in-place upgrade annotation, use it to set the snap install data
 	inPlaceInstallData := r.resolveInPlaceUpgradeRelease(machine)
-	if inPlaceInstallData.Option == "" || inPlaceInstallData.Value == "" {
+	if inPlaceInstallData.Option != "" && inPlaceInstallData.Value != "" {
 		snapInstallData = inPlaceInstallData
 	}
 
