@@ -158,12 +158,12 @@ func TestNewInitControlPlaneSnapInstallOverrides(t *testing.T) {
 
 	tests := []struct {
 		name        string
-		snapInstall cloudinit.SnapInstallData
+		snapInstall *cloudinit.SnapInstallData
 		notOptions  []cloudinit.InstallOption
 	}{
 		{
 			name: "ChannelOverride",
-			snapInstall: cloudinit.SnapInstallData{
+			snapInstall: &cloudinit.SnapInstallData{
 				Option: cloudinit.InstallOptionChannel,
 				Value:  "v1.30/edge",
 			},
@@ -171,7 +171,7 @@ func TestNewInitControlPlaneSnapInstallOverrides(t *testing.T) {
 		},
 		{
 			name: "RevisionOverride",
-			snapInstall: cloudinit.SnapInstallData{
+			snapInstall: &cloudinit.SnapInstallData{
 				Option: cloudinit.InstallOptionRevision,
 				Value:  "123",
 			},
@@ -179,7 +179,7 @@ func TestNewInitControlPlaneSnapInstallOverrides(t *testing.T) {
 		},
 		{
 			name: "LocalPathOverride",
-			snapInstall: cloudinit.SnapInstallData{
+			snapInstall: &cloudinit.SnapInstallData{
 				Option: cloudinit.InstallOptionLocalPath,
 				Value:  "/path/to/k8s.snap",
 			},
