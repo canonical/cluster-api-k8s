@@ -260,7 +260,7 @@ func (r *CK8sConfigReconciler) joinControlplane(ctx context.Context, scope *Scop
 
 	snapInstallData, err := r.getSnapInstallDataFromSpec(scope.Config.Spec)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to get snap install data from spec: %w", err)
 	}
 
 	// If the machine has an in-place upgrade annotation, use it to set the snap install data
@@ -358,7 +358,7 @@ func (r *CK8sConfigReconciler) joinWorker(ctx context.Context, scope *Scope) err
 
 	snapInstallData, err := r.getSnapInstallDataFromSpec(scope.Config.Spec)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to get snap install data from spec: %w", err)
 	}
 
 	// If the machine has an in-place upgrade annotation, use it to set the snap install data
@@ -644,7 +644,7 @@ func (r *CK8sConfigReconciler) handleClusterNotInitialized(ctx context.Context, 
 
 	snapInstallData, err := r.getSnapInstallDataFromSpec(scope.Config.Spec)
 	if err != nil {
-		return ctrl.Result{}, err
+		return ctrl.Result{}, fmt.Errorf("failed to get snap install data from spec: %w", err)
 	}
 
 	cpinput := cloudinit.InitControlPlaneInput{
