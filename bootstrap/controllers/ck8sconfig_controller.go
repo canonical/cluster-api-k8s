@@ -266,6 +266,10 @@ func (r *CK8sConfigReconciler) joinControlplane(ctx context.Context, scope *Scop
 		snapInstallData = inPlaceInstallData
 	}
 
+	// log snapinstalldata
+	scope.Info("SnapInstallData Spec", "Option", scope.Config.Spec.Channel, "Value", scope.Config.Spec.Revision, "LocalPath", scope.Config.Spec.LocalPath)
+	scope.Info("SnapInstallData", "Option", snapInstallData.Option, "Value", snapInstallData.Value)
+
 	input := cloudinit.JoinControlPlaneInput{
 		BaseUserData: cloudinit.BaseUserData{
 			BootCommands:         scope.Config.Spec.BootCommands,
