@@ -393,7 +393,7 @@ func (r *CK8sControlPlaneReconciler) updateStatus(ctx context.Context, kcp *cont
 	kcp.Status.ReadyReplicas = status.ReadyNodes
 	kcp.Status.UnavailableReplicas = replicas - status.ReadyNodes
 
-	// NOTE(neoaggelos): We consider the control plane to be initialized if the k8sd-config exists
+	// NOTE(neoaggelos): We consider the control plane to be initialized iff the k8sd-config exists
 	if status.HasK8sdConfigMap {
 		kcp.Status.Initialized = true
 	}

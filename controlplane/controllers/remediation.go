@@ -161,6 +161,12 @@ func (r *CK8sControlPlaneReconciler) reconcileUnhealthyMachines(ctx context.Cont
 			conditions.MarkFalse(machineToBeRemediated, clusterv1.MachineOwnerRemediatedCondition, clusterv1.WaitingForRemediationReason, clusterv1.ConditionSeverityWarning, "KCP waiting for control plane machine deletion to complete before triggering remediation")
 			return ctrl.Result{}, nil
 		}
+
+		// NOTE(neoaggelos): etcd requires manual adjustment of the cluster nodes to always ensure that a quorum of healthy nodes are available,
+		// so that the cluster does not lock and cause the cluster to go down. In the case of k8s-dqlite, this is automatically handled by the
+		// go-dqlite layer, and Canonical Kubernetes has logic to automatically keep a quorum of nodes in normal operation.
+		//
+		// Therefore, we have removed this check for simplicity, but should remember that we need this precondition before proceeing.
 	}
 
 	microclusterPort := controlPlane.KCP.Spec.CK8sConfigSpec.ControlPlaneConfig.GetMicroclusterPort()
