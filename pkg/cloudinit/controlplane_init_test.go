@@ -152,10 +152,14 @@ func TestNewInitControlPlaneSnapInstall(t *testing.T) {
 		g.Expect(config.WriteFiles).ToNot(ContainElement(HaveField("Path", fmt.Sprintf("/capi/etc/snap-%s", cloudinit.InstallOptionRevision))))
 		g.Expect(config.WriteFiles).ToNot(ContainElement(HaveField("Path", fmt.Sprintf("/capi/etc/snap-%s", cloudinit.InstallOptionLocalPath))))
 	})
+}
+
+func TestNewInitControlPlaneSnapInstallOverrides(t *testing.T) {
 
 	tests := []struct {
 		name        string
 		snapInstall cloudinit.SnapInstallData
+		notOptions  []cloudinit.InstallOption
 	}{
 		{
 			name: "ChannelOverride",
@@ -163,6 +167,7 @@ func TestNewInitControlPlaneSnapInstall(t *testing.T) {
 				Option: cloudinit.InstallOptionChannel,
 				Value:  "v1.30/edge",
 			},
+			notOptions: []cloudinit.InstallOption{cloudinit.InstallOptionRevision, cloudinit.InstallOptionLocalPath},
 		},
 		{
 			name: "RevisionOverride",
@@ -170,6 +175,7 @@ func TestNewInitControlPlaneSnapInstall(t *testing.T) {
 				Option: cloudinit.InstallOptionRevision,
 				Value:  "123",
 			},
+			notOptions: []cloudinit.InstallOption{cloudinit.InstallOptionChannel, cloudinit.InstallOptionLocalPath},
 		},
 		{
 			name: "LocalPathOverride",
@@ -177,6 +183,7 @@ func TestNewInitControlPlaneSnapInstall(t *testing.T) {
 				Option: cloudinit.InstallOptionLocalPath,
 				Value:  "/path/to/k8s.snap",
 			},
+			notOptions: []cloudinit.InstallOption{cloudinit.InstallOptionChannel, cloudinit.InstallOptionRevision},
 		},
 	}
 
@@ -199,6 +206,13 @@ func TestNewInitControlPlaneSnapInstall(t *testing.T) {
 				"Path":    Equal(fmt.Sprintf("/capi/etc/snap-%s", tt.snapInstall.Option)),
 				"Content": Equal(tt.snapInstall.Value),
 			})))
+
+			// Check that the incorrect files are not written
+			for _, notOption := range tt.notOptions {
+				g.Expect(config.WriteFiles).NotTo(ContainElement(gstruct.MatchFields(gstruct.IgnoreExtras, gstruct.Fields{
+					"Path": Equal(fmt.Sprintf("/capi/etc/snap-%s", notOption)),
+				})))
+			}
 		})
 	}
 }
