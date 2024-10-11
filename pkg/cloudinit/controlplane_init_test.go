@@ -155,7 +155,6 @@ func TestNewInitControlPlaneSnapInstall(t *testing.T) {
 }
 
 func TestNewInitControlPlaneSnapInstallOverrides(t *testing.T) {
-
 	tests := []struct {
 		name        string
 		snapInstall *cloudinit.SnapInstallData
