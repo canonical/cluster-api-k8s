@@ -49,6 +49,12 @@ type BaseUserData struct {
 	SnapstoreProxyDomain string
 	// The snap store proxy ID
 	SnapstoreProxyID string
+	// ContainerdHTTPProxy is http_proxy configuration for containerd.
+	ContainerdHTTPProxy string
+	// ContainerdHTTPSProxy is https_proxy configuration for containerd.
+	ContainerdHTTPSProxy string
+	// ContainerdNoProxy is no_proxy configuration for containerd.
+	ContainerdNoProxy string
 	// MicroclusterAddress is the address to use for microcluster.
 	MicroclusterAddress string
 	// MicroclusterPort is the port to use for microcluster.
@@ -95,6 +101,12 @@ func NewBaseCloudConfig(data BaseUserData) (CloudConfig, error) {
 		config.RunCommands = append(config.RunCommands, "/capi/scripts/configure-snapstore-proxy.sh")
 	}
 
+	// containerd proxy configuration
+	if containerdProxyConfigFiles := getContainerdProxyConfigFiles(data); containerdProxyConfigFiles != nil {
+		config.WriteFiles = append(config.WriteFiles, containerdProxyConfigFiles...)
+		config.RunCommands = append(config.RunCommands, "/capi/scripts/configure-containerd-proxy.sh")
+	}
+
 	var configFileContents string
 	if data.BootstrapConfig != "" {
 		configFileContents = data.BootstrapConfig
@@ -139,6 +151,8 @@ func NewBaseCloudConfig(data BaseUserData) (CloudConfig, error) {
 			},
 		)...,
 	)
+
+
 
 	// boot commands
 	config.BootCommands = data.BootCommands
@@ -189,4 +203,30 @@ func getSnapstoreProxyConfigFiles(data BaseUserData) []File {
 	}
 
 	return []File{schemeFile, domainFile, storeIDFile}
+}
+
+func getContainerdProxyConfigFiles(data BaseUserData) []File {
+	if data.ContainerdHTTPSProxy == "" || data.ContainerdHTTPProxy == "" {
+		return nil
+	}
+	return []File{
+		{
+			Path:        "/capi/etc/containerd-http-proxy",
+			Content:     data.ContainerdHTTPProxy,
+			Permissions: "0400",
+			Owner:       "root:root",
+		},
+		{
+			Path:        "/capi/etc/containerd-https-proxy",
+			Content:     data.ContainerdHTTPSProxy,
+			Permissions: "0400",
+			Owner:       "root:root",
+		},
+		{
+			Path:        "/capi/etc/containerd-no-proxy",
+			Content:     data.ContainerdNoProxy,
+			Permissions: "0400",
+			Owner:       "root:root",
+		},
+	}
 }

@@ -20,6 +20,7 @@ var (
 	scriptBootstrap               script = "bootstrap.sh"
 	scriptLoadImages              script = "load-images.sh"
 	scriptConfigureAuthToken      script = "configure-auth-token.sh" // #nosec G101
+	scriptConfigureContainerdProxy script = "configure-containerd-proxy.sh"
 	scriptConfigureNodeToken      script = "configure-node-token.sh" // #nosec G101
 	scriptJoinCluster             script = "join-cluster.sh"
 	scriptWaitAPIServerReady      script = "wait-apiserver-ready.sh"
@@ -39,16 +40,17 @@ func mustEmbed(s script) string {
 var (
 	// scripts is a map of all embedded bash scripts used in the cloud-init.
 	scripts = map[script]string{
-		scriptInstall:                 mustEmbed(scriptInstall),
+		scriptInstall:                  mustEmbed(scriptInstall),
 		scriptDisableHostServices:     mustEmbed(scriptDisableHostServices),
-		scriptBootstrap:               mustEmbed(scriptBootstrap),
-		scriptLoadImages:              mustEmbed(scriptLoadImages),
-		scriptConfigureAuthToken:      mustEmbed(scriptConfigureAuthToken),
-		scriptConfigureNodeToken:      mustEmbed(scriptConfigureNodeToken),
-		scriptJoinCluster:             mustEmbed(scriptJoinCluster),
-		scriptWaitAPIServerReady:      mustEmbed(scriptWaitAPIServerReady),
-		scriptDeployManifests:         mustEmbed(scriptDeployManifests),
-		scriptCreateSentinelBootstrap: mustEmbed(scriptCreateSentinelBootstrap),
+		scriptBootstrap:                mustEmbed(scriptBootstrap),
+		scriptLoadImages:               mustEmbed(scriptLoadImages),
+		scriptConfigureAuthToken:       mustEmbed(scriptConfigureAuthToken),
+		scriptConfigureContainerdProxy: mustEmbed(scriptConfigureContainerdProxy),
+		scriptConfigureNodeToken:       mustEmbed(scriptConfigureNodeToken),
+		scriptJoinCluster:              mustEmbed(scriptJoinCluster),
+		scriptWaitAPIServerReady:       mustEmbed(scriptWaitAPIServerReady),
+		scriptDeployManifests:          mustEmbed(scriptDeployManifests),
+		scriptCreateSentinelBootstrap:  mustEmbed(scriptCreateSentinelBootstrap),
 		scriptConfigureSnapstoreProxy: mustEmbed(scriptConfigureSnapstoreProxy),
 	}
 )

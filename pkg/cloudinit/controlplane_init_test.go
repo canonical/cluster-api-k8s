@@ -88,6 +88,7 @@ func TestNewInitControlPlane(t *testing.T) {
 		HaveField("Path", "/capi/scripts/wait-apiserver-ready.sh"),
 		HaveField("Path", "/capi/scripts/deploy-manifests.sh"),
 		HaveField("Path", "/capi/scripts/configure-auth-token.sh"),
+		HaveField("Path", "/capi/scripts/configure-containerd-proxy.sh"),
 		HaveField("Path", "/capi/scripts/configure-node-token.sh"),
 		HaveField("Path", "/capi/scripts/create-sentinel-bootstrap.sh"),
 		HaveField("Path", "/capi/scripts/configure-snapstore-proxy.sh"),
@@ -101,6 +102,81 @@ func TestNewInitControlPlane(t *testing.T) {
 		HaveField("Path", "/capi/etc/snapstore-proxy-scheme"),
 		HaveField("Path", "/capi/etc/snapstore-proxy-domain"),
 		HaveField("Path", "/capi/etc/snapstore-proxy-id"),
+		HaveField("Path", "/tmp/file"),
+	), "Some /capi/scripts files are missing")
+}
+
+func TestNewInitControlPlaneWithProxy(t *testing.T) {
+	g := NewWithT(t)
+	format.MaxLength = 20000
+
+	config, err := cloudinit.NewInitControlPlane(cloudinit.InitControlPlaneInput{
+		BaseUserData: cloudinit.BaseUserData{
+			KubernetesVersion: "v1.30.0",
+			BootCommands:      []string{"bootcmd"},
+			PreRunCommands:    []string{"prerun1", "prerun2"},
+			PostRunCommands:   []string{"postrun1", "postrun2"},
+			ExtraFiles: []cloudinit.File{{
+				Path:        "/tmp/file",
+				Content:     "test file",
+				Permissions: "0400",
+				Owner:       "root:root",
+			}},
+			ContainerdHTTPProxy:  "http://proxy.internal",
+			ContainerdHTTPSProxy: "https://proxy.internal",
+			ContainerdNoProxy:    "10.0.0.0/8,10.152.183.1,192.168.0.0/16",
+			ConfigFileContents:   "### config file ###",
+			MicroclusterAddress:  "10.0.0.0/8",
+		},
+		AuthToken:          "test-token",
+		K8sdProxyDaemonSet: "test-daemonset",
+	})
+
+	g.Expect(err).ToNot(HaveOccurred())
+
+	// Verify the boot commands.
+	g.Expect(config.BootCommands).To(Equal([]string{"bootcmd"}))
+
+	// Verify the run commands.
+	g.Expect(config.RunCommands).To(Equal([]string{
+		"set -x",
+		"/capi/scripts/configure-containerd-proxy.sh",
+		"prerun1",
+		"prerun2",
+		"/capi/scripts/install.sh",
+		"/capi/scripts/bootstrap.sh",
+		"/capi/scripts/load-images.sh",
+		"/capi/scripts/wait-apiserver-ready.sh",
+		"/capi/scripts/deploy-manifests.sh",
+		"/capi/scripts/configure-auth-token.sh",
+		"/capi/scripts/configure-node-token.sh",
+		"/capi/scripts/create-sentinel-bootstrap.sh",
+		"postrun1",
+		"postrun2",
+	}))
+
+	// NOTE (mateoflorido): Keep this test in sync with the expected paths in the controlplane_init.go file.
+	g.Expect(config.WriteFiles).To(ConsistOf(
+		HaveField("Path", "/capi/scripts/install.sh"),
+		HaveField("Path", "/capi/scripts/bootstrap.sh"),
+		HaveField("Path", "/capi/scripts/load-images.sh"),
+		HaveField("Path", "/capi/scripts/join-cluster.sh"),
+		HaveField("Path", "/capi/scripts/wait-apiserver-ready.sh"),
+		HaveField("Path", "/capi/scripts/deploy-manifests.sh"),
+		HaveField("Path", "/capi/scripts/configure-auth-token.sh"),
+		HaveField("Path", "/capi/scripts/configure-containerd-proxy.sh"),
+		HaveField("Path", "/capi/scripts/configure-node-token.sh"),
+		HaveField("Path", "/capi/scripts/create-sentinel-bootstrap.sh"),
+		HaveField("Path", "/capi/etc/config.yaml"),
+		HaveField("Path", "/capi/etc/containerd-http-proxy"),
+		HaveField("Path", "/capi/etc/containerd-https-proxy"),
+		HaveField("Path", "/capi/etc/containerd-no-proxy"),
+		HaveField("Path", "/capi/etc/microcluster-address"),
+		HaveField("Path", "/capi/etc/node-name"),
+		HaveField("Path", "/capi/etc/node-token"),
+		HaveField("Path", "/capi/etc/token"),
+		HaveField("Path", "/capi/etc/snap-channel"),
+		HaveField("Path", "/capi/manifests/00-k8sd-proxy.yaml"),
 		HaveField("Path", "/tmp/file"),
 	), "Some /capi/scripts files are missing")
 }

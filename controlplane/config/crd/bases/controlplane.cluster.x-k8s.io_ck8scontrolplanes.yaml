@@ -398,6 +398,12 @@ spec:
                       - path
                       type: object
                     type: array
+                  httpProxy:
+                    description: HTTPProxy is optional http proxy configuration
+                    type: string
+                  httpsProxy:
+                    description: HTTPSProxy is optional https proxy configuration
+                    type: string
                   initConfig:
                     description: CK8sInitConfig is configuration for the initializing
                       the cluster features.
@@ -425,6 +431,9 @@ spec:
                           the default CNI.
                         type: boolean
                     type: object
+                  noProxy:
+                    description: NoProxy is optional no proxy configuration
+                    type: string
                   localPath:
                     description: |-
                       LocalPath is the path of a local snap file in the workload cluster to use for the snap install.
