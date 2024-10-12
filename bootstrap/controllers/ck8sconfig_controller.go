@@ -644,7 +644,8 @@ func (r *CK8sConfigReconciler) handleClusterNotInitialized(ctx context.Context, 
 
 	snapInstallData, err := r.getSnapInstallDataFromSpec(scope.Config.Spec)
 	if err != nil {
-		return ctrl.Result{}, fmt.Errorf("failed to get snap install data from spec: %w", err)
+		conditions.MarkFalse(scope.Config, bootstrapv1.SnapInstallDataValidatedCondition, bootstrapv1.SnapInstallValidationFailedReason, clusterv1.ConditionSeverityError, err.Error())
+		return ctrl.Result{Requeue: true}, fmt.Errorf("failed to get snap install data from spec: %w", err)
 	}
 
 	cpinput := cloudinit.InitControlPlaneInput{
