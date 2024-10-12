@@ -151,9 +151,6 @@ func NewBaseCloudConfig(data BaseUserData) (CloudConfig, error) {
 			},
 		)...,
 	)
-
-
-
 	// boot commands
 	config.BootCommands = data.BootCommands
 

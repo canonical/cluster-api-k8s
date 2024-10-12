@@ -83,7 +83,7 @@ func TestNewJoinControlPlane(t *testing.T) {
 	), "Some /capi/scripts files are missing")
 }
 
-func TestNewJoinControlPlaneWithProxy(t *testing.T) {
+func TestNewJoinControlPlaneWithOptionalProxies(t *testing.T) {
 	g := NewWithT(t)
 
 	config, err := cloudinit.NewJoinControlPlane(cloudinit.JoinControlPlaneInput{
@@ -98,6 +98,9 @@ func TestNewJoinControlPlaneWithProxy(t *testing.T) {
 				Permissions: "0400",
 				Owner:       "root:root",
 			}},
+			SnapstoreProxyScheme: "http",
+			SnapstoreProxyDomain: "snapstore.io",
+			SnapstoreProxyID:     "abcd-1234-xyz",
 			ContainerdHTTPProxy:  "http://proxy.internal",
 			ContainerdHTTPSProxy: "https://proxy.internal",
 			ContainerdNoProxy:    "10.0.0.0/8,10.152.183.1,192.168.0.0/16",
@@ -115,6 +118,7 @@ func TestNewJoinControlPlaneWithProxy(t *testing.T) {
 	// Verify the run commands.
 	g.Expect(config.RunCommands).To(Equal([]string{
 		"set -x",
+		"/capi/scripts/configure-snapstore-proxy.sh",
 		"/capi/scripts/configure-containerd-proxy.sh",
 		"prerun1",
 		"prerun2",
@@ -138,6 +142,7 @@ func TestNewJoinControlPlaneWithProxy(t *testing.T) {
 		HaveField("Path", "/capi/scripts/deploy-manifests.sh"),
 		HaveField("Path", "/capi/scripts/configure-auth-token.sh"),
 		HaveField("Path", "/capi/scripts/configure-containerd-proxy.sh"),
+		HaveField("Path", "/capi/scripts/configure-snapstore-proxy.sh"),
 		HaveField("Path", "/capi/scripts/configure-node-token.sh"),
 		HaveField("Path", "/capi/scripts/create-sentinel-bootstrap.sh"),
 		HaveField("Path", "/capi/etc/config.yaml"),
@@ -149,6 +154,9 @@ func TestNewJoinControlPlaneWithProxy(t *testing.T) {
 		HaveField("Path", "/capi/etc/node-token"),
 		HaveField("Path", "/capi/etc/join-token"),
 		HaveField("Path", "/capi/etc/snap-channel"),
+		HaveField("Path", "/capi/etc/snapstore-proxy-scheme"),
+		HaveField("Path", "/capi/etc/snapstore-proxy-domain"),
+		HaveField("Path", "/capi/etc/snapstore-proxy-id"),
 		HaveField("Path", "/tmp/file"),
 	), "Some /capi/scripts files are missing")
 }
