@@ -404,6 +404,32 @@ func (r *CK8sConfigReconciler) joinWorker(ctx context.Context, scope *Scope) err
 	return nil
 }
 
+// resolveUserBootstrapConfig returns the bootstrap configuration provided by the user.
+// It can resolve string content, a reference to a secret, or an empty string if no configuration was provided.
+func (r *CK8sConfigReconciler) resolveUserBootstrapConfig(ctx context.Context, cfg *bootstrapv1.CK8sConfig) (string, error) {
+	// User did not provide a bootstrap configuration
+	if cfg.Spec.BootstrapConfig == nil {
+		return "", nil
+	}
+
+	// User provided a bootstrap configuration through content
+	if cfg.Spec.BootstrapConfig.Content != "" {
+		return cfg.Spec.BootstrapConfig.Content, nil
+	}
+
+	// User referenced a secret for the bootstrap configuration
+	if cfg.Spec.BootstrapConfig.ContentFrom == nil {
+		return "", nil
+	}
+
+	data, err := r.resolveSecretFileContent(ctx, cfg.Namespace, *cfg.Spec.BootstrapConfig.ContentFrom)
+	if err != nil {
+		return "", fmt.Errorf("failed to read bootstrap configuration from secret %q: %w", cfg.Spec.BootstrapConfig.ContentFrom.Secret.Name, err)
+	}
+
+	return string(data), nil
+}
+
 // resolveFiles maps .Spec.Files into cloudinit.Files, resolving any object references
 // along the way.
 func (r *CK8sConfigReconciler) resolveFiles(ctx context.Context, cfg *bootstrapv1.CK8sConfig) ([]bootstrapv1.File, error) {
@@ -412,7 +438,7 @@ func (r *CK8sConfigReconciler) resolveFiles(ctx context.Context, cfg *bootstrapv
 	for i := range cfg.Spec.Files {
 		in := cfg.Spec.Files[i]
 		if in.ContentFrom != nil {
-			data, err := r.resolveSecretFileContent(ctx, cfg.Namespace, in)
+			data, err := r.resolveSecretFileContent(ctx, cfg.Namespace, *in.ContentFrom)
 			if err != nil {
 				return nil, fmt.Errorf("failed to resolve file source: %w", err)
 			}
@@ -505,18 +531,18 @@ func (r *CK8sConfigReconciler) getSnapInstallDataFromSpec(spec bootstrapv1.CK8sC
 }
 
 // resolveSecretFileContent returns file content fetched from a referenced secret object.
-func (r *CK8sConfigReconciler) resolveSecretFileContent(ctx context.Context, ns string, source bootstrapv1.File) ([]byte, error) {
+func (r *CK8sConfigReconciler) resolveSecretFileContent(ctx context.Context, ns string, source bootstrapv1.FileSource) ([]byte, error) {
 	secret := &corev1.Secret{}
-	key := types.NamespacedName{Namespace: ns, Name: source.ContentFrom.Secret.Name}
+	key := types.NamespacedName{Namespace: ns, Name: source.Secret.Name}
 	if err := r.Client.Get(ctx, key, secret); err != nil {
 		if apierrors.IsNotFound(err) {
 			return nil, fmt.Errorf("secret not found %s: %w", key, err)
 		}
 		return nil, fmt.Errorf("failed to retrieve Secret %q: %w", key, err)
 	}
-	data, ok := secret.Data[source.ContentFrom.Secret.Key]
+	data, ok := secret.Data[source.Secret.Key]
 	if !ok {
-		return nil, fmt.Errorf("secret references non-existent secret key %q: %w", source.ContentFrom.Secret.Key, ErrInvalidRef)
+		return nil, fmt.Errorf("secret references non-existent secret key %q: %w", source.Secret.Key, ErrInvalidRef)
 	}
 	return data, nil
 }
@@ -636,6 +662,12 @@ func (r *CK8sConfigReconciler) handleClusterNotInitialized(ctx context.Context, 
 		return ctrl.Result{}, err
 	}
 
+	userSuppliedBootstrapConfig, err := r.resolveUserBootstrapConfig(ctx, scope.Config)
+	if err != nil {
+		conditions.MarkFalse(scope.Config, bootstrapv1.DataSecretAvailableCondition, bootstrapv1.DataSecretGenerationFailedReason, clusterv1.ConditionSeverityWarning, err.Error())
+		return ctrl.Result{}, err
+	}
+
 	microclusterPort := scope.Config.Spec.ControlPlaneConfig.GetMicroclusterPort()
 	ds, err := ck8s.RenderK8sdProxyDaemonSetManifest(ck8s.K8sdProxyDaemonSetInput{K8sdPort: microclusterPort})
 	if err != nil {
@@ -654,6 +686,7 @@ func (r *CK8sConfigReconciler) handleClusterNotInitialized(ctx context.Context, 
 			PreRunCommands:       scope.Config.Spec.PreRunCommands,
 			PostRunCommands:      scope.Config.Spec.PostRunCommands,
 			KubernetesVersion:    scope.Config.Spec.Version,
+			BootstrapConfig:      userSuppliedBootstrapConfig,
 			SnapInstallData:      snapInstallData,
 			ExtraFiles:           cloudinit.FilesFromAPI(files),
 			ConfigFileContents:   string(initConfig),

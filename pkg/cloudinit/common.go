@@ -35,6 +35,8 @@ type BaseUserData struct {
 	PreRunCommands []string
 	// PostRunCommands is a list of commands to run after k8s installation.
 	PostRunCommands []string
+	// BootstrapConfig is the contents of the bootstrap configuration file.
+	BootstrapConfig string
 	// ExtraFiles is a list of extra files to load on the host.
 	ExtraFiles []File
 	// ConfigFileContents is the contents of the k8s configuration file.
@@ -93,6 +95,13 @@ func NewBaseCloudConfig(data BaseUserData) (CloudConfig, error) {
 		config.RunCommands = append(config.RunCommands, "/capi/scripts/configure-snapstore-proxy.sh")
 	}
 
+	var configFileContents string
+	if data.BootstrapConfig != "" {
+		configFileContents = data.BootstrapConfig
+	} else {
+		configFileContents = data.ConfigFileContents
+	}
+
 	// write files
 	config.WriteFiles = append(
 		config.WriteFiles,
@@ -100,7 +109,7 @@ func NewBaseCloudConfig(data BaseUserData) (CloudConfig, error) {
 			data.ExtraFiles,
 			File{
 				Path:        "/capi/etc/config.yaml",
-				Content:     data.ConfigFileContents,
+				Content:     configFileContents,
 				Permissions: "0400",
 				Owner:       "root:root",
 			},

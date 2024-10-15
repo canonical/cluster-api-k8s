@@ -21,6 +21,7 @@ import (
 	"testing"
 
 	. "github.com/onsi/gomega"
+	format "github.com/onsi/gomega/format"
 	"github.com/onsi/gomega/gstruct"
 
 	"github.com/canonical/cluster-api-k8s/pkg/cloudinit"
@@ -28,6 +29,8 @@ import (
 
 func TestNewInitControlPlane(t *testing.T) {
 	g := NewWithT(t)
+
+	format.MaxLength = 20000
 
 	config, err := cloudinit.NewInitControlPlane(cloudinit.InitControlPlaneInput{
 		BaseUserData: cloudinit.BaseUserData{
@@ -100,6 +103,31 @@ func TestNewInitControlPlane(t *testing.T) {
 		HaveField("Path", "/capi/etc/snapstore-proxy-id"),
 		HaveField("Path", "/tmp/file"),
 	), "Some /capi/scripts files are missing")
+}
+
+func TestUserSuppliedBootstrapConfig(t *testing.T) {
+	g := NewWithT(t)
+
+	config, err := cloudinit.NewInitControlPlane(cloudinit.InitControlPlaneInput{
+		BaseUserData: cloudinit.BaseUserData{
+			KubernetesVersion:  "v1.30.0",
+			BootstrapConfig:    "### bootstrap config ###",
+			ConfigFileContents: "### config file ###",
+		},
+	})
+
+	g.Expect(err).ToNot(HaveOccurred())
+
+	// Test that user-supplied bootstrap configuration takes precedence over ConfigFileContents.
+	g.Expect(config.WriteFiles).To(ContainElement(gstruct.MatchFields(gstruct.IgnoreExtras, gstruct.Fields{
+		"Path":    Equal("/capi/etc/config.yaml"),
+		"Content": Equal("### bootstrap config ###"),
+	})))
+
+	g.Expect(config.WriteFiles).NotTo(ContainElement(gstruct.MatchFields(gstruct.IgnoreExtras, gstruct.Fields{
+		"Path":    Equal("/capi/etc/config.yaml"),
+		"Content": Equal("### config file ###"),
+	})))
 }
 
 func TestNewInitControlPlaneInvalidVersionError(t *testing.T) {
