@@ -228,9 +228,7 @@ func (w *Workload) GetCertificatesExpiryDate(ctx context.Context, machine *clust
 	request := apiv1.CertificatesExpiryRequest{}
 	response := &apiv1.CertificatesExpiryResponse{}
 
-	header := map[string][]string{
-		"node-token": {nodeToken},
-	}
+	header := w.newHeaderWithNodeToken(nodeToken)
 	k8sdProxy, err := w.GetK8sdProxyForMachine(ctx, machine)
 	if err != nil {
 		return "", fmt.Errorf("failed to create k8sd proxy: %w", err)
@@ -243,23 +241,15 @@ func (w *Workload) GetCertificatesExpiryDate(ctx context.Context, machine *clust
 	return response.ExpiryDate, nil
 }
 
-type ApproveWorkerCSRRequest struct {
-	Seed int `json:"seed"`
-}
-
-type ApproveWorkerCSRResponse struct{}
-
-func (w *Workload) ApproveCertificates(ctx context.Context, machine *clusterv1.Machine, capiToken string, seed int) error {
-	request := ApproveWorkerCSRRequest{}
-	response := &ApproveWorkerCSRResponse{}
+func (w *Workload) ApproveCertificates(ctx context.Context, machine *clusterv1.Machine, seed int) error {
+	request := apiv1.ClusterAPIApproveWorkerCSRRequest{}
+	response := &apiv1.ClusterAPIApproveWorkerCSRResponse{}
 	k8sdProxy, err := w.GetK8sdProxyForControlPlane(ctx, k8sdProxyOptions{})
 	if err != nil {
 		return fmt.Errorf("failed to create k8sd proxy: %w", err)
 	}
 
-	header := map[string][]string{
-		"capi-auth-token": {w.authToken},
-	}
+	header := w.newHeaderWithCAPIAuthToken()
 
 	if err := w.doK8sdRequest(ctx, k8sdProxy, http.MethodPost, "1.0/x/capi/refresh-certs/approve", header, request, response); err != nil {
 		return fmt.Errorf("failed to approve certificates: %w", err)
@@ -272,9 +262,7 @@ func (w *Workload) refreshCertificatesPlan(ctx context.Context, machine *cluster
 	planRequest := apiv1.ClusterAPICertificatesPlanRequest{}
 	planResponse := &apiv1.ClusterAPICertificatesPlanResponse{}
 
-	header := map[string][]string{
-		"node-token": {nodeToken},
-	}
+	header := w.newHeaderWithNodeToken(nodeToken)
 
 	k8sdProxy, err := w.GetK8sdProxyForMachine(ctx, machine)
 	if err != nil {
@@ -290,9 +278,7 @@ func (w *Workload) refreshCertificatesPlan(ctx context.Context, machine *cluster
 
 func (w *Workload) refreshCertificatesRun(ctx context.Context, machine *clusterv1.Machine, nodeToken string, request *apiv1.ClusterAPICertificatesRunRequest) (int, error) {
 	runResponse := &apiv1.ClusterAPICertificatesRunResponse{}
-	header := map[string][]string{
-		"node-token": {nodeToken},
-	}
+	header := w.newHeaderWithNodeToken(nodeToken)
 
 	k8sdProxy, err := w.GetK8sdProxyForMachine(ctx, machine)
 	if err != nil {
@@ -306,6 +292,18 @@ func (w *Workload) refreshCertificatesRun(ctx context.Context, machine *clusterv
 	return runResponse.ExpirationSeconds, nil
 }
 
+// RefreshWorkerCertificates approves the worker node CSR and refreshes the certificates.
+// The certificate approval process follows these steps:
+// 1. The CAPI provider calls the /x/capi/refresh-certs/plan endpoint from the
+// worker node, which generates the CSRs and creates the CertificateSigningRequest
+// objects in the cluster.
+// 2. The CAPI provider then calls the /x/capi/refresh-certs/plan endpoint with
+// the seed. This endpoint waits until the CSR is approved and the certificate
+// is signed. Note that this is a blocking call.
+// 3. The CAPI provider calls the /x/capi/refresh-certs/approve endpoint from
+// any control plane node to approve the CSRs.
+// 4. The /x/capi/refresh-certs/plan endpoint completes and returns once the
+// certificate is approved and signed.
 func (w *Workload) RefreshWorkerCertificates(ctx context.Context, machine *clusterv1.Machine, nodeToken string, expirationSeconds int) (int, error) {
 	seed, err := w.refreshCertificatesPlan(ctx, machine, nodeToken)
 	if err != nil {
@@ -329,7 +327,7 @@ func (w *Workload) RefreshWorkerCertificates(ctx context.Context, machine *clust
 	})
 
 	eg.Go(func() error {
-		if err := w.ApproveCertificates(ctx, machine, nodeToken, seed); err != nil {
+		if err := w.ApproveCertificates(ctx, machine, seed); err != nil {
 			return fmt.Errorf("failed to approve certificates: %w", err)
 		}
 		return nil
@@ -382,9 +380,7 @@ func (w *Workload) RefreshMachine(ctx context.Context, machine *clusterv1.Machin
 		return "", fmt.Errorf("failed to create k8sd proxy: %w", err)
 	}
 
-	header := map[string][]string{
-		"node-token": {nodeToken},
-	}
+	header := w.newHeaderWithNodeToken(nodeToken)
 
 	if err := w.doK8sdRequest(ctx, k8sdProxy, http.MethodPost, "1.0/snap/refresh", header, request, response); err != nil {
 		return "", fmt.Errorf("failed to refresh machine %s: %w", machine.Name, err)
@@ -403,9 +399,7 @@ func (w *Workload) GetRefreshStatusForMachine(ctx context.Context, machine *clus
 		return nil, fmt.Errorf("failed to create k8sd proxy: %w", err)
 	}
 
-	header := map[string][]string{
-		"node-token": {nodeToken},
-	}
+	header := w.newHeaderWithNodeToken(nodeToken)
 
 	if err := w.doK8sdRequest(ctx, k8sdProxy, http.MethodPost, "1.0/snap/refresh-status", header, request, response); err != nil {
 		return nil, fmt.Errorf("failed to refresh machine %s: %w", machine.Name, err)
@@ -438,9 +432,7 @@ func (w *Workload) requestJoinToken(ctx context.Context, name string, worker boo
 		return "", fmt.Errorf("failed to create k8sd proxy: %w", err)
 	}
 
-	header := map[string][]string{
-		"capi-auth-token": {w.authToken},
-	}
+	header := w.newHeaderWithCAPIAuthToken()
 
 	if err := w.doK8sdRequest(ctx, k8sdProxy, http.MethodPost, "1.0/x/capi/generate-join-token", header, request, response); err != nil {
 		return "", fmt.Errorf("failed to get join token: %w", err)
@@ -467,9 +459,7 @@ func (w *Workload) RemoveMachineFromCluster(ctx context.Context, machine *cluste
 		return fmt.Errorf("failed to create k8sd proxy: %w", err)
 	}
 
-	header := map[string][]string{
-		"capi-auth-token": {w.authToken},
-	}
+	header := w.newHeaderWithCAPIAuthToken()
 
 	if err := w.doK8sdRequest(ctx, k8sdProxy, http.MethodPost, "1.0/x/capi/remove-node", header, request, nil); err != nil {
 		return fmt.Errorf("failed to remove %s from cluster: %w", machine.Name, err)
@@ -523,6 +513,20 @@ func (w *Workload) doK8sdRequest(ctx context.Context, k8sdProxy *K8sdClient, met
 	}
 
 	return nil
+}
+
+// newHeaderWithCAPIAuthToken returns a map with the CAPI auth token as a header.
+func (w *Workload) newHeaderWithCAPIAuthToken() map[string][]string {
+	return map[string][]string{
+		"capi-auth-token": {w.authToken},
+	}
+}
+
+// newHeaderWithNodeToken returns a map with the node token as a header.
+func (w *Workload) newHeaderWithNodeToken(nodeToken string) map[string][]string {
+	return map[string][]string{
+		"node-token": {nodeToken},
+	}
 }
 
 // UpdateAgentConditions is responsible for updating machine conditions reflecting the status of all the control plane
