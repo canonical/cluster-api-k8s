@@ -58,11 +58,6 @@ spec:
         owner: "root:root"
         content: |
           #!/bin/bash -xe
-          # TODO(ben): This is a temporary workaround until we build our own AMI without default Kubernetes components.
-          systemctl stop kubelet
-          systemctl disable kubelet
-          systemctl stop containerd
-          systemctl disable containerd
           snap install k8s --classic --edge
     controlPlane:
       cloudProvider: external

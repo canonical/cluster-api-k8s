@@ -57,6 +57,7 @@ func NewInitControlPlane(input InitControlPlaneInput) (CloudConfig, error) {
 		config.RunCommands = append(config.RunCommands, "/capi/scripts/install.sh")
 	}
 	config.RunCommands = append(config.RunCommands,
+		"/capi/scripts/disable-host-services.sh",
 		"/capi/scripts/bootstrap.sh",
 		"/capi/scripts/load-images.sh",
 		"/capi/scripts/wait-apiserver-ready.sh",

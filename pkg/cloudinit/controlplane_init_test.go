@@ -63,6 +63,7 @@ func TestNewInitControlPlane(t *testing.T) {
 		"prerun1",
 		"prerun2",
 		"/capi/scripts/install.sh",
+		"/capi/scripts/disable-host-services.sh",
 		"/capi/scripts/bootstrap.sh",
 		"/capi/scripts/load-images.sh",
 		"/capi/scripts/wait-apiserver-ready.sh",
@@ -76,6 +77,7 @@ func TestNewInitControlPlane(t *testing.T) {
 
 	// NOTE (mateoflorido): Keep this test in sync with the expected paths in the controlplane_init.go file.
 	g.Expect(config.WriteFiles).To(ConsistOf(
+		HaveField("Path", "/capi/scripts/disable-host-services.sh"),
 		HaveField("Path", "/capi/scripts/install.sh"),
 		HaveField("Path", "/capi/scripts/bootstrap.sh"),
 		HaveField("Path", "/capi/scripts/load-images.sh"),
