@@ -96,11 +96,9 @@ func NewBaseCloudConfig(data BaseUserData) (CloudConfig, error) {
 	}
 
 	var configFileContents string
-	switch {
-	case data.BootstrapConfig != "":
-		// User-supplied bootstrap configuration from CK8sConfig object.
+	if data.BootstrapConfig != "" {
 		configFileContents = data.BootstrapConfig
-	default:
+	} else {
 		configFileContents = data.ConfigFileContents
 	}
 
