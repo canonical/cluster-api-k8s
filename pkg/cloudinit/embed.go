@@ -16,6 +16,7 @@ type script string
 // you need to add it to the scripts map below.
 var (
 	scriptInstall                 script = "install.sh"
+	scriptDisableHostServices     script = "disable-host-services.sh"
 	scriptBootstrap               script = "bootstrap.sh"
 	scriptLoadImages              script = "load-images.sh"
 	scriptConfigureAuthToken      script = "configure-auth-token.sh" // #nosec G101
@@ -39,6 +40,7 @@ var (
 	// scripts is a map of all embedded bash scripts used in the cloud-init.
 	scripts = map[script]string{
 		scriptInstall:                 mustEmbed(scriptInstall),
+		scriptDisableHostServices:     mustEmbed(scriptDisableHostServices),
 		scriptBootstrap:               mustEmbed(scriptBootstrap),
 		scriptLoadImages:              mustEmbed(scriptLoadImages),
 		scriptConfigureAuthToken:      mustEmbed(scriptConfigureAuthToken),
