@@ -258,7 +258,20 @@ func (r *CK8sConfigReconciler) joinControlplane(ctx context.Context, scope *Scop
 		return err
 	}
 
-	snapInstallData := r.resolveInPlaceUpgradeRelease(machine)
+	snapInstallData, err := r.getSnapInstallDataFromSpec(scope.Config.Spec)
+	if err != nil {
+		return fmt.Errorf("failed to get snap install data from spec: %w", err)
+	}
+
+	// If the machine has an in-place upgrade annotation, use it to set the snap install data
+	inPlaceInstallData := r.resolveInPlaceUpgradeRelease(machine)
+	if inPlaceInstallData != nil {
+		snapInstallData = inPlaceInstallData
+	}
+
+	// log snapinstalldata
+	scope.Info("SnapInstallData Spec", "Option", scope.Config.Spec.Channel, "Value", scope.Config.Spec.Revision, "LocalPath", scope.Config.Spec.LocalPath)
+	scope.Info("SnapInstallData", "Option", snapInstallData.Option, "Value", snapInstallData.Value)
 
 	input := cloudinit.JoinControlPlaneInput{
 		BaseUserData: cloudinit.BaseUserData{
@@ -343,7 +356,16 @@ func (r *CK8sConfigReconciler) joinWorker(ctx context.Context, scope *Scope) err
 		return err
 	}
 
-	snapInstallData := r.resolveInPlaceUpgradeRelease(machine)
+	snapInstallData, err := r.getSnapInstallDataFromSpec(scope.Config.Spec)
+	if err != nil {
+		return fmt.Errorf("failed to get snap install data from spec: %w", err)
+	}
+
+	// If the machine has an in-place upgrade annotation, use it to set the snap install data
+	inPlaceInstallData := r.resolveInPlaceUpgradeRelease(machine)
+	if inPlaceInstallData != nil {
+		snapInstallData = inPlaceInstallData
+	}
 
 	input := cloudinit.JoinWorkerInput{
 		BaseUserData: cloudinit.BaseUserData{
@@ -403,39 +425,83 @@ func (r *CK8sConfigReconciler) resolveFiles(ctx context.Context, cfg *bootstrapv
 	return collected, nil
 }
 
-func (r *CK8sConfigReconciler) resolveInPlaceUpgradeRelease(machine *clusterv1.Machine) cloudinit.SnapInstallData {
+func (r *CK8sConfigReconciler) resolveInPlaceUpgradeRelease(machine *clusterv1.Machine) *cloudinit.SnapInstallData {
 	mAnnotations := machine.GetAnnotations()
 
-	if mAnnotations != nil {
-		return cloudinit.SnapInstallData{}
+	if mAnnotations == nil {
+		return nil
 	}
 
 	val, ok := mAnnotations[bootstrapv1.InPlaceUpgradeReleaseAnnotation]
-	if ok {
-		optionKv := strings.Split(val, "=")
-
-		switch optionKv[0] {
-		case "channel":
-			return cloudinit.SnapInstallData{
-				Option: cloudinit.InstallOptionChannel,
-				Value:  optionKv[1],
-			}
-		case "revision":
-			return cloudinit.SnapInstallData{
-				Option: cloudinit.InstallOptionRevision,
-				Value:  optionKv[1],
-			}
-		case "localPath":
-			return cloudinit.SnapInstallData{
-				Option: cloudinit.InstallOptionLocalPath,
-				Value:  optionKv[1],
-			}
-		default:
-			r.Log.Info("Unknown in-place upgrade release option, ignoring", "option", optionKv[0])
-		}
+	if !ok {
+		return nil
 	}
 
-	return cloudinit.SnapInstallData{}
+	optionKv := strings.Split(val, "=")
+
+	if len(optionKv) != 2 {
+		r.Log.Info("Invalid in-place upgrade release annotation, ignoring", "annotation", val)
+		return nil
+	}
+
+	switch optionKv[0] {
+	case "channel":
+		return &cloudinit.SnapInstallData{
+			Option: cloudinit.InstallOptionChannel,
+			Value:  optionKv[1],
+		}
+	case "revision":
+		return &cloudinit.SnapInstallData{
+			Option: cloudinit.InstallOptionRevision,
+			Value:  optionKv[1],
+		}
+	case "localPath":
+		return &cloudinit.SnapInstallData{
+			Option: cloudinit.InstallOptionLocalPath,
+			Value:  optionKv[1],
+		}
+	default:
+		r.Log.Info("Unknown in-place upgrade release option, ignoring", "option", optionKv[0])
+	}
+
+	return nil
+}
+
+func (r *CK8sConfigReconciler) getSnapInstallDataFromSpec(spec bootstrapv1.CK8sConfigSpec) (*cloudinit.SnapInstallData, error) {
+	// Ensure that exactly one option is set
+	count := 0
+	if spec.Channel != "" {
+		count++
+	}
+	if spec.Revision != "" {
+		count++
+	}
+	if spec.LocalPath != "" {
+		count++
+	}
+	if count > 1 {
+		return nil, fmt.Errorf("only one of Channel, Revision, or LocalPath can be set, but multiple were provided")
+	}
+
+	switch {
+	case spec.Channel != "":
+		return &cloudinit.SnapInstallData{
+			Option: cloudinit.InstallOptionChannel,
+			Value:  spec.Channel,
+		}, nil
+	case spec.Revision != "":
+		return &cloudinit.SnapInstallData{
+			Option: cloudinit.InstallOptionRevision,
+			Value:  spec.Revision,
+		}, nil
+	case spec.LocalPath != "":
+		return &cloudinit.SnapInstallData{
+			Option: cloudinit.InstallOptionLocalPath,
+			Value:  spec.LocalPath,
+		}, nil
+	default:
+		return &cloudinit.SnapInstallData{}, nil
+	}
 }
 
 // resolveSecretFileContent returns file content fetched from a referenced secret object.
@@ -576,7 +642,11 @@ func (r *CK8sConfigReconciler) handleClusterNotInitialized(ctx context.Context, 
 		return ctrl.Result{}, fmt.Errorf("failed to render k8sd-proxy daemonset: %w", err)
 	}
 
-	snapInstallData := r.resolveInPlaceUpgradeRelease(machine)
+	snapInstallData, err := r.getSnapInstallDataFromSpec(scope.Config.Spec)
+	if err != nil {
+		conditions.MarkFalse(scope.Config, bootstrapv1.SnapInstallDataValidatedCondition, bootstrapv1.SnapInstallValidationFailedReason, clusterv1.ConditionSeverityError, err.Error())
+		return ctrl.Result{Requeue: true}, fmt.Errorf("failed to get snap install data from spec: %w", err)
+	}
 
 	cpinput := cloudinit.InitControlPlaneInput{
 		BaseUserData: cloudinit.BaseUserData{

@@ -243,6 +243,11 @@ func (w *Workload) RefreshMachine(ctx context.Context, machine *clusterv1.Machin
 	request := apiv1.SnapRefreshRequest{}
 	response := &apiv1.SnapRefreshResponse{}
 	optionKv := strings.Split(upgradeOption, "=")
+
+	if len(optionKv) != 2 {
+		return "", fmt.Errorf("invalid in-place upgrade release annotation: %s", upgradeOption)
+	}
+
 	switch optionKv[0] {
 	case "channel":
 		request.Channel = optionKv[1]

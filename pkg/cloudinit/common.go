@@ -28,7 +28,7 @@ type BaseUserData struct {
 	// KubernetesVersion is the Kubernetes version from the cluster object.
 	KubernetesVersion string
 	// SnapInstallData is the snap install data.
-	SnapInstallData SnapInstallData
+	SnapInstallData *SnapInstallData
 	// BootCommands is a list of commands to run early in the boot process.
 	BootCommands []string
 	// PreRunCommands is a list of commands to run prior to k8s installation.
@@ -65,9 +65,11 @@ func NewBaseCloudConfig(data BaseUserData) (CloudConfig, error) {
 
 	snapInstall := data.SnapInstallData
 	// Default to k8s version if snap install option is not set or empty.
-	if snapInstall.Option == "" || snapInstall.Value == "" {
-		snapInstall.Option = InstallOptionChannel
-		snapInstall.Value = fmt.Sprintf("%d.%d-classic/stable", kubernetesVersion.Major(), kubernetesVersion.Minor())
+	if snapInstall == nil {
+		snapInstall = &SnapInstallData{
+			Option: InstallOptionChannel,
+			Value:  fmt.Sprintf("%d.%d-classic/stable", kubernetesVersion.Major(), kubernetesVersion.Minor()),
+		}
 	}
 
 	config := CloudConfig{
