@@ -424,7 +424,7 @@ func (r *CK8sConfigReconciler) resolveUserBootstrapConfig(ctx context.Context, c
 
 	data, err := r.resolveSecretFileContent(ctx, cfg.Namespace, *cfg.Spec.BootstrapConfig.ContentFrom)
 	if err != nil {
-		return "", fmt.Errorf("failed to read bootstrap configuration from secret: %w", err)
+		return "", fmt.Errorf("failed to read bootstrap configuration from secret %q: %w", cfg.Spec.BootstrapConfig.ContentFrom.Secret.Name, err)
 	}
 
 	return string(data), nil
