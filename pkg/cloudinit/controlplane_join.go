@@ -46,6 +46,7 @@ func NewJoinControlPlane(input JoinControlPlaneInput) (CloudConfig, error) {
 		config.RunCommands = append(config.RunCommands, "/capi/scripts/install.sh")
 	}
 	config.RunCommands = append(config.RunCommands,
+		"/capi/scripts/disable-host-services.sh",
 		"/capi/scripts/load-images.sh",
 		"/capi/scripts/join-cluster.sh",
 		"/capi/scripts/wait-apiserver-ready.sh",

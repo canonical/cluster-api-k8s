@@ -33,6 +33,9 @@ type CK8sConfigSpec struct {
 	// +optional
 	Files []File `json:"files,omitempty"`
 
+	// BootstrapConfig is the data to be passed to the bootstrap script.
+	BootstrapConfig *BootstrapConfig `json:"bootstrapConfig,omitempty"`
+
 	// BootCommands specifies extra commands to run in cloud-init early in the boot process.
 	// +optional
 	BootCommands []string `json:"bootCommands,omitempty"`
@@ -50,6 +53,35 @@ type CK8sConfigSpec struct {
 	// install k8s-snap manually with preRunCommands, or provide an image with k8s-snap pre-installed.
 	// +optional
 	AirGapped bool `json:"airGapped,omitempty"`
+
+	// The snap store proxy domain's scheme, e.g. "http" or "https" without "://"
+	// Defaults to "http".
+	// +optional
+	// +kubebuilder:default=http
+	// +kubebuilder:validation:Enum=http;https
+	SnapstoreProxyScheme string `json:"snapstoreProxyScheme,omitempty"`
+
+	// The snap store proxy domain
+	// +optional
+	SnapstoreProxyDomain string `json:"snapstoreProxyDomain,omitempty"`
+
+	// The snap store proxy ID
+	// +optional
+	SnapstoreProxyID string `json:"snapstoreProxyId,omitempty"`
+
+	// Channel is the channel to use for the snap install.
+	// +optional
+	Channel string `json:"channel,omitempty"`
+
+	// Revision is the revision to use for the snap install.
+	// If Channel is set, this will be ignored.
+	// +optional
+	Revision string `json:"revision,omitempty"`
+
+	// LocalPath is the path of a local snap file in the workload cluster to use for the snap install.
+	// If Channel or Revision are set, this will be ignored.
+	// +optional
+	LocalPath string `json:"localPath,omitempty"`
 
 	// CK8sControlPlaneConfig is configuration for the control plane node.
 	// +optional
@@ -251,6 +283,17 @@ const (
 	// GzipBase64 implies the contents of the file are first base64 encoded and then gzip encoded.
 	GzipBase64 Encoding = "gzip+base64"
 )
+
+type BootstrapConfig struct {
+	// Content is the actual content of the file.
+	// If this is set, ContentFrom is ignored.
+	// +optional
+	Content string `json:"content,omitempty"`
+
+	// ContentFrom is a referenced source of content to populate the file.
+	// +optional
+	ContentFrom *FileSource `json:"contentFrom,omitempty"`
+}
 
 // File defines the input for generating write_files in cloud-init.
 type File struct {

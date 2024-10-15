@@ -17,9 +17,12 @@ limitations under the License.
 package cloudinit_test
 
 import (
+	"fmt"
 	"testing"
 
 	. "github.com/onsi/gomega"
+	format "github.com/onsi/gomega/format"
+	"github.com/onsi/gomega/gstruct"
 
 	"github.com/canonical/cluster-api-k8s/pkg/cloudinit"
 )
@@ -27,12 +30,17 @@ import (
 func TestNewInitControlPlane(t *testing.T) {
 	g := NewWithT(t)
 
+	format.MaxLength = 20000
+
 	config, err := cloudinit.NewInitControlPlane(cloudinit.InitControlPlaneInput{
 		BaseUserData: cloudinit.BaseUserData{
-			KubernetesVersion: "v1.30.0",
-			BootCommands:      []string{"bootcmd"},
-			PreRunCommands:    []string{"prerun1", "prerun2"},
-			PostRunCommands:   []string{"postrun1", "postrun2"},
+			KubernetesVersion:    "v1.30.0",
+			BootCommands:         []string{"bootcmd"},
+			PreRunCommands:       []string{"prerun1", "prerun2"},
+			PostRunCommands:      []string{"postrun1", "postrun2"},
+			SnapstoreProxyScheme: "http",
+			SnapstoreProxyDomain: "snapstore.io",
+			SnapstoreProxyID:     "abcd-1234-xyz",
 			ExtraFiles: []cloudinit.File{{
 				Path:        "/tmp/file",
 				Content:     "test file",
@@ -54,9 +62,11 @@ func TestNewInitControlPlane(t *testing.T) {
 	// Verify the run commands.
 	g.Expect(config.RunCommands).To(Equal([]string{
 		"set -x",
+		"/capi/scripts/configure-snapstore-proxy.sh",
 		"prerun1",
 		"prerun2",
 		"/capi/scripts/install.sh",
+		"/capi/scripts/disable-host-services.sh",
 		"/capi/scripts/bootstrap.sh",
 		"/capi/scripts/load-images.sh",
 		"/capi/scripts/wait-apiserver-ready.sh",
@@ -70,6 +80,7 @@ func TestNewInitControlPlane(t *testing.T) {
 
 	// NOTE (mateoflorido): Keep this test in sync with the expected paths in the controlplane_init.go file.
 	g.Expect(config.WriteFiles).To(ConsistOf(
+		HaveField("Path", "/capi/scripts/disable-host-services.sh"),
 		HaveField("Path", "/capi/scripts/install.sh"),
 		HaveField("Path", "/capi/scripts/bootstrap.sh"),
 		HaveField("Path", "/capi/scripts/load-images.sh"),
@@ -79,15 +90,44 @@ func TestNewInitControlPlane(t *testing.T) {
 		HaveField("Path", "/capi/scripts/configure-auth-token.sh"),
 		HaveField("Path", "/capi/scripts/configure-node-token.sh"),
 		HaveField("Path", "/capi/scripts/create-sentinel-bootstrap.sh"),
+		HaveField("Path", "/capi/scripts/configure-snapstore-proxy.sh"),
 		HaveField("Path", "/capi/etc/config.yaml"),
 		HaveField("Path", "/capi/etc/microcluster-address"),
 		HaveField("Path", "/capi/etc/node-name"),
 		HaveField("Path", "/capi/etc/node-token"),
 		HaveField("Path", "/capi/etc/token"),
-		HaveField("Path", "/capi/etc/snap-track"),
+		HaveField("Path", "/capi/etc/snap-channel"),
 		HaveField("Path", "/capi/manifests/00-k8sd-proxy.yaml"),
+		HaveField("Path", "/capi/etc/snapstore-proxy-scheme"),
+		HaveField("Path", "/capi/etc/snapstore-proxy-domain"),
+		HaveField("Path", "/capi/etc/snapstore-proxy-id"),
 		HaveField("Path", "/tmp/file"),
 	), "Some /capi/scripts files are missing")
+}
+
+func TestUserSuppliedBootstrapConfig(t *testing.T) {
+	g := NewWithT(t)
+
+	config, err := cloudinit.NewInitControlPlane(cloudinit.InitControlPlaneInput{
+		BaseUserData: cloudinit.BaseUserData{
+			KubernetesVersion:  "v1.30.0",
+			BootstrapConfig:    "### bootstrap config ###",
+			ConfigFileContents: "### config file ###",
+		},
+	})
+
+	g.Expect(err).ToNot(HaveOccurred())
+
+	// Test that user-supplied bootstrap configuration takes precedence over ConfigFileContents.
+	g.Expect(config.WriteFiles).To(ContainElement(gstruct.MatchFields(gstruct.IgnoreExtras, gstruct.Fields{
+		"Path":    Equal("/capi/etc/config.yaml"),
+		"Content": Equal("### bootstrap config ###"),
+	})))
+
+	g.Expect(config.WriteFiles).NotTo(ContainElement(gstruct.MatchFields(gstruct.IgnoreExtras, gstruct.Fields{
+		"Path":    Equal("/capi/etc/config.yaml"),
+		"Content": Equal("### config file ###"),
+	})))
 }
 
 func TestNewInitControlPlaneInvalidVersionError(t *testing.T) {
@@ -120,4 +160,88 @@ func TestNewInitControlPlaneAirGapped(t *testing.T) {
 
 	// Verify the run commands is missing install.sh script.
 	g.Expect(config.RunCommands).NotTo(ContainElement("/capi/scripts/install.sh"))
+}
+
+func TestNewInitControlPlaneSnapInstall(t *testing.T) {
+	t.Run("DefaultSnapInstall", func(t *testing.T) {
+		g := NewWithT(t)
+
+		config, err := cloudinit.NewInitControlPlane(cloudinit.InitControlPlaneInput{
+			BaseUserData: cloudinit.BaseUserData{
+				KubernetesVersion: "v1.30.0",
+				BootCommands:      []string{"bootcmd"},
+				PreRunCommands:    []string{"prerun1", "prerun2"},
+				PostRunCommands:   []string{"postrun1", "postrun2"},
+			}})
+
+		g.Expect(err).NotTo(HaveOccurred())
+		g.Expect(config.WriteFiles).To(ContainElement(gstruct.MatchFields(gstruct.IgnoreExtras, gstruct.Fields{
+			"Path":    Equal(fmt.Sprintf("/capi/etc/snap-%s", cloudinit.InstallOptionChannel)),
+			"Content": Equal("1.30-classic/stable"),
+		})))
+		g.Expect(config.WriteFiles).ToNot(ContainElement(HaveField("Path", fmt.Sprintf("/capi/etc/snap-%s", cloudinit.InstallOptionRevision))))
+		g.Expect(config.WriteFiles).ToNot(ContainElement(HaveField("Path", fmt.Sprintf("/capi/etc/snap-%s", cloudinit.InstallOptionLocalPath))))
+	})
+}
+
+func TestNewInitControlPlaneSnapInstallOverrides(t *testing.T) {
+	tests := []struct {
+		name        string
+		snapInstall *cloudinit.SnapInstallData
+		notOptions  []cloudinit.InstallOption
+	}{
+		{
+			name: "ChannelOverride",
+			snapInstall: &cloudinit.SnapInstallData{
+				Option: cloudinit.InstallOptionChannel,
+				Value:  "v1.30/edge",
+			},
+			notOptions: []cloudinit.InstallOption{cloudinit.InstallOptionRevision, cloudinit.InstallOptionLocalPath},
+		},
+		{
+			name: "RevisionOverride",
+			snapInstall: &cloudinit.SnapInstallData{
+				Option: cloudinit.InstallOptionRevision,
+				Value:  "123",
+			},
+			notOptions: []cloudinit.InstallOption{cloudinit.InstallOptionChannel, cloudinit.InstallOptionLocalPath},
+		},
+		{
+			name: "LocalPathOverride",
+			snapInstall: &cloudinit.SnapInstallData{
+				Option: cloudinit.InstallOptionLocalPath,
+				Value:  "/path/to/k8s.snap",
+			},
+			notOptions: []cloudinit.InstallOption{cloudinit.InstallOptionChannel, cloudinit.InstallOptionRevision},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			g := NewWithT(t)
+
+			config, err := cloudinit.NewInitControlPlane(cloudinit.InitControlPlaneInput{
+				BaseUserData: cloudinit.BaseUserData{
+					KubernetesVersion: "v1.30.0",
+					SnapInstallData:   tt.snapInstall,
+					BootCommands:      []string{"bootcmd"},
+					PreRunCommands:    []string{"prerun1", "prerun2"},
+					PostRunCommands:   []string{"postrun1", "postrun2"},
+				}})
+
+			g.Expect(err).NotTo(HaveOccurred())
+
+			g.Expect(config.WriteFiles).To(ContainElement(gstruct.MatchFields(gstruct.IgnoreExtras, gstruct.Fields{
+				"Path":    Equal(fmt.Sprintf("/capi/etc/snap-%s", tt.snapInstall.Option)),
+				"Content": Equal(tt.snapInstall.Value),
+			})))
+
+			// Check that the incorrect files are not written
+			for _, notOption := range tt.notOptions {
+				g.Expect(config.WriteFiles).NotTo(ContainElement(gstruct.MatchFields(gstruct.IgnoreExtras, gstruct.Fields{
+					"Path": Equal(fmt.Sprintf("/capi/etc/snap-%s", notOption)),
+				})))
+			}
+		})
+	}
 }

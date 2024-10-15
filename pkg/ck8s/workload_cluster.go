@@ -32,10 +32,6 @@ const (
 	k8sdConfigSecretName      = "k8sd-config" //nolint:gosec
 )
 
-var (
-	ErrControlPlaneMinNodes = errors.New("cluster has fewer than 2 control plane nodes; removing an etcd member is not supported")
-)
-
 // WorkloadCluster defines all behaviors necessary to upgrade kubernetes on a workload cluster
 //
 // TODO: Add a detailed description to each of these method definitions.
@@ -43,28 +39,10 @@ type WorkloadCluster interface {
 	// Basic health and status checks.
 	ClusterStatus(ctx context.Context) (ClusterStatus, error)
 	UpdateAgentConditions(ctx context.Context, controlPlane *ControlPlane)
-	UpdateEtcdConditions(ctx context.Context, controlPlane *ControlPlane)
 	NewControlPlaneJoinToken(ctx context.Context, name string) (string, error)
 	NewWorkerJoinToken(ctx context.Context) (string, error)
 
 	RemoveMachineFromCluster(ctx context.Context, machine *clusterv1.Machine) error
-
-	// NOTE(neoaggelos): See notes in (*CK8sControlPlaneReconciler).reconcileEtcdMembers
-	//
-	// TODO(neoaggelos): Replace with operations that use the k8sd proxy with things we need. For example, the function to remove a node _could_ be:
-	//
-	// 		RemoveMachineFromCluster(ctx context.Context, machine *clusterv1.Machine)
-	//
-	// Then, the implementation of WorkloadCluster should handle everything (reaching to k8sd, calling the right endpoints, authenticating, etc)
-	// internally.
-	/**
-	// Etcd tasks
-	RemoveEtcdMemberForMachine(ctx context.Context, machine *clusterv1.Machine) (bool, error)
-	ForwardEtcdLeadership(ctx context.Context, machine *clusterv1.Machine, leaderCandidate *clusterv1.Machine) error
-	ReconcileEtcdMembers(ctx context.Context, nodeNames []string) ([]string, error)
-	**/
-
-	// AllowBootstrapTokensToGetNodes(ctx context.Context) error
 }
 
 // Workload defines operations on workload clusters.
@@ -76,13 +54,6 @@ type Workload struct {
 	ClientRestConfig    *rest.Config
 	K8sdClientGenerator *k8sdClientGenerator
 	microclusterPort    int
-
-	// NOTE(neoaggelos): CoreDNSMigrator and etcdClientGenerator are used by upstream to reach and manage the services in the workload cluster
-	// TODO(neoaggelos): Replace them with a k8sdProxyClientGenerator.
-	/**
-	CoreDNSMigrator     coreDNSMigrator
-	etcdClientGenerator etcdClientFor
-	**/
 }
 
 // ClusterStatus holds stats information about the cluster.
@@ -100,9 +71,6 @@ func (w *Workload) getControlPlaneNodes(ctx context.Context) (*corev1.NodeList, 
 	labels := map[string]string{
 		// NOTE(neoaggelos): Canonical Kubernetes uses node-role.kubernetes.io/control-plane="" as a label for control plane nodes.
 		labelNodeRoleControlPlane: "",
-		/**
-		labelNodeRoleControlPlane: "true",
-		**/
 	}
 	if err := w.Client.List(ctx, nodes, ctrlclient.MatchingLabels(labels)); err != nil {
 		return nil, err
@@ -364,6 +332,11 @@ func (w *Workload) RefreshMachine(ctx context.Context, machine *clusterv1.Machin
 	request := apiv1.SnapRefreshRequest{}
 	response := &apiv1.SnapRefreshResponse{}
 	optionKv := strings.Split(upgradeOption, "=")
+
+	if len(optionKv) != 2 {
+		return "", fmt.Errorf("invalid in-place upgrade release annotation: %s", upgradeOption)
+	}
+
 	switch optionKv[0] {
 	case "channel":
 		request.Channel = optionKv[1]
@@ -729,266 +702,5 @@ func aggregateFromMachinesToKCP(input aggregateFromMachinesToKCPInput) {
 	// This last case should happen only if there are no provisioned machines, and thus without conditions.
 	// So there will be no condition at KCP level too.
 }
-
-// UpdateEtcdConditions is responsible for updating machine conditions reflecting the status of all the etcd members.
-// This operation is best effort, in the sense that in case of problems in retrieving member status, it sets
-// the condition to Unknown state without returning any error.
-func (w *Workload) UpdateEtcdConditions(ctx context.Context, controlPlane *ControlPlane) {
-	w.updateManagedEtcdConditions(ctx, controlPlane)
-}
-
-func (w *Workload) updateManagedEtcdConditions(ctx context.Context, controlPlane *ControlPlane) {
-	// NOTE: This methods uses control plane nodes only to get in contact with etcd but then it relies on etcd
-	// as ultimate source of truth for the list of members and for their health.
-	controlPlaneNodes, err := w.getControlPlaneNodes(ctx)
-	if err != nil {
-		conditions.MarkUnknown(controlPlane.KCP, controlplanev1.EtcdClusterHealthyCondition, controlplanev1.EtcdClusterInspectionFailedReason, "Failed to list nodes which are hosting the etcd members")
-		for _, m := range controlPlane.Machines {
-			conditions.MarkUnknown(m, controlplanev1.MachineEtcdMemberHealthyCondition, controlplanev1.EtcdMemberInspectionFailedReason, "Failed to get the node which is hosting the etcd member")
-		}
-		return
-	}
-
-	// NOTE(neoaggelos): Upstream queries the etcd cluster endpoint on each of the machine nodes. It verifies that the list of etcd peers retrieved by
-	// every node in the cluster matches with other nodes, and also verifies that they report the same etcd cluster ID.
-	//
-	// In the case of k8s-dqlite, we should do similar steps against the k8s-dqlite cluster. Until that is implemented, we skip this check and assume
-	// that the node's datastore is in healthy condition if there are matching clusterv1.Machine and corev1.Node objects.
-	//
-	// TODO(neoaggelos): Implement API endpoints in k8sd to reach the local k8s-dqlite node and report the known cluster members. Then, verify that the
-	// list of members matches across all the nodes.
-
-	// Update conditions for etcd members on the nodes.
-	var (
-		// kcpErrors is used to store errors that can't be reported on any machine.
-		kcpErrors []string
-		/**
-		// clusterID is used to store and compare the etcd's cluster id.
-		clusterID *uint64
-		// members is used to store the list of etcd members and compare with all the other nodes in the cluster.
-		members []*etcd.Member
-		**/
-	)
-
-	for _, node := range controlPlaneNodes.Items {
-		// Search for the machine corresponding to the node.
-		var machine *clusterv1.Machine
-		for _, m := range controlPlane.Machines {
-			if m.Status.NodeRef != nil && m.Status.NodeRef.Name == node.Name {
-				machine = m
-			}
-		}
-
-		if machine == nil {
-			// If there are machines still provisioning there is the chance that a chance that a node might be linked to a machine soon,
-			// otherwise report the error at KCP level given that there is no machine to report on.
-			if hasProvisioningMachine(controlPlane.Machines) {
-				continue
-			}
-			kcpErrors = append(kcpErrors, fmt.Sprintf("Control plane node %s does not have a corresponding machine", node.Name))
-			continue
-		}
-
-		// If the machine is deleting, report all the conditions as deleting
-		if !machine.ObjectMeta.DeletionTimestamp.IsZero() {
-			conditions.MarkFalse(machine, controlplanev1.MachineEtcdMemberHealthyCondition, clusterv1.DeletingReason, clusterv1.ConditionSeverityInfo, "")
-			continue
-		}
-
-		/**
-		currentMembers, err := w.getCurrentEtcdMembers(ctx, machine, node.Name)
-		if err != nil {
-			continue
-		}
-
-		// Check if the list of members IDs reported is the same as all other members.
-		// NOTE: the first member reporting this information is the baseline for this information.
-		if members == nil {
-			members = currentMembers
-		}
-		if !etcdutil.MemberEqual(members, currentMembers) {
-			conditions.MarkFalse(machine, controlplanev1.MachineEtcdMemberHealthyCondition, controlplanev1.EtcdMemberUnhealthyReason, clusterv1.ConditionSeverityError, "etcd member reports the cluster is composed by members %s, but all previously seen etcd members are reporting %s", etcdutil.MemberNames(currentMembers), etcdutil.MemberNames(members))
-			continue
-		}
-
-		// Retrieve the member and check for alarms.
-		// NB. The member for this node always exists given forFirstAvailableNode(node) used above
-		member := etcdutil.MemberForName(currentMembers, node.Name)
-		if member == nil {
-			conditions.MarkFalse(machine, controlplanev1.MachineEtcdMemberHealthyCondition, controlplanev1.EtcdMemberUnhealthyReason, clusterv1.ConditionSeverityError, "etcd member reports the cluster is composed by members %s, but the member itself (%s) is not included", etcdutil.MemberNames(currentMembers), node.Name)
-			continue
-		}
-		if len(member.Alarms) > 0 {
-			alarmList := []string{}
-			for _, alarm := range member.Alarms {
-				switch alarm {
-				case etcd.AlarmOK:
-					continue
-				default:
-					alarmList = append(alarmList, etcd.AlarmTypeName[alarm])
-				}
-			}
-			if len(alarmList) > 0 {
-				conditions.MarkFalse(machine, controlplanev1.MachineEtcdMemberHealthyCondition, controlplanev1.EtcdMemberUnhealthyReason, clusterv1.ConditionSeverityError, "Etcd member reports alarms: %s", strings.Join(alarmList, ", "))
-				continue
-			}
-		}
-
-		// Check if the member belongs to the same cluster as all other members.
-		// NOTE: the first member reporting this information is the baseline for this information.
-		if clusterID == nil {
-			clusterID = &member.ClusterID
-		}
-		if *clusterID != member.ClusterID {
-			conditions.MarkFalse(machine, controlplanev1.MachineEtcdMemberHealthyCondition, controlplanev1.EtcdMemberUnhealthyReason, clusterv1.ConditionSeverityError, "etcd member has cluster ID %d, but all previously seen etcd members have cluster ID %d", member.ClusterID, *clusterID)
-			continue
-		}
-		**/
-
-		conditions.MarkTrue(machine, controlplanev1.MachineEtcdMemberHealthyCondition)
-	}
-
-	/**
-	// Make sure that the list of etcd members and machines is consistent.
-	kcpErrors = compareMachinesAndMembers(controlPlane, members, kcpErrors)
-	**/
-
-	// Aggregate components error from machines at KCP level
-	aggregateFromMachinesToKCP(aggregateFromMachinesToKCPInput{
-		controlPlane:      controlPlane,
-		machineConditions: []clusterv1.ConditionType{controlplanev1.MachineEtcdMemberHealthyCondition},
-		kcpErrors:         kcpErrors,
-		condition:         controlplanev1.EtcdClusterHealthyCondition,
-		unhealthyReason:   controlplanev1.EtcdClusterUnhealthyReason,
-		unknownReason:     controlplanev1.EtcdClusterUnknownReason,
-		note:              "etcd member",
-	})
-}
-
-//nolint:godot
-/**
-func (w *Workload) getCurrentEtcdMembers(ctx context.Context, machine *clusterv1.Machine, nodeName string) ([]*etcd.Member, error) {
-	// Create the etcd Client for the etcd Pod scheduled on the Node
-	etcdClient, err := w.etcdClientGenerator.forFirstAvailableNode(ctx, []string{nodeName})
-	if err != nil {
-		conditions.MarkUnknown(machine, controlplanev1.MachineEtcdMemberHealthyCondition, controlplanev1.EtcdMemberInspectionFailedReason, "Failed to connect to the etcd pod on the %s node: %s", nodeName, err)
-		return nil, errors.Wrapf(err, "failed to get current etcd members: failed to connect to the etcd pod on the %s node", nodeName)
-	}
-	defer etcdClient.Close()
-
-	// While creating a new client, forFirstAvailableNode retrieves the status for the endpoint; check if the endpoint has errors.
-	if len(etcdClient.Errors) > 0 {
-		conditions.MarkFalse(machine, controlplanev1.MachineEtcdMemberHealthyCondition, controlplanev1.EtcdMemberUnhealthyReason, clusterv1.ConditionSeverityError, "Etcd member status reports errors: %s", strings.Join(etcdClient.Errors, ", "))
-		return nil, errors.Errorf("failed to get current etcd members: etcd member status reports errors: %s", strings.Join(etcdClient.Errors, ", "))
-	}
-
-	// Gets the list etcd members known by this member.
-	currentMembers, err := etcdClient.Members(ctx)
-	if err != nil {
-		// NB. We should never be in here, given that we just received answer to the etcd calls included in forFirstAvailableNode;
-		// however, we are considering the calls to Members a signal of etcd not being stable.
-		conditions.MarkFalse(machine, controlplanev1.MachineEtcdMemberHealthyCondition, controlplanev1.EtcdMemberUnhealthyReason, clusterv1.ConditionSeverityError, "Failed get answer from the etcd member on the %s node", nodeName)
-		return nil, errors.Errorf("failed to get current etcd members: failed get answer from the etcd member on the %s node", nodeName)
-	}
-
-	return currentMembers, nil
-}
-
-func compareMachinesAndMembers(controlPlane *ControlPlane, members []*etcd.Member, kcpErrors []string) []string {
-	// NOTE: We run this check only if we actually know the list of members, otherwise the first for loop
-	// could generate a false negative when reporting missing etcd members.
-	if members == nil {
-		return kcpErrors
-	}
-
-	// Check Machine -> Etcd member.
-	for _, machine := range controlPlane.Machines {
-		if machine.Status.NodeRef == nil {
-			continue
-		}
-		found := false
-		for _, member := range members {
-			nodeNameFromMember := etcdutil.NodeNameFromMember(member)
-			if machine.Status.NodeRef.Name == nodeNameFromMember {
-				found = true
-				break
-			}
-		}
-		if !found {
-			conditions.MarkFalse(machine, controlplanev1.MachineEtcdMemberHealthyCondition, controlplanev1.EtcdMemberUnhealthyReason, clusterv1.ConditionSeverityError, "Missing etcd member")
-		}
-	}
-
-	// Check Etcd member -> Machine.
-	for _, member := range members {
-		found := false
-		nodeNameFromMember := etcdutil.NodeNameFromMember(member)
-		for _, machine := range controlPlane.Machines {
-			if machine.Status.NodeRef != nil && machine.Status.NodeRef.Name == nodeNameFromMember {
-				found = true
-				break
-			}
-		}
-		if !found {
-			name := nodeNameFromMember
-			if name == "" {
-				name = fmt.Sprintf("%d (Name not yet assigned)", member.ID)
-			}
-			kcpErrors = append(kcpErrors, fmt.Sprintf("etcd member %s does not have a corresponding machine", name))
-		}
-	}
-	return kcpErrors
-}
-
-func generateClientCert(caCertEncoded, caKeyEncoded []byte) (tls.Certificate, error) {
-	// TODO: need to cache clientkey to clusterCacheTracker to avoid recreating key frequently
-	clientKey, err := certs.NewPrivateKey()
-	if err != nil {
-		return tls.Certificate{}, errors.Wrapf(err, "error creating client key")
-	}
-
-	caCert, err := certs.DecodeCertPEM(caCertEncoded)
-	if err != nil {
-		return tls.Certificate{}, err
-	}
-	caKey, err := certs.DecodePrivateKeyPEM(caKeyEncoded)
-	if err != nil {
-		return tls.Certificate{}, err
-	}
-	x509Cert, err := newClientCert(caCert, clientKey, caKey)
-	if err != nil {
-		return tls.Certificate{}, err
-	}
-	return tls.X509KeyPair(certs.EncodeCertPEM(x509Cert), certs.EncodePrivateKeyPEM(clientKey))
-}
-
-func newClientCert(caCert *x509.Certificate, key *rsa.PrivateKey, caKey crypto.Signer) (*x509.Certificate, error) {
-	cfg := certs.Config{
-		CommonName: "cluster-api.x-k8s.io",
-	}
-
-	now := time.Now().UTC()
-
-	tmpl := x509.Certificate{
-		SerialNumber: new(big.Int).SetInt64(0),
-		Subject: pkix.Name{
-			CommonName:   cfg.CommonName,
-			Organization: cfg.Organization,
-		},
-		NotBefore:   now.Add(time.Minute * -5),
-		NotAfter:    now.Add(time.Hour * 24 * 365 * 10), // 10 years
-		KeyUsage:    x509.KeyUsageDigitalSignature,
-		ExtKeyUsage: []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth},
-	}
-
-	b, err := x509.CreateCertificate(rand.Reader, &tmpl, caCert, key.Public(), caKey)
-	if err != nil {
-		return nil, errors.Wrapf(err, "failed to create signed client certificate: %+v", tmpl)
-	}
-
-	c, err := x509.ParseCertificate(b)
-	return c, errors.WithStack(err)
-}
-**/
 
 var _ WorkloadCluster = &Workload{}

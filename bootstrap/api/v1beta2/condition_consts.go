@@ -69,3 +69,9 @@ const (
 	// an error while retrieving certificates for a joining node.
 	CertificatesCorruptedReason = "CertificatesCorrupted"
 )
+
+const (
+	SnapInstallDataValidatedCondition clusterv1.ConditionType = "SnapInstallDataValidated"
+
+	SnapInstallValidationFailedReason = "SnapInstallValidationFailed"
+)

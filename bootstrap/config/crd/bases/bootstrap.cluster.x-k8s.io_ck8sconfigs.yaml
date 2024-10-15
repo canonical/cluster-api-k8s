@@ -51,6 +51,42 @@ spec:
                 items:
                   type: string
                 type: array
+              channel:
+                description: Channel is the channel to use for the snap install.
+                type: string
+              bootstrapConfig:
+                description: BootstrapConfig is the data to be passed to the bootstrap
+                  script.
+                properties:
+                  content:
+                    description: |-
+                      Content is the actual content of the file.
+                      If this is set, ContentFrom is ignored.
+                    type: string
+                  contentFrom:
+                    description: ContentFrom is a referenced source of content to
+                      populate the file.
+                    properties:
+                      secret:
+                        description: Secret represents a secret that should populate
+                          this file.
+                        properties:
+                          key:
+                            description: Key is the key in the secret's data map for
+                              this value.
+                            type: string
+                          name:
+                            description: Name of the secret in the CK8sBootstrapConfig's
+                              namespace to use.
+                            type: string
+                        required:
+                        - key
+                        - name
+                        type: object
+                    required:
+                    - secret
+                    type: object
+                type: object
               controlPlane:
                 description: CK8sControlPlaneConfig is configuration for the control
                   plane node.
@@ -192,6 +228,11 @@ spec:
                       the default CNI.
                     type: boolean
                 type: object
+              localPath:
+                description: |-
+                  LocalPath is the path of a local snap file in the workload cluster to use for the snap install.
+                  If Channel or Revision are set, this will be ignored.
+                type: string
               nodeName:
                 description: |-
                   NodeName is the name to use for the kubelet of this node. It is needed for clouds
@@ -210,6 +251,26 @@ spec:
                 items:
                   type: string
                 type: array
+              revision:
+                description: |-
+                  Revision is the revision to use for the snap install.
+                  If Channel is set, this will be ignored.
+                type: string
+              snapstoreProxyDomain:
+                description: The snap store proxy domain
+                type: string
+              snapstoreProxyId:
+                description: The snap store proxy ID
+                type: string
+              snapstoreProxyScheme:
+                default: http
+                description: |-
+                  The snap store proxy domain's scheme, e.g. "http" or "https" without "://"
+                  Defaults to "http".
+                enum:
+                - http
+                - https
+                type: string
               version:
                 description: Version specifies the Kubernetes version.
                 type: string
