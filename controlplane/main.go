@@ -116,6 +116,14 @@ func main() {
 		os.Exit(1)
 	}
 
+	inplaceUpgradeLogger := ctrl.Log.WithName("controllers").WithName("OrchestratedInPlaceUpgrade")
+	if err = (&controllers.OrchestratedInPlaceUpgradeController{
+		Client: mgr.GetClient(),
+		Log:    inplaceUpgradeLogger,
+	}).SetupWithManager(mgr); err != nil {
+		setupLog.Error(err, "failed to create controller", "controller", "OrchestratedInPlaceUpgrade")
+	}
+
 	if os.Getenv("ENABLE_WEBHOOKS") != "false" {
 		if err = (&controlplanev1.CK8sControlPlane{}).SetupWebhookWithManager(mgr); err != nil {
 			setupLog.Error(err, "unable to create webhook", "webhook", "CK8sControlPlane")
