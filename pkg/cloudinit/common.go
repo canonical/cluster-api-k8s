@@ -35,7 +35,7 @@ type BaseUserData struct {
 	PreRunCommands []string
 	// PostRunCommands is a list of commands to run after k8s installation.
 	PostRunCommands []string
-	// BootstrapConfig boop bop
+	// BootstrapConfig is the contents of the bootstrap configuration file.
 	BootstrapConfig string
 	// ExtraFiles is a list of extra files to load on the host.
 	ExtraFiles []File
