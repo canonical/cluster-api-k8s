@@ -18,12 +18,12 @@ package controllers
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 	"time"
 
 	"github.com/go-logr/logr"
-	"github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -196,7 +196,7 @@ func (r *CK8sControlPlaneReconciler) reconcileDelete(ctx context.Context, cluste
 		return reconcile.Result{}, err
 	}
 
-	// Updates conditions reporting the status of static pods and the status of the etcd cluster.
+	// Updates conditions reporting the status of static pods
 	// NOTE: Ignoring failures given that we are deleting
 	if err := r.reconcileControlPlaneConditions(ctx, controlPlane); err != nil {
 		logger.Info("failed to reconcile conditions", "error", err.Error())
@@ -498,22 +498,16 @@ func (r *CK8sControlPlaneReconciler) reconcile(ctx context.Context, cluster *clu
 	}
 
 	if err := r.syncMachines(ctx, kcp, controlPlane); err != nil {
-		return ctrl.Result{}, errors.Wrap(err, "failed to sync Machines")
+		return ctrl.Result{}, fmt.Errorf("failed to sync Machines: %w", err)
 	}
 
 	// Aggregate the operational state of all the machines; while aggregating we are adding the
 	// source ref (reason@machine/name) so the problem can be easily tracked down to its source machine.
 	conditions.SetAggregate(controlPlane.KCP, controlplanev1.MachinesReadyCondition, ownedMachines.ConditionGetters(), conditions.AddSourceRef(), conditions.WithStepCounterIf(false))
 
-	// Updates conditions reporting the status of static pods and the status of the etcd cluster.
+	// Updates conditions reporting the status of static pods
 	// NOTE: Conditions reporting KCP operation progress like e.g. Resized or SpecUpToDate are inlined with the rest of the execution.
 	if err := r.reconcileControlPlaneConditions(ctx, controlPlane); err != nil {
-		return reconcile.Result{}, err
-	}
-
-	// Ensures the number of etcd members is in sync with the number of machines/nodes.
-	// NOTE: This is usually required after a machine deletion.
-	if err := r.reconcileEtcdMembers(ctx, controlPlane); err != nil {
 		return reconcile.Result{}, err
 	}
 
@@ -561,26 +555,6 @@ func (r *CK8sControlPlaneReconciler) reconcile(ctx context.Context, cluster *clu
 		// The last parameter (i.e. machines needing to be rolled out) should always be empty here.
 		return r.scaleDownControlPlane(ctx, cluster, kcp, controlPlane, collections.Machines{})
 	}
-
-	// Get the workload cluster client.
-	/**
-	workloadCluster, err := r.managementCluster.GetWorkloadCluster(ctx, util.ObjectKey(cluster))
-	if err != nil {
-		logger.V(2).Info("cannot get remote client to workload cluster, will requeue", "cause", err)
-		return ctrl.Result{Requeue: true}, nil
-	}
-
-	// Update kube-proxy daemonset.
-	if err := workloadCluster.UpdateKubeProxyImageInfo(ctx, kcp); err != nil {
-		logger.Error(err, "failed to update kube-proxy daemonset")
-		return reconcile.Result{}, err
-	}
-
-	// Update CoreDNS deployment.
-	if err := workloadCluster.UpdateCoreDNS(ctx, kcp); err != nil {
-		return reconcile.Result{}, fmt.Errorf("failed to update CoreDNS deployment")
-	}
-	**/
 
 	return reconcile.Result{}, nil
 }
@@ -661,8 +635,7 @@ func (r *CK8sControlPlaneReconciler) reconcileKubeconfig(ctx context.Context, cl
 	return reconcile.Result{}, nil
 }
 
-// reconcileControlPlaneConditions is responsible of reconciling conditions reporting the status of static pods and
-// the status of the etcd cluster.
+// reconcileControlPlaneConditions is responsible of reconciling conditions reporting the status of static pods.
 func (r *CK8sControlPlaneReconciler) reconcileControlPlaneConditions(ctx context.Context, controlPlane *ck8s.ControlPlane) error {
 	// If the cluster is not yet initialized, there is no way to connect to the workload cluster and fetch information
 	// for updating conditions. Return early.
@@ -678,7 +651,6 @@ func (r *CK8sControlPlaneReconciler) reconcileControlPlaneConditions(ctx context
 
 	// Update conditions status
 	workloadCluster.UpdateAgentConditions(ctx, controlPlane)
-	workloadCluster.UpdateEtcdConditions(ctx, controlPlane)
 
 	// Patch machines with the updated conditions.
 	if err := controlPlane.PatchMachines(ctx); err != nil {
@@ -719,66 +691,6 @@ func (r *CK8sControlPlaneReconciler) syncMachines(ctx context.Context, kcp *cont
 
 		controlPlane.Machines[machineName] = m
 	}
-	return nil
-}
-
-// reconcileEtcdMembers ensures the number of etcd members is in sync with the number of machines/nodes.
-// This is usually required after a machine deletion.
-//
-// NOTE: this func uses KCP conditions, it is required to call reconcileControlPlaneConditions before this.
-func (r *CK8sControlPlaneReconciler) reconcileEtcdMembers(ctx context.Context, controlPlane *ck8s.ControlPlane) error {
-	// NOTE(neoaggelos): Upstream uses this to reach the etcd cluster and remove any members that have not yet
-	// been removed, typically after a machine has been deleted. In the case of k8s-dqlite, this is handled automatically
-	// for us, so we do not need to do anything here.
-	//
-	// We still leave this code around in case we need to do work in the future (e.g. make sure any removed nodes do not
-	// still appear on microcluster or k8s-dqlite).
-
-	/**
-	log := ctrl.LoggerFrom(ctx)
-	// If k8s-dqlite is not managed by KCP this is a no-op.
-	if !controlPlane.IsEtcdManaged() {
-		return nil
-	}
-
-	// If there is no KCP-owned control-plane machines, then control-plane has not been initialized yet.
-	if controlPlane.Machines.Len() == 0 {
-		return nil
-	}
-
-	// Collect all the node names.
-	nodeNames := []string{}
-	for _, machine := range controlPlane.Machines {
-		if machine.Status.NodeRef == nil {
-			// If there are provisioning machines (machines without a node yet), return.
-			return nil
-		}
-		nodeNames = append(nodeNames, machine.Status.NodeRef.Name)
-	}
-
-	// Potential inconsistencies between the list of members and the list of machines/nodes are
-	// surfaced using the EtcdClusterHealthyCondition; if this condition is true, meaning no inconsistencies exists, return early.
-	if conditions.IsTrue(controlPlane.KCP, controlplanev1.EtcdClusterHealthyCondition) {
-		return nil
-	}
-
-	workloadCluster, err := r.managementCluster.GetWorkloadCluster(ctx, util.ObjectKey(controlPlane.Cluster))
-	if err != nil {
-		// Failing at connecting to the workload cluster can mean workload cluster is unhealthy for a variety of reasons such as etcd quorum loss.
-		return errors.Wrap(err, "cannot get remote client to workload cluster")
-	}
-
-	removedMembers, err := workloadCluster.ReconcileEtcdMembers(ctx, nodeNames)
-	if err != nil {
-		return errors.Wrap(err, "failed attempt to reconcile etcd members")
-	}
-
-	if len(removedMembers) > 0 {
-		log.Info("Etcd members without nodes removed from the cluster", "members", removedMembers)
-	}
-
-	**/
-
 	return nil
 }
 

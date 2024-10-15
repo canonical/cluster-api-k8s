@@ -26,7 +26,6 @@ import (
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
-	"github.com/pkg/errors"
 	"golang.org/x/mod/semver"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -419,7 +418,7 @@ func WaitForControlPlaneToBeReady(ctx context.Context, input WaitForControlPlane
 		}
 		Byf("Getting the control plane %s", klog.KObj(input.ControlPlane))
 		if err := input.Getter.Get(ctx, key, controlplane); err != nil {
-			return false, errors.Wrapf(err, "failed to get KCP")
+			return false, fmt.Errorf("failed to get KCP: %w", err)
 		}
 
 		desiredReplicas := controlplane.Spec.Replicas

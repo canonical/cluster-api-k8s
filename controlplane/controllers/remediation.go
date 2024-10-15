@@ -23,7 +23,6 @@ import (
 	"time"
 
 	"github.com/go-logr/logr"
-	"github.com/pkg/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	kerrors "k8s.io/apimachinery/pkg/util/errors"
 	"k8s.io/klog/v2"
@@ -56,7 +55,7 @@ func (r *CK8sControlPlaneReconciler) reconcileUnhealthyMachines(ctx context.Cont
 			m.DeletionTimestamp.IsZero() {
 			patchHelper, err := patch.NewHelper(m, r.Client)
 			if err != nil {
-				errList = append(errList, errors.Wrapf(err, "failed to get PatchHelper for machine %s", m.Name))
+				errList = append(errList, fmt.Errorf("failed to get PatchHelper for machine %s: %w", m.Name, err))
 				continue
 			}
 
@@ -65,7 +64,7 @@ func (r *CK8sControlPlaneReconciler) reconcileUnhealthyMachines(ctx context.Cont
 			if err := patchHelper.Patch(ctx, m, patch.WithOwnedConditions{Conditions: []clusterv1.ConditionType{
 				clusterv1.MachineOwnerRemediatedCondition,
 			}}); err != nil {
-				errList = append(errList, errors.Wrapf(err, "failed to patch machine %s", m.Name))
+				errList = append(errList, fmt.Errorf("failed to patch machine %s: %w", m.Name, err))
 			}
 		}
 	}
@@ -117,7 +116,7 @@ func (r *CK8sControlPlaneReconciler) reconcileUnhealthyMachines(ctx context.Cont
 		}}); err != nil {
 			log.Error(err, "Failed to patch control plane Machine", "Machine", machineToBeRemediated.Name)
 			if retErr == nil {
-				retErr = errors.Wrapf(err, "failed to patch control plane Machine %s", machineToBeRemediated.Name)
+				retErr = fmt.Errorf("failed to patch control plane Machine %s: %w", machineToBeRemediated.Name, err)
 			}
 		}
 	}()
@@ -167,74 +166,7 @@ func (r *CK8sControlPlaneReconciler) reconcileUnhealthyMachines(ctx context.Cont
 		// so that the cluster does not lock and cause the cluster to go down. In the case of k8s-dqlite, this is automatically handled by the
 		// go-dqlite layer, and Canonical Kubernetes has logic to automatically keep a quorum of nodes in normal operation.
 		//
-		// Therefore, we currently disable this check for simplicity, but should remember that we need this precondition before proceeing.
-
-		/**
-		// Remediation MUST preserve etcd quorum. This rule ensures that KCP will not remove a member that would result in etcd
-		// losing a majority of members and thus become unable to field new requests.
-		if controlPlane.IsEtcdManaged() {
-			canSafelyRemediate, err := r.canSafelyRemoveEtcdMember(ctx, controlPlane, machineToBeRemediated)
-			if err != nil {
-				conditions.MarkFalse(machineToBeRemediated, clusterv1.MachineOwnerRemediatedCondition, clusterv1.RemediationFailedReason, clusterv1.ConditionSeverityError, err.Error())
-				return ctrl.Result{}, err
-			}
-			if !canSafelyRemediate {
-				log.Info("A control plane machine needs remediation, but removing this machine could result in etcd quorum loss. Skipping remediation")
-				conditions.MarkFalse(machineToBeRemediated, clusterv1.MachineOwnerRemediatedCondition, clusterv1.WaitingForRemediationReason, clusterv1.ConditionSeverityWarning, "KCP can't remediate this machine because this could result in etcd loosing quorum")
-				return ctrl.Result{}, nil
-			}
-		}
-		**/
-
-		// Start remediating the unhealthy control plane machine by deleting it.
-		// A new machine will come up completing the operation as part of the regular reconcile.
-
-		// NOTE(neoaggelos): Here, upstream will check whether the node that is about to be removed is the leader of the etcd cluster, and will
-		// attempt to forward the leadership to a different active node before proceeding. This is so that continuous operation of the cluster
-		// is preserved.
-		//
-		// TODO(neoaggelos): For Canonical Kubernetes, we should instead use the RemoveNode endpoint of the k8sd service from a different control
-		// plane node (through the k8sd-proxy), which will handle this operation for us. If that fails, we must not proceed.
-
-		/**
-		// If the control plane is initialized, before deleting the machine:
-		// - if the machine hosts the etcd leader, forward etcd leadership to another machine.
-		// - delete the etcd member hosted on the machine being deleted.
-		workloadCluster, err := r.managementCluster.GetWorkloadCluster(ctx, util.ObjectKey(controlPlane.Cluster))
-		if err != nil {
-			log.Error(err, "Failed to create client to workload cluster")
-			return ctrl.Result{}, errors.Wrapf(err, "failed to create client to workload cluster")
-		}
-
-		// If the machine that is about to be deleted is the etcd leader, move it to the newest member available.
-		if controlPlane.IsEtcdManaged() {
-			etcdLeaderCandidate := controlPlane.HealthyMachines().Newest()
-			if etcdLeaderCandidate == nil {
-				log.Info("A control plane machine needs remediation, but there is no healthy machine to forward etcd leadership to")
-				conditions.MarkFalse(machineToBeRemediated, clusterv1.MachineOwnerRemediatedCondition, clusterv1.RemediationFailedReason, clusterv1.ConditionSeverityWarning,
-					"A control plane machine needs remediation, but there is no healthy machine to forward etcd leadership to. Skipping remediation")
-				return ctrl.Result{}, nil
-			}
-			if err := workloadCluster.ForwardEtcdLeadership(ctx, machineToBeRemediated, etcdLeaderCandidate); err != nil {
-				log.Error(err, "Failed to move etcd leadership to candidate machine", "candidate", klog.KObj(etcdLeaderCandidate))
-				conditions.MarkFalse(machineToBeRemediated, clusterv1.MachineOwnerRemediatedCondition, clusterv1.RemediationFailedReason, clusterv1.ConditionSeverityError, err.Error())
-				return ctrl.Result{}, err
-			}
-
-			patchHelper, err := patch.NewHelper(machineToBeRemediated, r.Client)
-			if err != nil {
-				return ctrl.Result{}, errors.Wrapf(err, "failed to create patch helper for machine")
-			}
-
-			mAnnotations := machineToBeRemediated.GetAnnotations()
-			mAnnotations[clusterv1.PreTerminateDeleteHookAnnotationPrefix] = ck8sHookName
-			machineToBeRemediated.SetAnnotations(mAnnotations)
-
-			if err := patchHelper.Patch(ctx, machineToBeRemediated); err != nil {
-				return ctrl.Result{}, errors.Wrapf(err, "failed patch machine for adding preTerminate hook")
-			}
-		}
-		**/
+		// Therefore, we have removed this check for simplicity, but should remember that we need this precondition before proceeing.
 	}
 
 	microclusterPort := controlPlane.KCP.Spec.CK8sConfigSpec.ControlPlaneConfig.GetMicroclusterPort()
@@ -242,7 +174,7 @@ func (r *CK8sControlPlaneReconciler) reconcileUnhealthyMachines(ctx context.Cont
 	workloadCluster, err := r.managementCluster.GetWorkloadCluster(ctx, clusterObjectKey, microclusterPort)
 	if err != nil {
 		log.Error(err, "failed to create client to workload cluster")
-		return ctrl.Result{}, errors.Wrapf(err, "failed to create client to workload cluster")
+		return ctrl.Result{}, fmt.Errorf("failed to create client to workload cluster: %w", err)
 	}
 
 	if err := workloadCluster.RemoveMachineFromCluster(ctx, machineToBeRemediated); err != nil {
@@ -252,7 +184,7 @@ func (r *CK8sControlPlaneReconciler) reconcileUnhealthyMachines(ctx context.Cont
 	// Delete the machine
 	if err := r.Client.Delete(ctx, machineToBeRemediated); err != nil {
 		conditions.MarkFalse(machineToBeRemediated, clusterv1.MachineOwnerRemediatedCondition, clusterv1.RemediationFailedReason, clusterv1.ConditionSeverityError, err.Error())
-		return ctrl.Result{}, errors.Wrapf(err, "failed to delete unhealthy machine %s", machineToBeRemediated.Name)
+		return ctrl.Result{}, fmt.Errorf("failed to delete unhealthy machine %s: %w", machineToBeRemediated.Name, err)
 	}
 
 	// Surface the operation is in progress.
@@ -381,110 +313,6 @@ func maxDuration(x, y time.Duration) time.Duration {
 	return x
 }
 
-// NOTE(neoaggelos): See note above. Implementation kept here for future reference, only remove once the NOTEs and TODOs in the reconcileUnhealthyMachines
-// have been fully addressed and are well-tested.
-
-//nolint:godot
-/**
-// canSafelyRemoveEtcdMember assess if it is possible to remove the member hosted on the machine to be remediated
-// without loosing etcd quorum.
-//
-// The answer mostly depend on the existence of other failing members on top of the one being deleted, and according
-// to the etcd fault tolerance specification (see https://etcd.io/docs/v3.3/faq/#what-is-failure-tolerance):
-//   - 3 CP cluster does not tolerate additional failing members on top of the one being deleted (the target
-//     cluster size after deletion is 2, fault tolerance 0)
-//   - 5 CP cluster tolerates 1 additional failing members on top of the one being deleted (the target
-//     cluster size after deletion is 4, fault tolerance 1)
-//   - 7 CP cluster tolerates 2 additional failing members on top of the one being deleted (the target
-//     cluster size after deletion is 6, fault tolerance 2)
-//   - etc.
-//
-// NOTE: this func assumes the list of members in sync with the list of machines/nodes, it is required to call reconcileEtcdMembers
-// as well as reconcileControlPlaneConditions before this.
-//
-// adapted from kubeadm controller and makes the assumption that the set of controplane nodes equals the set of etcd nodes.
-func (r *CK8sControlPlaneReconciler) canSafelyRemoveEtcdMember(ctx context.Context, controlPlane *ck8s.ControlPlane, machineToBeRemediated *clusterv1.Machine) (bool, error) {
-	log := ctrl.LoggerFrom(ctx)
-
-	workloadCluster, err := r.managementCluster.GetWorkloadCluster(ctx, util.ObjectKey(controlPlane.Cluster))
-	if err != nil {
-		return false, errors.Wrapf(err, "failed to get client for workload cluster %s", controlPlane.Cluster.Name)
-	}
-
-	// Gets the etcd status
-
-	// This makes it possible to have a set of etcd members status different from the MHC unhealthy/unhealthy conditions.
-	etcdMembers, err := workloadCluster.EtcdMembers(ctx)
-	if err != nil {
-		return false, errors.Wrapf(err, "failed to get etcdStatus for workload cluster %s", controlPlane.Cluster.Name)
-	}
-
-	currentTotalMembers := len(etcdMembers)
-
-	log.Info("etcd cluster before remediation",
-		"currentTotalMembers", currentTotalMembers)
-
-	// Projects the target etcd cluster after remediation, considering all the etcd members except the one being remediated.
-	targetTotalMembers := 0
-	targetUnhealthyMembers := 0
-
-	healthyMembers := []string{}
-	unhealthyMembers := []string{}
-	for _, etcdMember := range etcdMembers {
-		// Skip the machine to be deleted because it won't be part of the target etcd cluster.
-		if machineToBeRemediated.Status.NodeRef != nil && machineToBeRemediated.Status.NodeRef.Name == etcdMember {
-			continue
-		}
-
-		// Include the member in the target etcd cluster.
-		targetTotalMembers++
-
-		// Search for the machine corresponding to the etcd member.
-		var machine *clusterv1.Machine
-		for _, m := range controlPlane.Machines {
-			if m.Status.NodeRef != nil && m.Status.NodeRef.Name == etcdMember {
-				machine = m
-				break
-			}
-		}
-
-		// If an etcd member does not have a corresponding machine it is not possible to retrieve etcd member health,
-		// so KCP is assuming the worst scenario and considering the member unhealthy.
-		//
-		// NOTE: This should not happen given that KCP is running reconcileEtcdMembers before calling this method.
-		if machine == nil {
-			log.Info("An etcd member does not have a corresponding machine, assuming this member is unhealthy", "MemberName", etcdMember)
-			targetUnhealthyMembers++
-			unhealthyMembers = append(unhealthyMembers, fmt.Sprintf("%s (no machine)", etcdMember))
-			continue
-		}
-
-		// Check member health as reported by machine's health conditions
-		if !conditions.IsTrue(machine, controlplanev1.MachineEtcdMemberHealthyCondition) {
-			targetUnhealthyMembers++
-			unhealthyMembers = append(unhealthyMembers, fmt.Sprintf("%s (%s)", etcdMember, machine.Name))
-			continue
-		}
-
-		healthyMembers = append(healthyMembers, fmt.Sprintf("%s (%s)", etcdMember, machine.Name))
-	}
-
-	// See https://etcd.io/docs/v3.3/faq/#what-is-failure-tolerance for fault tolerance formula explanation.
-	targetQuorum := (targetTotalMembers / 2.0) + 1
-	canSafelyRemediate := targetTotalMembers-targetUnhealthyMembers >= targetQuorum
-
-	log.Info(fmt.Sprintf("etcd cluster projected after remediation of %s", machineToBeRemediated.Name),
-		"healthyMembers", healthyMembers,
-		"unhealthyMembers", unhealthyMembers,
-		"targetTotalMembers", targetTotalMembers,
-		"targetQuorum", targetQuorum,
-		"targetUnhealthyMembers", targetUnhealthyMembers,
-		"canSafelyRemediate", canSafelyRemediate)
-
-	return canSafelyRemediate, nil
-}
-**/
-
 // RemediationData struct is used to keep track of information stored in the RemediationInProgressAnnotation in KCP
 // during remediation and then into the RemediationForAnnotation on the replacement machine once it is created.
 type RemediationData struct {
@@ -503,7 +331,7 @@ type RemediationData struct {
 func RemediationDataFromAnnotation(value string) (*RemediationData, error) {
 	ret := &RemediationData{}
 	if err := json.Unmarshal([]byte(value), ret); err != nil {
-		return nil, errors.Wrapf(err, "failed to unmarshal value %s for %s annotation", value, clusterv1.RemediationInProgressReason)
+		return nil, fmt.Errorf("failed to unmarshal value %s for %s annotation: %w", value, clusterv1.RemediationInProgressReason, err)
 	}
 	return ret, nil
 }
@@ -512,7 +340,7 @@ func RemediationDataFromAnnotation(value string) (*RemediationData, error) {
 func (r *RemediationData) Marshal() (string, error) {
 	b, err := json.Marshal(r)
 	if err != nil {
-		return "", errors.Wrapf(err, "failed to marshal value for %s annotation", clusterv1.RemediationInProgressReason)
+		return "", fmt.Errorf("failed to marshal value for %s annotation: %w", clusterv1.RemediationInProgressReason, err)
 	}
 	return string(b), nil
 }
