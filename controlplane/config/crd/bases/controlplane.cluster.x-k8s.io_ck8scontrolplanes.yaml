@@ -246,9 +246,6 @@ spec:
                     items:
                       type: string
                     type: array
-                  channel:
-                    description: Channel is the channel to use for the snap install.
-                    type: string
                   bootstrapConfig:
                     description: BootstrapConfig is the data to be passed to the bootstrap
                       script.
@@ -282,6 +279,9 @@ spec:
                         - secret
                         type: object
                     type: object
+                  channel:
+                    description: Channel is the channel to use for the snap install.
+                    type: string
                   controlPlane:
                     description: CK8sControlPlaneConfig is configuration for the control
                       plane node.
@@ -431,13 +431,13 @@ spec:
                           the default CNI.
                         type: boolean
                     type: object
-                  noProxy:
-                    description: NoProxy is optional no proxy configuration
-                    type: string
                   localPath:
                     description: |-
                       LocalPath is the path of a local snap file in the workload cluster to use for the snap install.
                       If Channel or Revision are set, this will be ignored.
+                    type: string
+                  noProxy:
+                    description: NoProxy is optional no proxy configuration
                     type: string
                   nodeName:
                     description: |-

@@ -49,12 +49,12 @@ type BaseUserData struct {
 	SnapstoreProxyDomain string
 	// The snap store proxy ID
 	SnapstoreProxyID string
-	// ContainerdHTTPProxy is http_proxy configuration for containerd.
-	ContainerdHTTPProxy string
-	// ContainerdHTTPSProxy is https_proxy configuration for containerd.
-	ContainerdHTTPSProxy string
-	// ContainerdNoProxy is no_proxy configuration for containerd.
-	ContainerdNoProxy string
+	// HTTPProxy is http_proxy configuration.
+	HTTPProxy string
+	// HTTPSProxy is https_proxy configuration.
+	HTTPSProxy string
+	// NoProxy is no_proxy configuration.
+	NoProxy string
 	// MicroclusterAddress is the address to use for microcluster.
 	MicroclusterAddress string
 	// MicroclusterPort is the port to use for microcluster.
@@ -101,10 +101,10 @@ func NewBaseCloudConfig(data BaseUserData) (CloudConfig, error) {
 		config.RunCommands = append(config.RunCommands, "/capi/scripts/configure-snapstore-proxy.sh")
 	}
 
-	// containerd proxy configuration
-	if containerdProxyConfigFiles := getContainerdProxyConfigFiles(data); containerdProxyConfigFiles != nil {
+	// proxy configuration
+	if containerdProxyConfigFiles := getProxyConfigFiles(data); containerdProxyConfigFiles != nil {
 		config.WriteFiles = append(config.WriteFiles, containerdProxyConfigFiles...)
-		config.RunCommands = append(config.RunCommands, "/capi/scripts/configure-containerd-proxy.sh")
+		config.RunCommands = append(config.RunCommands, "/capi/scripts/configure-proxy.sh")
 	}
 
 	var configFileContents string
@@ -202,26 +202,29 @@ func getSnapstoreProxyConfigFiles(data BaseUserData) []File {
 	return []File{schemeFile, domainFile, storeIDFile}
 }
 
-func getContainerdProxyConfigFiles(data BaseUserData) []File {
-	if data.ContainerdHTTPSProxy == "" || data.ContainerdHTTPProxy == "" {
+// getProxyConfigFiles returns the node proxy config files.
+// If the HTTPProxy or HTTPPSProxy is not set, it returns nil.
+// Nil indicates that no files are returned.
+func getProxyConfigFiles(data BaseUserData) []File {
+	if data.HTTPProxy == "" || data.HTTPSProxy == "" {
 		return nil
 	}
 	return []File{
 		{
-			Path:        "/capi/etc/containerd-http-proxy",
-			Content:     data.ContainerdHTTPProxy,
+			Path:        "/capi/etc/http-proxy",
+			Content:     data.HTTPProxy,
 			Permissions: "0400",
 			Owner:       "root:root",
 		},
 		{
-			Path:        "/capi/etc/containerd-https-proxy",
-			Content:     data.ContainerdHTTPSProxy,
+			Path:        "/capi/etc/https-proxy",
+			Content:     data.HTTPSProxy,
 			Permissions: "0400",
 			Owner:       "root:root",
 		},
 		{
-			Path:        "/capi/etc/containerd-no-proxy",
-			Content:     data.ContainerdNoProxy,
+			Path:        "/capi/etc/no-proxy",
+			Content:     data.NoProxy,
 			Permissions: "0400",
 			Owner:       "root:root",
 		},

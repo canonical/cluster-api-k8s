@@ -51,9 +51,6 @@ spec:
                 items:
                   type: string
                 type: array
-              channel:
-                description: Channel is the channel to use for the snap install.
-                type: string
               bootstrapConfig:
                 description: BootstrapConfig is the data to be passed to the bootstrap
                   script.
@@ -87,6 +84,9 @@ spec:
                     - secret
                     type: object
                 type: object
+              channel:
+                description: Channel is the channel to use for the snap install.
+                type: string
               controlPlane:
                 description: CK8sControlPlaneConfig is configuration for the control
                   plane node.
