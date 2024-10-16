@@ -8,10 +8,10 @@ spec:
   clusterNetwork:
     pods:
       cidrBlocks:
-        - 10.1.0.0/16
+      - 10.1.0.0/16
     services:
       cidrBlocks:
-        - 10.152.183.0/24
+      - 10.152.183.0/24
   controlPlaneRef:
     apiVersion: controlplane.cluster.x-k8s.io/v1beta2
     kind: CK8sControlPlane
@@ -52,19 +52,7 @@ spec:
       name: ${CLUSTER_NAME}-control-plane
   spec:
     nodeName: "{{ ds.meta_data.local_hostname }}"
-    preRunCommands:
-      - systemctl stop kubelet || true
-      - systemctl disable kubelet || true
-      - systemctl stop containerd || true
-      - systemctl disable containerd || true
-    files:
-      # note(ben): This is only required as long as k8s does not have a stable release.
-      - path: /capi/scripts/install.sh
-        permissions: "0500"
-        owner: "root:root"
-        content: |
-          #!/bin/bash -xe
-          snap install k8s --classic --channel=latest/edge/etienne-delete-me
+    channel: "1.31-classic/edge"
     controlPlane:
       cloudProvider: external
   replicas: ${CONTROL_PLANE_MACHINE_COUNT}
@@ -134,19 +122,7 @@ spec:
   template:
     spec:
       nodeName: "{{ ds.meta_data.local_hostname }}"
-      preRunCommands:
-        - systemctl stop kubelet || true
-        - systemctl disable kubelet || true
-        - systemctl stop containerd || true
-        - systemctl disable containerd || true
-      files:
-        # note(ben): This is only required as long as k8s does not have a stable release.
-        - path: /capi/scripts/install.sh
-          permissions: "0500"
-          owner: "root:root"
-          content: |
-            #!/bin/bash -xe
-            snap install k8s --classic --channel=latest/edge/etienne-delete-me
+      channel: "1.31-classic/edge"
 ---
 apiVersion: addons.cluster.x-k8s.io/v1beta1
 kind: ClusterResourceSet
