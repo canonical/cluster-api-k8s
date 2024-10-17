@@ -34,10 +34,13 @@ func TestNewInitControlPlane(t *testing.T) {
 
 	config, err := cloudinit.NewInitControlPlane(cloudinit.InitControlPlaneInput{
 		BaseUserData: cloudinit.BaseUserData{
-			KubernetesVersion: "v1.30.0",
-			BootCommands:      []string{"bootcmd"},
-			PreRunCommands:    []string{"prerun1", "prerun2"},
-			PostRunCommands:   []string{"postrun1", "postrun2"},
+			KubernetesVersion:    "v1.30.0",
+			BootCommands:         []string{"bootcmd"},
+			PreRunCommands:       []string{"prerun1", "prerun2"},
+			PostRunCommands:      []string{"postrun1", "postrun2"},
+			SnapstoreProxyScheme: "http",
+			SnapstoreProxyDomain: "snapstore.io",
+			SnapstoreProxyID:     "abcd-1234-xyz",
 			ExtraFiles: []cloudinit.File{{
 				Path:        "/tmp/file",
 				Content:     "test file",
@@ -59,6 +62,7 @@ func TestNewInitControlPlane(t *testing.T) {
 	// Verify the run commands.
 	g.Expect(config.RunCommands).To(Equal([]string{
 		"set -x",
+		"/capi/scripts/configure-snapstore-proxy.sh",
 		"prerun1",
 		"prerun2",
 		"/capi/scripts/install.sh",
@@ -85,9 +89,9 @@ func TestNewInitControlPlane(t *testing.T) {
 		HaveField("Path", "/capi/scripts/deploy-manifests.sh"),
 		HaveField("Path", "/capi/scripts/configure-auth-token.sh"),
 		HaveField("Path", "/capi/scripts/configure-proxy.sh"),
-		HaveField("Path", "/capi/scripts/configure-snapstore-proxy.sh"),
 		HaveField("Path", "/capi/scripts/configure-node-token.sh"),
 		HaveField("Path", "/capi/scripts/create-sentinel-bootstrap.sh"),
+		HaveField("Path", "/capi/scripts/configure-snapstore-proxy.sh"),
 		HaveField("Path", "/capi/etc/config.yaml"),
 		HaveField("Path", "/capi/etc/microcluster-address"),
 		HaveField("Path", "/capi/etc/node-name"),
@@ -95,6 +99,9 @@ func TestNewInitControlPlane(t *testing.T) {
 		HaveField("Path", "/capi/etc/token"),
 		HaveField("Path", "/capi/etc/snap-channel"),
 		HaveField("Path", "/capi/manifests/00-k8sd-proxy.yaml"),
+		HaveField("Path", "/capi/etc/snapstore-proxy-scheme"),
+		HaveField("Path", "/capi/etc/snapstore-proxy-domain"),
+		HaveField("Path", "/capi/etc/snapstore-proxy-id"),
 		HaveField("Path", "/tmp/file"),
 	), "Some /capi/scripts files are missing")
 }
