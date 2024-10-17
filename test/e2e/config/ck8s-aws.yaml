@@ -67,7 +67,7 @@ providers:
         value: "../../../bootstrap/config/default"
         replacements:
           - old: "ghcr.io/canonical/cluster-api-k8s/bootstrap-controller:latest"
-            new: "ghcr.io/canonical/cluster-api-k8s/bootstrap-controller:v0.1.2-amd64"
+            new: "ghcr.io/canonical/cluster-api-k8s/bootstrap-controller:dev"
     files:
       - sourcePath: "../../../metadata.yaml"
   - name: ck8s
@@ -77,7 +77,7 @@ providers:
         value: "../../../controlplane/config/default"
         replacements:
           - old: "ghcr.io/canonical/cluster-api-k8s/controlplane-controller:latest"
-            new: "ghcr.io/canonical/cluster-api-k8s/controlplane-controller:v0.1.2-amd64"
+            new: "ghcr.io/canonical/cluster-api-k8s/controlplane-controller:dev"
     files:
       - sourcePath: "../../../metadata.yaml"
 
@@ -92,9 +92,9 @@ variables:
   AWS_CONTROL_PLANE_INSTANCE_TYPE: t3.large
   AWS_NODE_INSTANCE_TYPE: t3.large
   AWS_PUBLIC_IP: false
-  AWS_CREATE_BASTION: true
-  AWS_SSH_KEY_NAME: "etienne"
-  AWS_AMI_ID: "ami-05145146e3a9db6f3"
+  AWS_CREATE_BASTION: false
+  AWS_SSH_KEY_NAME: "default"
+  AWS_AMI_ID: "ami-01b139e6226d65e4f"
   AWS_CONTROL_PLANE_ROOT_VOLUME_SIZE: 16
   AWS_NODE_ROOT_VOLUME_SIZE: 16
   AWS_REGION: "us-east-2"
@@ -103,10 +103,10 @@ variables:
   # There is some work to be done here on figuring out which experimental features
   # we want to enable/disable.
   EXP_CLUSTER_RESOURCE_SET: "true"
-  #EXP_RUNTIME_SDK: "true"
+  EXP_RUNTIME_SDK: "true"
   EXP_MACHINE_SET_PREFLIGHT_CHECKS: "false"
-  #EXP_MACHINE_POOL: "true"
-  #CLUSTER_TOPOLOGY: "true"
+  EXP_MACHINE_POOL: "true"
+  CLUSTER_TOPOLOGY: "true"
   CAPA_LOGLEVEL: "4"
 
 intervals:
