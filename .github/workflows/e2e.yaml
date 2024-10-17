@@ -86,7 +86,7 @@ jobs:
   run-e2e-tests:
     name: Run E2E Tests
     runs-on: [self-hosted, linux, X64, jammy, xlarge]
-    needs: [build-provider-e2e-images, build-k8s-snap-e2e-images]
+    needs: [build-provider-e2e-images]
     strategy:
       matrix:
         infra:
