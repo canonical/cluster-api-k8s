@@ -53,8 +53,6 @@ providers:
             new: "imagePullPolicy: IfNotPresent"
     files:
       - sourcePath: "../data/infrastructure-aws/cluster-template.yaml"
-      - sourcePath: "../data/infrastructure-aws/cluster-template-md-remediation.yaml"
-      - sourcePath: "../data/infrastructure-aws/cluster-template-kcp-remediation.yaml"
   - name: ck8s
     type: BootstrapProvider
     versions:
@@ -111,6 +109,7 @@ variables:
 
 intervals:
   # Ref: https://github.com/kubernetes-sigs/cluster-api-provider-aws/blob/main/test/e2e/data/e2e_conf.yaml
+  default/wait-machines: [ "35m", "10s" ]
   default/wait-cluster: [ "35m", "10s" ]
   default/wait-control-plane: [ "35m", "10s" ]
   default/wait-worker-nodes: [ "20m", "10s" ]
