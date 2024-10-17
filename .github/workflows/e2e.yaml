@@ -28,7 +28,12 @@ jobs:
           sudo snap install go --classic --channel=1.22/stable
           sudo snap install kubectl --classic --channel=1.30/stable
       - name: Build provider images
-        run: sudo make docker-build-e2e
+        #run: sudo make docker-build-e2e
+        run: |
+          docker pull ghcr.io/canonical/cluster-api-k8s/bootstrap-controller:ci-test
+          docker tag ghcr.io/canonical/cluster-api-k8s/bootstrap-controller:ci-test ghcr.io/canonical/cluster-api-k8s/bootstrap-controller:dev
+          docker pull ghcr.io/canonical/cluster-api-k8s/controlplane-controller:ci-test
+          docker tag ghcr.io/canonical/cluster-api-k8s/controlplane-controller:ci-test ghcr.io/canonical/cluster-api-k8s/controlplane-controller:dev
       - name: Save provider image
         run: |
           sudo docker save -o provider-images.tar ghcr.io/canonical/cluster-api-k8s/controlplane-controller:dev ghcr.io/canonical/cluster-api-k8s/bootstrap-controller:dev
