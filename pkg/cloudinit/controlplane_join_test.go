@@ -2,6 +2,7 @@ package cloudinit_test
 
 import (
 	"fmt"
+	"github.com/onsi/gomega/types"
 	"testing"
 
 	. "github.com/onsi/gomega"
@@ -85,27 +86,99 @@ func TestNewJoinControlPlane(t *testing.T) {
 
 func TestNewJoinControlPlaneOptionalProxySettings(t *testing.T) {
 	g := NewWithT(t)
-
-	config, err := cloudinit.NewJoinControlPlane(cloudinit.JoinControlPlaneInput{
-		BaseUserData: cloudinit.BaseUserData{
-			KubernetesVersion:   "v1.30.0",
-			HTTPProxy:           "http://proxy.internal",
-			HTTPSProxy:          "https://proxy.internal",
-			NoProxy:             "10.0.0.0/8,10.152.183.1,192.168.0.0/16",
-			MicroclusterAddress: "10.0.0.0/8",
+	for _, tc := range []struct {
+		name             string
+		baseUserData     cloudinit.BaseUserData
+		expectRunCommand bool
+		expectWriteFiles []types.GomegaMatcher
+	}{
+		{
+			name: "AllFieldsSet",
+			baseUserData: cloudinit.BaseUserData{
+				KubernetesVersion:   "v1.30.0",
+				HTTPProxy:           "http://proxy.internal",
+				HTTPSProxy:          "https://proxy.internal",
+				NoProxy:             "10.0.0.0/8,10.152.183.1,192.168.0.0/16",
+				MicroclusterAddress: "10.0.0.0/8",
+			},
+			expectRunCommand: true,
+			expectWriteFiles: []types.GomegaMatcher{
+				HaveField("Path", "/capi/scripts/configure-proxy.sh"),
+				HaveField("Path", "/capi/etc/http-proxy"),
+				HaveField("Path", "/capi/etc/https-proxy"),
+				HaveField("Path", "/capi/etc/no-proxy"),
+			},
 		},
-	})
+		{
+			name: "HTTPSProxy",
+			baseUserData: cloudinit.BaseUserData{
+				KubernetesVersion:   "v1.30.0",
+				HTTPSProxy:          "https://proxy.internal",
+				NoProxy:             "10.0.0.0/8,10.152.183.1,192.168.0.0/16",
+				MicroclusterAddress: "10.0.0.0/8",
+			},
+			expectRunCommand: true,
+			expectWriteFiles: []types.GomegaMatcher{
+				HaveField("Path", "/capi/scripts/configure-proxy.sh"),
+				HaveField("Path", "/capi/etc/http-proxy"),
+				HaveField("Path", "/capi/etc/https-proxy"),
+				HaveField("Path", "/capi/etc/no-proxy"),
+			},
+		},
+		{
+			name: "HTTPProxy",
+			baseUserData: cloudinit.BaseUserData{
+				KubernetesVersion:   "v1.30.0",
+				HTTPProxy:           "http://proxy.internal",
+				MicroclusterAddress: "10.0.0.0/8",
+			},
+			expectRunCommand: true,
+			expectWriteFiles: []types.GomegaMatcher{
+				HaveField("Path", "/capi/scripts/configure-proxy.sh"),
+				HaveField("Path", "/capi/etc/http-proxy"),
+				HaveField("Path", "/capi/etc/https-proxy"),
+				HaveField("Path", "/capi/etc/no-proxy"),
+			},
+		},
+		{
+			name: "NoProxy",
+			baseUserData: cloudinit.BaseUserData{
+				KubernetesVersion:   "v1.30.0",
+				NoProxy:             "10.0.0.0/8,10.152.183.1,192.168.0.0/16",
+				MicroclusterAddress: "10.0.0.0/8",
+			},
+			expectRunCommand: false,
+			expectWriteFiles: []types.GomegaMatcher{
+				HaveField("Path", "/capi/scripts/configure-proxy.sh"),
+			},
+		},
+		{
+			name: "noFields",
+			baseUserData: cloudinit.BaseUserData{
+				KubernetesVersion:   "v1.30.0",
+				MicroclusterAddress: "10.0.0.0/8",
+			},
+			expectRunCommand: false,
+			expectWriteFiles: []types.GomegaMatcher{
+				HaveField("Path", "/capi/scripts/configure-proxy.sh"),
+			},
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			config, err := cloudinit.NewJoinControlPlane(cloudinit.JoinControlPlaneInput{BaseUserData: tc.baseUserData})
 
-	g.Expect(err).ToNot(HaveOccurred())
-	// Verify proxy run command.
-	g.Expect(config.RunCommands).To(ContainElement("/capi/scripts/configure-proxy.sh"))
-	// Verify proxy files present.
-	g.Expect(config.WriteFiles).To(ContainElements(
-		HaveField("Path", "/capi/scripts/configure-proxy.sh"),
-		HaveField("Path", "/capi/etc/http-proxy"),
-		HaveField("Path", "/capi/etc/https-proxy"),
-		HaveField("Path", "/capi/etc/no-proxy"),
-	), "Required files in /capi directory  are missing")
+			g.Expect(err).ToNot(HaveOccurred())
+			// Verify proxy run command.
+			if tc.expectRunCommand {
+				g.Expect(config.RunCommands).To(ContainElement("/capi/scripts/configure-proxy.sh"))
+			} else {
+				g.Expect(config.RunCommands).NotTo(ContainElement("/capi/scripts/configure-proxy.sh"))
+			}
+			// Verify proxy files present.
+			g.Expect(config.WriteFiles).To(ContainElements(tc.expectWriteFiles),
+				"Required files in /capi directory  are missing")
+		})
+	}
 }
 
 func TestNewJoinControlPlaneInvalidVersionError(t *testing.T) {

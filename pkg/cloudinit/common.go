@@ -206,7 +206,7 @@ func getSnapstoreProxyConfigFiles(data BaseUserData) []File {
 // If the HTTPProxy or HTTPPSProxy is not set, it returns nil.
 // Nil indicates that no files are returned.
 func getProxyConfigFiles(data BaseUserData) []File {
-	if data.HTTPProxy == "" || data.HTTPSProxy == "" {
+	if data.HTTPProxy == "" && data.HTTPSProxy == "" {
 		return nil
 	}
 	return []File{
