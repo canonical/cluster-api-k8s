@@ -102,8 +102,8 @@ func NewBaseCloudConfig(data BaseUserData) (CloudConfig, error) {
 	}
 
 	// proxy configuration
-	if containerdProxyConfigFiles := getProxyConfigFiles(data); containerdProxyConfigFiles != nil {
-		config.WriteFiles = append(config.WriteFiles, containerdProxyConfigFiles...)
+	if proxyConfigFiles := getProxyConfigFiles(data); proxyConfigFiles != nil {
+		config.WriteFiles = append(config.WriteFiles, proxyConfigFiles...)
 		config.RunCommands = append(config.RunCommands, "/capi/scripts/configure-proxy.sh")
 	}
 
