@@ -18,12 +18,12 @@ package cloudinit_test
 
 import (
 	"fmt"
-	"github.com/onsi/gomega/types"
 	"testing"
 
 	. "github.com/onsi/gomega"
 	format "github.com/onsi/gomega/format"
 	"github.com/onsi/gomega/gstruct"
+	"github.com/onsi/gomega/types"
 
 	"github.com/canonical/cluster-api-k8s/pkg/cloudinit"
 )
