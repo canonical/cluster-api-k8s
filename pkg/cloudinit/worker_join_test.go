@@ -93,7 +93,7 @@ func TestNewJoinWorkerWithProxySettings(t *testing.T) {
 		expectWriteFiles []types.GomegaMatcher
 	}{
 		{
-			name: "AllFieldsSet",
+			name: "AllProxyFieldsSet",
 			baseUserData: cloudinit.BaseUserData{
 				KubernetesVersion:   "v1.30.0",
 				HTTPProxy:           "http://proxy.internal",
@@ -110,7 +110,7 @@ func TestNewJoinWorkerWithProxySettings(t *testing.T) {
 			},
 		},
 		{
-			name: "HTTPSProxy",
+			name: "HTTPSProxyOnly",
 			baseUserData: cloudinit.BaseUserData{
 				KubernetesVersion:   "v1.30.0",
 				HTTPSProxy:          "https://proxy.internal",
@@ -120,40 +120,11 @@ func TestNewJoinWorkerWithProxySettings(t *testing.T) {
 			expectRunCommand: true,
 			expectWriteFiles: []types.GomegaMatcher{
 				HaveField("Path", "/capi/scripts/configure-proxy.sh"),
-				HaveField("Path", "/capi/etc/http-proxy"),
 				HaveField("Path", "/capi/etc/https-proxy"),
-				HaveField("Path", "/capi/etc/no-proxy"),
 			},
 		},
 		{
-			name: "HTTPProxy",
-			baseUserData: cloudinit.BaseUserData{
-				KubernetesVersion:   "v1.30.0",
-				HTTPProxy:           "http://proxy.internal",
-				MicroclusterAddress: "10.0.0.0/8",
-			},
-			expectRunCommand: true,
-			expectWriteFiles: []types.GomegaMatcher{
-				HaveField("Path", "/capi/scripts/configure-proxy.sh"),
-				HaveField("Path", "/capi/etc/http-proxy"),
-				HaveField("Path", "/capi/etc/https-proxy"),
-				HaveField("Path", "/capi/etc/no-proxy"),
-			},
-		},
-		{
-			name: "NoProxy",
-			baseUserData: cloudinit.BaseUserData{
-				KubernetesVersion:   "v1.30.0",
-				NoProxy:             "10.0.0.0/8,10.152.183.1,192.168.0.0/16",
-				MicroclusterAddress: "10.0.0.0/8",
-			},
-			expectRunCommand: false,
-			expectWriteFiles: []types.GomegaMatcher{
-				HaveField("Path", "/capi/scripts/configure-proxy.sh"),
-			},
-		},
-		{
-			name: "noFields",
+			name: "NoProxyFields",
 			baseUserData: cloudinit.BaseUserData{
 				KubernetesVersion:   "v1.30.0",
 				MicroclusterAddress: "10.0.0.0/8",

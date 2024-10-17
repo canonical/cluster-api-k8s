@@ -202,31 +202,38 @@ func getSnapstoreProxyConfigFiles(data BaseUserData) []File {
 	return []File{schemeFile, domainFile, storeIDFile}
 }
 
-// getProxyConfigFiles returns the node proxy config files.
-// If the HTTPProxy or HTTPPSProxy is not set, it returns nil.
+// getProxyConfigFiles returns the proxy config files.
+// Returns slice of files for each proxy parameters are present in data structure with corresponding value
 // Nil indicates that no files are returned.
 func getProxyConfigFiles(data BaseUserData) []File {
-	if data.HTTPProxy == "" && data.HTTPSProxy == "" {
-		return nil
-	}
-	return []File{
-		{
+	var files []File
+	if data.HTTPProxy != "" {
+		files = append(files, File{
 			Path:        "/capi/etc/http-proxy",
 			Content:     data.HTTPProxy,
 			Permissions: "0400",
 			Owner:       "root:root",
-		},
-		{
+		})
+	}
+	if data.HTTPSProxy != "" {
+		files = append(files, File{
 			Path:        "/capi/etc/https-proxy",
 			Content:     data.HTTPSProxy,
 			Permissions: "0400",
 			Owner:       "root:root",
-		},
-		{
+		})
+	}
+	if data.NoProxy != "" {
+		files = append(files, File{
 			Path:        "/capi/etc/no-proxy",
 			Content:     data.NoProxy,
 			Permissions: "0400",
 			Owner:       "root:root",
-		},
+		})
 	}
+
+	if len(files) == 0 {
+		return nil
+	}
+	return files
 }
