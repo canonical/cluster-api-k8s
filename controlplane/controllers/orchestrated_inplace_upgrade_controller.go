@@ -104,25 +104,25 @@ func (r *OrchestratedInPlaceUpgradeController) Reconcile(ctx context.Context, re
 		return ctrl.Result{}, fmt.Errorf("failed to create scope: %w", err)
 	}
 
-	lockedMachine, err := r.lock.IsLocked(ctx, scope.cluster)
+	upgradingMachine, err := r.lock.IsLocked(ctx, scope.cluster)
 	if err != nil {
 		return ctrl.Result{}, fmt.Errorf("failed to check if upgrade is locked: %w", err)
 	}
 
 	// Upgrade is locked and a machine is already upgrading
-	if lockedMachine != nil {
+	if upgradingMachine != nil {
 		// NOTE(Hue): Maybe none of the `upgrade-to` and `release` annotations are set on the machine.
 		// If that's the case, the machine will never get upgraded.
 		// We consider this a stale lock and unlock the upgrade process.
-		if inplace.GetUpgradeInstructions(lockedMachine) != scope.upgradeTo {
-			log.V(1).Info("Machine does not have expected upgrade instructions, unlocking...", "machine", lockedMachine.Name)
+		if inplace.GetUpgradeInstructions(upgradingMachine) != scope.upgradeTo {
+			log.V(1).Info("Machine does not have expected upgrade instructions, unlocking...", "machine", upgradingMachine.Name)
 			if err := r.lock.Unlock(ctx, scope.cluster); err != nil {
 				return ctrl.Result{}, fmt.Errorf("failed to unlock upgrade: %w", err)
 			}
 			return ctrl.Result{Requeue: true}, nil
 		}
 
-		if inplace.IsUpgraded(lockedMachine, scope.upgradeTo) {
+		if inplace.IsUpgraded(upgradingMachine, scope.upgradeTo) {
 			if err := r.lock.Unlock(ctx, scope.cluster); err != nil {
 				return ctrl.Result{}, fmt.Errorf("failed to unlock upgrade: %w", err)
 			}
@@ -130,7 +130,16 @@ func (r *OrchestratedInPlaceUpgradeController) Reconcile(ctx context.Context, re
 			return ctrl.Result{Requeue: true}, nil
 		}
 
-		log.V(1).Info("Upgrade is locked, requeuing...", "machine", lockedMachine.Name)
+		if inplace.IsMachineUpgradeFailed(upgradingMachine) {
+			log.Info("Machine upgrade failed for machine, requeuing...", "machine", upgradingMachine.Name)
+			if err := r.markUpgradeFailed(ctx, scope, upgradingMachine); err != nil {
+				return ctrl.Result{}, fmt.Errorf("failed to mark upgrade as failed: %w", err)
+			}
+
+			return ctrl.Result{RequeueAfter: 5 * time.Second}, nil
+		}
+
+		log.V(1).Info("Upgrade is locked, a machine is upgrading, requeuing...", "machine", upgradingMachine.Name)
 		return ctrl.Result{RequeueAfter: 5 * time.Second}, nil
 	}
 
@@ -145,15 +154,6 @@ func (r *OrchestratedInPlaceUpgradeController) Reconcile(ctx context.Context, re
 
 		if isDeleted(m) {
 			log.V(1).Info("Machine is being deleted, requeuing...", "machine", m.Name)
-			return ctrl.Result{RequeueAfter: 5 * time.Second}, nil
-		}
-
-		if inplace.IsMachineUpgradeFailed(m) {
-			log.Info("Machine upgrade failed for machine, requeuing...", "machine", m.Name)
-			if err := r.markUpgradeFailed(ctx, scope, m); err != nil {
-				return ctrl.Result{}, fmt.Errorf("failed to mark upgrade as failed: %w", err)
-			}
-
 			return ctrl.Result{RequeueAfter: 5 * time.Second}, nil
 		}
 
