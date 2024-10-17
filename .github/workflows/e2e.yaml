@@ -4,12 +4,13 @@ on:
   pull_request:
 
 permissions:
+  id-token: write
   contents: read
 
 jobs:
-  build-e2e-images:
-    name: Build & Run E2E Images
-    runs-on: [self-hosted, linux, X64, jammy, large]
+  build-provider-e2e-images:
+    name: Build Provider E2E Images
+    runs-on : [self-hosted, linux, X64, jammy, large]
     steps:
       - name: Login to GitHub Container Registry
         uses: docker/login-action@v3
@@ -28,14 +29,41 @@ jobs:
           sudo snap install kubectl --classic --channel=1.30/stable
       - name: Build provider images
         run: sudo make docker-build-e2e
-      - name: Build k8s-snap images
-        working-directory: hack/
-        run: |
-          ./build-e2e-images.sh
       - name: Save provider image
         run: |
           sudo docker save -o provider-images.tar ghcr.io/canonical/cluster-api-k8s/controlplane-controller:dev ghcr.io/canonical/cluster-api-k8s/bootstrap-controller:dev
           sudo chmod 775 provider-images.tar
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-images
+          path: |
+            provider-images.tar
+
+  build-k8s-snap-e2e-images:
+    name: Build K8s Snap E2E Images
+    if: false
+    runs-on: [self-hosted, linux, X64, jammy, large]
+    steps:
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          # We run into rate limiting issues if we don't authenticate
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Check out repo
+        uses: actions/checkout@v4
+      - name: Install requirements
+        run: |
+          sudo apt update
+          sudo apt install -y make docker-buildx
+          sudo snap install go --classic --channel=1.22/stable
+          sudo snap install kubectl --classic --channel=1.30/stable
+      - name: Build k8s-snap images
+        working-directory: hack/
+        run: |
+          ./build-e2e-images.sh
       - name: Save k8s-snap image
         run: |
           sudo docker save -o k8s-snap-image-old.tar k8s-snap:dev-old
@@ -47,14 +75,13 @@ jobs:
         with:
           name: e2e-images
           path: |
-            provider-images.tar
             k8s-snap-image-old.tar
             k8s-snap-image-new.tar
 
   run-e2e-tests:
     name: Run E2E Tests
     runs-on: [self-hosted, linux, X64, jammy, xlarge]
-    needs: build-e2e-images
+    needs: [build-provider-e2e-images, build-k8s-snap-e2e-images]
     strategy:
       matrix:
         infra:
@@ -93,10 +120,11 @@ jobs:
       - name: Load provider image
         run: sudo docker load -i provider-images.tar
       - name: Load k8s-snap old image
+        if: matrix.infra == 'docker'
         run: |
           sudo docker load -i k8s-snap-image-old.tar
       - name: Load k8s-snap new image
-        if: matrix.ginkgo_focus == 'Workload cluster upgrade'
+        if: matrix.infra == 'docker' && matrix.ginkgo_focus == 'Workload cluster upgrade'
         run: |
           sudo docker load -i k8s-snap-image-new.tar
       - name: Create docker network
