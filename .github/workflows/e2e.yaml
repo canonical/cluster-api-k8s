@@ -141,6 +141,7 @@ jobs:
           sudo sysctl fs.inotify.max_user_watches=1048576
           sudo sysctl fs.inotify.max_user_instances=8192
       - name: Configure AWS Credentials
+        id: creds
         if: matrix.infra == 'aws'
         uses: aws-actions/configure-aws-credentials@v4
         with:
@@ -148,6 +149,17 @@ jobs:
           aws-region: us-east-2
           role-to-assume: arn:aws:iam::018302341396:role/GithubOIDC
           role-duration-seconds: 3600
+          output-credentials: true
+      - name: Set AWS Credentials as Environment Variables
+        if: matrix.infra == 'aws'
+        run: |
+          echo "AWS_ACCESS_KEY_ID=${{ steps.creds.outputs.aws-access-key-id }}" >> $GITHUB_ENV
+          echo "AWS_SECRET_ACCESS_KEY=${{ steps.creds.outputs.aws-secret-access-key }}" >> $GITHUB_ENV
+          echo "AWS_SESSION_TOKEN=${{ steps.creds.outputs.aws-session-token }}" >> $GITHUB_ENV
+
+          AWS_B64ENCODED_CREDENTIALS=$(clusterawsadm bootstrap credentials encode-as-profile --region us-east-2)
+          echo "AWS_B64ENCODED_CREDENTIALS=$AWS_B64ENCODED_CREDENTIALS" >> $GITHUB_ENV 2>&1
+          echo "::add-mask::$AWS_B64ENCODED_CREDENTIALS"
       - name: Run e2e tests
         if: ${{!(matrix.infra == 'aws' && (matrix.ginkgo_focus == 'KCP remediation' || matrix.ginkgo_focus == 'MachineDeployment remediation'))}}
         run: |
