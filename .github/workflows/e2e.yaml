@@ -169,7 +169,5 @@ jobs:
           echo "::add-mask::$AWS_B64ENCODED_CREDENTIALS"
       - name: Run e2e tests
         if: ${{!(matrix.infra == 'aws' && (matrix.ginkgo_focus == 'KCP remediation' || matrix.ginkgo_focus == 'MachineDeployment remediation'))}}
-        env:
-          AWS_B64ENCODED_CREDENTIALS: ${{ env.AWS_B64ENCODED_CREDENTIALS }}
         run: |
-          sudo AWS_B64ENCODED_CREDENTIALS=$AWS_B64ENCODED_CREDENTIALS E2E_INFRA=${{matrix.infra}} GINKGO_FOCUS="${{ matrix.ginkgo_focus }}" SKIP_RESOURCE_CLEANUP=true make test-e2e
+          sudo -E E2E_INFRA=${{matrix.infra}} GINKGO_FOCUS="${{ matrix.ginkgo_focus }}" SKIP_RESOURCE_CLEANUP=true make test-e2e
