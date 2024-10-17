@@ -140,6 +140,13 @@ jobs:
           # Prevents https://cluster-api.sigs.k8s.io/user/troubleshooting#cluster-api-with-docker----too-many-open-files
           sudo sysctl fs.inotify.max_user_watches=1048576
           sudo sysctl fs.inotify.max_user_instances=8192
+      - name: Install clusterawsadm
+        if: matrix.infra == 'aws'
+        run: |
+          curl -L https://github.com/kubernetes-sigs/cluster-api-provider-aws/releases/download/v2.6.1/clusterawsadm-linux-amd64 -o clusterawsadm
+          chmod +x ./clusterawsadm
+          sudo mv ./clusterawsadm /usr/local/bin
+          clusterawsadm version
       - name: Configure AWS Credentials
         id: creds
         if: matrix.infra == 'aws'
@@ -153,14 +160,16 @@ jobs:
       - name: Set AWS Credentials as Environment Variables
         if: matrix.infra == 'aws'
         run: |
-          echo "AWS_ACCESS_KEY_ID=${{ steps.creds.outputs.aws-access-key-id }}" >> $GITHUB_ENV
-          echo "AWS_SECRET_ACCESS_KEY=${{ steps.creds.outputs.aws-secret-access-key }}" >> $GITHUB_ENV
-          echo "AWS_SESSION_TOKEN=${{ steps.creds.outputs.aws-session-token }}" >> $GITHUB_ENV
+          export AWS_ACCESS_KEY_ID=${{ steps.creds.outputs.aws-access-key-id }}
+          export AWS_SECRET_ACCESS_KEY=${{ steps.creds.outputs.aws-secret-access-key }}
+          export AWS_SESSION_TOKEN=${{ steps.creds.outputs.aws-session-token }}
 
           AWS_B64ENCODED_CREDENTIALS=$(clusterawsadm bootstrap credentials encode-as-profile --region us-east-2)
-          echo "AWS_B64ENCODED_CREDENTIALS=$AWS_B64ENCODED_CREDENTIALS" >> $GITHUB_ENV 2>&1
+          echo "AWS_B64ENCODED_CREDENTIALS=$AWS_B64ENCODED_CREDENTIALS" >> "$GITHUB_ENV"
           echo "::add-mask::$AWS_B64ENCODED_CREDENTIALS"
       - name: Run e2e tests
         if: ${{!(matrix.infra == 'aws' && (matrix.ginkgo_focus == 'KCP remediation' || matrix.ginkgo_focus == 'MachineDeployment remediation'))}}
+        env:
+          AWS_B64ENCODED_CREDENTIALS: ${{ env.AWS_B64ENCODED_CREDENTIALS }}
         run: |
-          sudo E2E_INFRA=${{matrix.infra}} GINKGO_FOCUS="${{ matrix.ginkgo_focus }}" SKIP_RESOURCE_CLEANUP=true make test-e2e
+          sudo AWS_B64ENCODED_CREDENTIALS=$AWS_B64ENCODED_CREDENTIALS E2E_INFRA=${{matrix.infra}} GINKGO_FOCUS="${{ matrix.ginkgo_focus }}" SKIP_RESOURCE_CLEANUP=true make test-e2e
