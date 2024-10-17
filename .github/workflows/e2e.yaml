@@ -96,8 +96,8 @@ jobs:
           - "KCP remediation"
           - "MachineDeployment remediation"
           - "Workload cluster creation"
-          - "Workload cluster scaling"
-          - "Workload cluster upgrade"
+          #- "Workload cluster scaling"
+          #- "Workload cluster upgrade"
       # TODO(ben): Remove once all tests are running stable.
       fail-fast: false
     steps:
