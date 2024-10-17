@@ -34,6 +34,13 @@ import (
 )
 
 var _ = Describe("When testing MachineDeployment remediation", func() {
+	if clusterctl.DefaultInfrastructureProvider == "aws" {
+		// Skip the test for cloud provider as it is not supported
+		// See kubernetes.slack.com/archives/C8TSNPY4T/p1680525266510109
+		// And github.com/kubernetes-sigs/cluster-api-provider-aws/issues/4198
+		return
+	}
+
 	var (
 		ctx                    = context.TODO()
 		specName               = "machine-deployment-remediation"

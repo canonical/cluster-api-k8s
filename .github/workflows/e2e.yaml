@@ -13,8 +13,7 @@ jobs:
     name: Build & Run E2E Images
     runs-on: [self-hosted, linux, X64, jammy, large]
     steps:
-      -
-        name: Login to GitHub Container Registry
+      - name: Login to GitHub Container Registry
         uses: docker/login-action@v3
         with:
           # We run into rate limiting issues if we don't authenticate
@@ -26,9 +25,8 @@ jobs:
       - name: Install requirements
         run: |
           sudo apt update
+          sudo apt install make docker-buildx
           sudo snap install go --classic --channel=1.22/stable
-          sudo apt install make
-          sudo apt install docker-buildx
           sudo snap install kubectl --classic --channel=1.30/stable
       - name: Build provider images
         run: sudo make docker-build-e2e
@@ -61,6 +59,9 @@ jobs:
     needs: build-e2e-images
     strategy:
       matrix:
+        infra:
+          - "aws"
+          #- "docker"
         ginkgo_focus:
           - "KCP remediation"
           - "MachineDeployment remediation"
@@ -70,8 +71,7 @@ jobs:
       # TODO(ben): Remove once all tests are running stable.
       fail-fast: false
     steps:
-      -
-        name: Login to GitHub Container Registry
+      - name: Login to GitHub Container Registry
         uses: docker/login-action@v3
         with:
           # We run into rate limiting issues if we don't authenticate
@@ -109,6 +109,15 @@ jobs:
           # Prevents https://cluster-api.sigs.k8s.io/user/troubleshooting#cluster-api-with-docker----too-many-open-files
           sudo sysctl fs.inotify.max_user_watches=1048576
           sudo sysctl fs.inotify.max_user_instances=8192
+      - name: Configure AWS Credentials
+        if: matrix.infra == 'aws'
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          audience: sts.amazonaws.com
+          aws-region: us-east-2
+          role-to-assume: arn:aws:iam::018302341396:role/GithubOIDC
+          role-duration-seconds: 3600
       - name: Run e2e tests
+        if: ${{!(matrix.infra == 'aws' && (matrix.ginkgo_focus == 'KCP remediation' || matrix.ginkgo_focus == 'MachineDeployment remediation'))}}
         run: |
-          sudo GINKGO_FOCUS="${{ matrix.ginkgo_focus }}" SKIP_RESOURCE_CLEANUP=true make test-e2e
+          sudo E2E_INFRA=${{matrix.infra}} GINKGO_FOCUS="${{ matrix.ginkgo_focus }}" SKIP_RESOURCE_CLEANUP=true make test-e2e
