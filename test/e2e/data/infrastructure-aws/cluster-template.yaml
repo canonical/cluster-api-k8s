@@ -313,4 +313,3 @@ data:
 kind: ConfigMap
 metadata:
   name: cloud-controller-manager-addon
-  namespace: default
