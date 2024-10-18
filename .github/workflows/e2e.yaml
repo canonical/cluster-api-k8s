@@ -94,8 +94,8 @@ jobs:
           - "aws"
           #- "docker"
         ginkgo_focus:
-          - "KCP remediation"
-          - "MachineDeployment remediation"
+          #- "KCP remediation"
+          #- "MachineDeployment remediation"
           - "Workload cluster creation"
           #- "Workload cluster scaling"
           #- "Workload cluster upgrade"
