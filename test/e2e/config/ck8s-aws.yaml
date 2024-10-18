@@ -96,7 +96,7 @@ variables:
   AWS_CONTROL_PLANE_ROOT_VOLUME_SIZE: 16
   AWS_NODE_ROOT_VOLUME_SIZE: 16
   AWS_REGION: "us-east-2"
-  AWS_CCM_IMAGE: "registry.k8s.io/provider-aws/cloud-controller-manager:v1.30.0"
+  AWS_CCM_IMAGE: "registry.k8s.io/provider-aws/cloud-controller-manager:v1.28.3"
   # https://github.com/kubernetes-sigs/cluster-api-provider-aws/blob/main/test/e2e/data/e2e_conf.yaml#L203C1-L205C27
   # There is some work to be done here on figuring out which experimental features
   # we want to enable/disable.
