@@ -115,6 +115,7 @@ jobs:
         run: |
           sudo apt update
           sudo snap install go --classic --channel=1.22/stable
+          sudo snap install kubectl --classic --channel 1.31/stable
           sudo apt install make
           ./hack/install-aws-nuke.sh
       - name: Download artifacts
