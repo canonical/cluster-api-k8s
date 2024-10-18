@@ -35,7 +35,7 @@ import (
 var _ = Describe("Machine Deployment Orchestrated In place upgrades", func() {
 	var (
 		ctx                    = context.TODO()
-		specName               = "machine-deployment-orchestrated-cluster-inplace"
+		specName               = "workload-cluster-md-inplace"
 		namespace              *corev1.Namespace
 		cancelWatches          context.CancelFunc
 		result                 *ApplyClusterTemplateAndWaitResult
@@ -47,7 +47,7 @@ var _ = Describe("Machine Deployment Orchestrated In place upgrades", func() {
 	BeforeEach(func() {
 		Expect(e2eConfig.Variables).To(HaveKey(KubernetesVersion))
 
-		clusterName = fmt.Sprintf("capick8s-machine-deployment-in-place-%s", util.RandomString(6))
+		clusterName = fmt.Sprintf("capick8s-md-in-place-%s", util.RandomString(6))
 		infrastructureProvider = clusterctl.DefaultInfrastructureProvider
 
 		// Setup a Namespace where to host objects for this spec and create a watcher for the namespace events.
