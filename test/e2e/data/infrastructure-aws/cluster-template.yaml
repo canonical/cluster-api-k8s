@@ -148,7 +148,7 @@ spec:
   resources:
     - kind: ConfigMap
       name: cloud-controller-manager-addon
-  strategy: ApplyOnce
+  strategy: Reconcile
 ---
 apiVersion: v1
 data:
