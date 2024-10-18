@@ -232,8 +232,5 @@ func getProxyConfigFiles(data BaseUserData) []File {
 		})
 	}
 
-	if len(files) == 0 {
-		return nil
-	}
 	return files
 }
