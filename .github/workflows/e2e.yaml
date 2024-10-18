@@ -111,6 +111,8 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
       - name: Check out repo
         uses: actions/checkout@v4
+      - name: Setup tmate session
+        uses: canonical/action-tmate@main
       - name: Install requirements
         run: |
           sudo apt update
