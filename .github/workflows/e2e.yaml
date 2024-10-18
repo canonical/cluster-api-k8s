@@ -181,6 +181,6 @@ jobs:
         run: |
           sudo -E E2E_INFRA=${{matrix.infra}} GINKGO_FOCUS="${{ matrix.ginkgo_focus }}" SKIP_RESOURCE_CLEANUP=true make test-e2e
       - name: Cleanup AWS account
-        if: ${{ always() && matrix.infra == 'aws' }}
+        if: false
         run: |
           aws-nuke run --config ./hack/aws-nuke-config.yaml --force --force-sleep 3 --no-dry-run
