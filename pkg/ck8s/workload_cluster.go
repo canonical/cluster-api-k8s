@@ -264,12 +264,12 @@ func (w *Workload) refreshCertificatesRun(ctx context.Context, machine *clusterv
 // 1. The CAPI provider calls the /x/capi/refresh-certs/plan endpoint from the
 // worker node, which generates the CSRs and creates the CertificateSigningRequest
 // objects in the cluster.
-// 2. The CAPI provider then calls the /x/capi/refresh-certs/plan endpoint with
+// 2. The CAPI provider then calls the /x/capi/refresh-certs/run endpoint with
 // the seed. This endpoint waits until the CSR is approved and the certificate
 // is signed. Note that this is a blocking call.
 // 3. The CAPI provider calls the /x/capi/refresh-certs/approve endpoint from
 // any control plane node to approve the CSRs.
-// 4. The /x/capi/refresh-certs/plan endpoint completes and returns once the
+// 4. The /x/capi/refresh-certs/run endpoint completes and returns once the
 // certificate is approved and signed.
 func (w *Workload) RefreshWorkerCertificates(ctx context.Context, machine *clusterv1.Machine, nodeToken string, expirationSeconds int) (int, error) {
 	seed, err := w.refreshCertificatesPlan(ctx, machine, nodeToken)

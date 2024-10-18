@@ -146,13 +146,12 @@ func (r *CertificatesReconciler) Reconcile(ctx context.Context, req ctrl.Request
 	if refreshCertificates {
 		if configOwner.IsControlPlaneMachine() {
 			if err := r.refreshControlPlaneCertificates(ctx, scope); err != nil {
-				return ctrl.Result{}, err
+				return ctrl.Result{}, fmt.Errorf("failed to refresh control plane certificates: %w", err)
 			}
 		} else {
 			if err := r.refreshWorkerCertificates(ctx, scope); err != nil {
-				return ctrl.Result{}, err
+				return ctrl.Result{}, fmt.Errorf("failed to refresh worker certificates: %w", err)
 			}
-			return ctrl.Result{}, nil
 		}
 	}
 

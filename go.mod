@@ -3,7 +3,7 @@ module github.com/canonical/cluster-api-k8s
 go 1.22.6
 
 require (
-	github.com/canonical/k8s-snap-api v1.0.10
+	github.com/canonical/k8s-snap-api v1.0.11
 	github.com/go-logr/logr v1.4.1
 	github.com/google/uuid v1.4.0
 	github.com/onsi/ginkgo v1.16.5
