@@ -740,6 +740,7 @@ func ApplyInPlaceUpgradeForMachineDeployment(ctx context.Context, input ApplyInP
 
 	for _, machine := range machineList.Items {
 		Expect(machine.Annotations[bootstrapv1.InPlaceUpgradeStatusAnnotation]).To(Equal(bootstrapv1.InPlaceUpgradeDoneStatus))
+		Expect(machine.Annotations[bootstrapv1.InPlaceUpgradeReleaseAnnotation]).To(Equal(input.UpgradeOption))
 	}
 }
 
