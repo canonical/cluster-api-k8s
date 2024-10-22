@@ -92,7 +92,7 @@ KUSTOMIZE := $(TOOLS_BIN_DIR)/$(KUSTOMIZE_BIN)-$(KUSTOMIZE_VER)
 # Ginkgo
 TEST_DIR := $(shell pwd)/test
 ARTIFACTS ?= $(shell pwd)/_artifacts
-GINKGO_FOCUS ?= Workload cluster creation
+GINKGO_FOCUS ?=
 GINKGO_SKIP ?=
 GINKGO_NODES ?= 1 # GINKGO_NODES is the number of parallel nodes to run
                   # when running the e2e tests, 1 means no parallelism
