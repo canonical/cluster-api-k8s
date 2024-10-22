@@ -27,11 +27,10 @@ import (
 )
 
 var _ = Describe("When testing KCP remediation", func() {
+	// See kubernetes.slack.com/archives/C8TSNPY4T/p1680525266510109
+	// And github.com/kubernetes-sigs/cluster-api-provider-aws/issues/4198
 	if clusterctl.DefaultInfrastructureProvider == "aws" {
-		// Skip the test for cloud provider as it is not supported
-		// See kubernetes.slack.com/archives/C8TSNPY4T/p1680525266510109
-		// And github.com/kubernetes-sigs/cluster-api-provider-aws/issues/4198
-		return
+		Skip("Skipping KCP remediation test for AWS")
 	}
 
 	capi_e2e.KCPRemediationSpec(ctx, func() capi_e2e.KCPRemediationSpecInput {

@@ -39,7 +39,13 @@ Then, you can run:
 make E2E_INFRA=aws test-e2e
 ```
 
-**Note**: The remediation tests do not pass on cloud providers. We suggest excluding them from the test run. See https://kubernetes.slack.com/archives/C8TSNPY4T/p1680525266510109.
+Note: The remediation tests currently do not pass on cloud providers. We recommend excluding these tests from your test runs.
+
+For more information, please refer to the following:
+
+[Kubernetes Slack Discussion](kubernetes.slack.com/archives/C8TSNPY4T/p1680525266510109)
+
+[Github Issue #4198](github.com/kubernetes-sigs/cluster-api-provider-aws/issues/4198)
 
 ### Running the tests with Tilt
 
