@@ -8,85 +8,85 @@ permissions:
   contents: read
 
 jobs:
-  build-provider-e2e-images:
-    name: Build Provider E2E Images
-    runs-on : [self-hosted, linux, X64, jammy, large]
-    steps:
-      - name: Login to GitHub Container Registry
-        uses: docker/login-action@v3
-        with:
-          # We run into rate limiting issues if we don't authenticate
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-      - name: Check out repo
-        uses: actions/checkout@v4
-      - name: Install requirements
-        run: |
-          sudo apt update
-          sudo apt install -y make docker-buildx
-          sudo snap install go --classic --channel=1.22/stable
-          sudo snap install kubectl --classic --channel=1.30/stable
-      - name: Build provider images
-        #run: sudo make docker-build-e2e
-        run: |
-          docker pull ghcr.io/canonical/cluster-api-k8s/bootstrap-controller:ci-test
-          docker tag ghcr.io/canonical/cluster-api-k8s/bootstrap-controller:ci-test ghcr.io/canonical/cluster-api-k8s/bootstrap-controller:dev
-          docker pull ghcr.io/canonical/cluster-api-k8s/controlplane-controller:ci-test
-          docker tag ghcr.io/canonical/cluster-api-k8s/controlplane-controller:ci-test ghcr.io/canonical/cluster-api-k8s/controlplane-controller:dev
-      - name: Save provider image
-        run: |
-          sudo docker save -o provider-images.tar ghcr.io/canonical/cluster-api-k8s/controlplane-controller:dev ghcr.io/canonical/cluster-api-k8s/bootstrap-controller:dev
-          sudo chmod 775 provider-images.tar
-      - name: Upload artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: e2e-images
-          path: |
-            provider-images.tar
+  # build-provider-e2e-images:
+  #   name: Build Provider E2E Images
+  #   runs-on : [self-hosted, linux, X64, jammy, large]
+  #   steps:
+  #     - name: Login to GitHub Container Registry
+  #       uses: docker/login-action@v3
+  #       with:
+  #         # We run into rate limiting issues if we don't authenticate
+  #         registry: ghcr.io
+  #         username: ${{ github.actor }}
+  #         password: ${{ secrets.GITHUB_TOKEN }}
+  #     - name: Check out repo
+  #       uses: actions/checkout@v4
+  #     - name: Install requirements
+  #       run: |
+  #         sudo apt update
+  #         sudo apt install -y make docker-buildx
+  #         sudo snap install go --classic --channel=1.22/stable
+  #         sudo snap install kubectl --classic --channel=1.30/stable
+  #     - name: Build provider images
+  #       #run: sudo make docker-build-e2e
+  #       run: |
+  #         docker pull ghcr.io/canonical/cluster-api-k8s/bootstrap-controller:ci-test
+  #         docker tag ghcr.io/canonical/cluster-api-k8s/bootstrap-controller:ci-test ghcr.io/canonical/cluster-api-k8s/bootstrap-controller:dev
+  #         docker pull ghcr.io/canonical/cluster-api-k8s/controlplane-controller:ci-test
+  #         docker tag ghcr.io/canonical/cluster-api-k8s/controlplane-controller:ci-test ghcr.io/canonical/cluster-api-k8s/controlplane-controller:dev
+  #     - name: Save provider image
+  #       run: |
+  #         sudo docker save -o provider-images.tar ghcr.io/canonical/cluster-api-k8s/controlplane-controller:dev ghcr.io/canonical/cluster-api-k8s/bootstrap-controller:dev
+  #         sudo chmod 775 provider-images.tar
+  #     - name: Upload artifacts
+  #       uses: actions/upload-artifact@v4
+  #       with:
+  #         name: e2e-images
+  #         path: |
+  #           provider-images.tar
 
-  build-k8s-snap-e2e-images:
-    name: Build K8s Snap E2E Images
-    if: false
-    runs-on: [self-hosted, linux, X64, jammy, large]
-    steps:
-      - name: Login to GitHub Container Registry
-        uses: docker/login-action@v3
-        with:
-          # We run into rate limiting issues if we don't authenticate
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-      - name: Check out repo
-        uses: actions/checkout@v4
-      - name: Install requirements
-        run: |
-          sudo apt update
-          sudo apt install -y make docker-buildx
-          sudo snap install go --classic --channel=1.22/stable
-          sudo snap install kubectl --classic --channel=1.30/stable
-      - name: Build k8s-snap images
-        working-directory: hack/
-        run: |
-          ./build-e2e-images.sh
-      - name: Save k8s-snap image
-        run: |
-          sudo docker save -o k8s-snap-image-old.tar k8s-snap:dev-old
-          sudo docker save -o k8s-snap-image-new.tar k8s-snap:dev-new
-          sudo chmod 775 k8s-snap-image-old.tar
-          sudo chmod 775 k8s-snap-image-new.tar
-      - name: Upload artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: e2e-images
-          path: |
-            k8s-snap-image-old.tar
-            k8s-snap-image-new.tar
+  # build-k8s-snap-e2e-images:
+  #   name: Build K8s Snap E2E Images
+  #   if: false
+  #   runs-on: [self-hosted, linux, X64, jammy, large]
+  #   steps:
+  #     - name: Login to GitHub Container Registry
+  #       uses: docker/login-action@v3
+  #       with:
+  #         # We run into rate limiting issues if we don't authenticate
+  #         registry: ghcr.io
+  #         username: ${{ github.actor }}
+  #         password: ${{ secrets.GITHUB_TOKEN }}
+  #     - name: Check out repo
+  #       uses: actions/checkout@v4
+  #     - name: Install requirements
+  #       run: |
+  #         sudo apt update
+  #         sudo apt install -y make docker-buildx
+  #         sudo snap install go --classic --channel=1.22/stable
+  #         sudo snap install kubectl --classic --channel=1.30/stable
+  #     - name: Build k8s-snap images
+  #       working-directory: hack/
+  #       run: |
+  #         ./build-e2e-images.sh
+  #     - name: Save k8s-snap image
+  #       run: |
+  #         sudo docker save -o k8s-snap-image-old.tar k8s-snap:dev-old
+  #         sudo docker save -o k8s-snap-image-new.tar k8s-snap:dev-new
+  #         sudo chmod 775 k8s-snap-image-old.tar
+  #         sudo chmod 775 k8s-snap-image-new.tar
+  #     - name: Upload artifacts
+  #       uses: actions/upload-artifact@v4
+  #       with:
+  #         name: e2e-images
+  #         path: |
+  #           k8s-snap-image-old.tar
+  #           k8s-snap-image-new.tar
 
   run-e2e-tests:
     name: Run E2E Tests
     runs-on: [self-hosted, linux, X64, jammy, xlarge]
-    needs: [build-provider-e2e-images]
+    #needs: [build-provider-e2e-images]
     strategy:
       max-parallel: 1 # Only one at a time because of AWS resource limitations (like maximum number of elastic ip's)
       matrix:
@@ -111,40 +111,40 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
       - name: Check out repo
         uses: actions/checkout@v4
-      - name: Setup tmate session
-        uses: canonical/action-tmate@main
-        with:
-          detached: true
-      - name: Install requirements
-        run: |
-          sudo apt update
-          sudo snap install go --classic --channel=1.22/stable
-          sudo snap install kubectl --classic --channel 1.31/stable
-          sudo apt install make
-          ./hack/install-aws-nuke.sh
-      - name: Download artifacts
-        uses: actions/download-artifact@v4
-        with:
-          name: e2e-images
-          path: .
-      - name: Load provider image
-        run: sudo docker load -i provider-images.tar
-      - name: Load k8s-snap old image
-        if: matrix.infra == 'docker'
-        run: |
-          sudo docker load -i k8s-snap-image-old.tar
-      - name: Load k8s-snap new image
-        if: matrix.infra == 'docker' && matrix.ginkgo_focus == 'Workload cluster upgrade'
-        run: |
-          sudo docker load -i k8s-snap-image-new.tar
-      - name: Create docker network
-        run: |
-          sudo docker network create kind --driver=bridge -o com.docker.network.bridge.enable_ip_masquerade=true
-      - name: Increase inotify watches
-        run: |
-          # Prevents https://cluster-api.sigs.k8s.io/user/troubleshooting#cluster-api-with-docker----too-many-open-files
-          sudo sysctl fs.inotify.max_user_watches=1048576
-          sudo sysctl fs.inotify.max_user_instances=8192
+      # - name: Setup tmate session
+      #   uses: canonical/action-tmate@main
+      #   with:
+      #     detached: true
+      # - name: Install requirements
+      #   run: |
+      #     sudo apt update
+      #     sudo snap install go --classic --channel=1.22/stable
+      #     sudo snap install kubectl --classic --channel 1.31/stable
+      #     sudo apt install make
+      #     ./hack/install-aws-nuke.sh
+      # - name: Download artifacts
+      #   uses: actions/download-artifact@v4
+      #   with:
+      #     name: e2e-images
+      #     path: .
+      # - name: Load provider image
+      #   run: sudo docker load -i provider-images.tar
+      # - name: Load k8s-snap old image
+      #   if: matrix.infra == 'docker'
+      #   run: |
+      #     sudo docker load -i k8s-snap-image-old.tar
+      # - name: Load k8s-snap new image
+      #   if: matrix.infra == 'docker' && matrix.ginkgo_focus == 'Workload cluster upgrade'
+      #   run: |
+      #     sudo docker load -i k8s-snap-image-new.tar
+      # - name: Create docker network
+      #   run: |
+      #     sudo docker network create kind --driver=bridge -o com.docker.network.bridge.enable_ip_masquerade=true
+      # - name: Increase inotify watches
+      #   run: |
+      #     # Prevents https://cluster-api.sigs.k8s.io/user/troubleshooting#cluster-api-with-docker----too-many-open-files
+      #     sudo sysctl fs.inotify.max_user_watches=1048576
+      #     sudo sysctl fs.inotify.max_user_instances=8192
       - name: Install clusterawsadm
         if: matrix.infra == 'aws'
         run: |
@@ -165,13 +165,15 @@ jobs:
       - name: Set AWS Credentials as Environment Variables
         if: matrix.infra == 'aws'
         run: |
-          AWS_ACCESS_KEY_ID=${{ steps.creds.outputs.aws-access-key-id }} >> "$GITHUB_ENV"
-          AWS_SECRET_ACCESS_KEY=${{ steps.creds.outputs.aws-secret-access-key }} >> "$GITHUB_ENV"
-          AWS_SESSION_TOKEN=${{ steps.creds.outputs.aws-session-token }} >> "$GITHUB_ENV"
+          #echo "AWS_ACCESS_KEY_ID=${{ steps.creds.outputs.aws-access-key-id }}" >> "$GITHUB_ENV"
+          #echo "AWS_SECRET_KEY_ID=${{ steps.creds.outputs.aws-secret-access-key }}" >> "$GITHUB_ENV"
+          #echo "AWS_SESSION_TOKEN=${{ steps.creds.outputs.aws-session-token }}" >> "$GITHUB_ENV"
+          #echo "AWS_REGION=us-east-2" >> "$GITHUB_ENV"
 
-          export AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID
-          export AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY
-          export AWS_SESSION_TOKEN=$AWS_SESSION_TOKEN
+          #export AWS_ACCESS_KEY_ID=${{ steps.creds.outputs.aws-access-key-id }}
+          export AWS_SECRET_KEY_ID="${{ steps.creds.outputs.aws-secret-access-key }}"
+          echo "AWS_SECRET_KEY_ID=${{ steps.creds.outputs.aws-secret-access-key }}" >> "$GITHUB_ENV"
+          #export AWS_SESSION_TOKEN=${{ steps.creds.outputs.aws-session-token }}
 
           AWS_B64ENCODED_CREDENTIALS=$(clusterawsadm bootstrap credentials encode-as-profile --region us-east-2)
           echo "AWS_B64ENCODED_CREDENTIALS=$AWS_B64ENCODED_CREDENTIALS" >> "$GITHUB_ENV"
@@ -179,8 +181,10 @@ jobs:
       - name: Run e2e tests
         if: ${{!(matrix.infra == 'aws' && (matrix.ginkgo_focus == 'KCP remediation' || matrix.ginkgo_focus == 'MachineDeployment remediation'))}}
         run: |
-          #sudo -E E2E_INFRA=${{matrix.infra}} GINKGO_FOCUS="${{ matrix.ginkgo_focus }}" SKIP_RESOURCE_CLEANUP=true make test-e2e
-          sudo -E ./hack/juju-create-aws-instance.sh
+          sudo snap install juju --classic --channel 2.9/stable
+          juju bootstrap aws/us-east-2 vimdiesel-aws --force --bootstrap-series jammy --bootstrap-constraints "arch=amd64" --model-default test-mode=true --model-default resource-tags=owner=vimdiesel --model-default automatically-retry-hooks=false --model-default 'logging-config=<root>=DEBUG' --model-default image-stream=daily --debug
+          juju scp -m controller "$DIR"/run-e2e-test.sh 0:/home/ubuntu/run-e2e-test.sh
+          juju exec --model controller --unit controller/0 -- AWS_B64ENCODED_CREDENTIALS=${AWS_B64ENCODED_CREDENTIALS} /home/ubuntu/run-e2e-test.sh
       - name: Cleanup AWS account
         if: false
         run: |

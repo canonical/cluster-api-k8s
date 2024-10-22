@@ -17,6 +17,11 @@ wget https://github.com/kubernetes-sigs/kind/releases/download/v0.24.0/kind-linu
 export KIND_EXPERIMENTAL_DOCKER_NETWORK=bridge
 kind version
 
+docker pull ghcr.io/canonical/cluster-api-k8s/bootstrap-controller:ci-test
+docker tag ghcr.io/canonical/cluster-api-k8s/bootstrap-controller:ci-test ghcr.io/canonical/cluster-api-k8s/bootstrap-controller:dev
+docker pull ghcr.io/canonical/cluster-api-k8s/controlplane-controller:ci-test
+docker tag ghcr.io/canonical/cluster-api-k8s/controlplane-controller:ci-test ghcr.io/canonical/cluster-api-k8s/controlplane-controller:dev
+
 git clone git@github.com:canonical/cluster-api-k8s.git /home/ubuntu/cluster-api-k8s && (cd /home/ubuntu/cluster-api-k8s || exit 1)
 
 sudo -E E2E_INFRA=aws GINKGO_FOCUS="Workload cluster creation" SKIP_RESOURCE_CLEANUP=true make test-e2e
