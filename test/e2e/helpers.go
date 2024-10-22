@@ -525,7 +525,7 @@ type WaitForControlPlaneAndMachinesReadyInput struct {
 	ControlPlane *controlplanev1.CK8sControlPlane
 }
 
-// WaitForControlPlaneAndMachinesReady waits for a KThreeControlPlane object to be ready (all the machine provisioned and one node ready).
+// WaitForControlPlaneAndMachinesReady waits for a CK8sControlPlane object to be ready (all the machine provisioned and one node ready).
 func WaitForControlPlaneAndMachinesReady(ctx context.Context, input WaitForControlPlaneAndMachinesReadyInput, intervals ...interface{}) {
 	Expect(ctx).NotTo(BeNil(), "ctx is required for WaitForControlPlaneReady")
 	Expect(input.GetLister).ToNot(BeNil(), "Invalid argument. input.GetLister can't be nil when calling WaitForControlPlaneReady")

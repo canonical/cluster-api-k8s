@@ -99,7 +99,7 @@ GINKGO_NODES ?= 1 # GINKGO_NODES is the number of parallel nodes to run
 GINKGO_TIMEOUT ?= 2h
 GINKGO_POLL_PROGRESS_AFTER ?= 60m
 GINKGO_POLL_PROGRESS_INTERVAL ?= 5m
-E2E_INFRA ?= aws
+E2E_INFRA ?= docker
 E2E_CONF_FILE ?= $(TEST_DIR)/e2e/config/ck8s-$(E2E_INFRA).yaml
 SKIP_RESOURCE_CLEANUP ?= false
 USE_EXISTING_CLUSTER ?= false
@@ -408,7 +408,3 @@ $(CONTROLLER_GEN): ## Build controller-gen from tools folder.
 
 $(CONVERSION_GEN): ## Build conversion-gen from tools folder.
 	GOBIN=$(TOOLS_BIN_DIR) $(GO_INSTALL) k8s.io/code-generator/cmd/conversion-gen $(CONVERSION_GEN_BIN) $(CONVERSION_GEN_VER)
-
-.PHONY: nuke
-nuke:
-	aws-nuke -c ~/.config/aws-nuke/nuke-config.yaml --no-dry-run

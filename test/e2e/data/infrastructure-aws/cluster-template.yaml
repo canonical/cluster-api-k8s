@@ -33,19 +33,6 @@ spec:
   controlPlaneLoadBalancer:
     healthCheckProtocol: TCP
   network:
-    vpc:
-      id: vpc-09dc405df98c78806
-    subnets:
-      - id: subnet-01d81a191cbc4129d
-      - id: subnet-08ec1c6ed394b2314
-      - id: subnet-04c84a4861de91635
-      - id: subnet-0fdbd3832cd20a307
-    securityGroupOverrides:
-      bastion: sg-00cbb4ff658537143
-      controlplane: sg-00cbb4ff658537143
-      apiserver-lb: sg-00cbb4ff658537143
-      node: sg-00cbb4ff658537143
-      lb: sg-00cbb4ff658537143
     cni:
       cniIngressRules:
         - description: microcluster
