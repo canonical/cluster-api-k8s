@@ -29,6 +29,18 @@ This is useful if you want to use a cluster managed by Tilt.
 make USE_EXISTING_CLUSTER=true test-e2e
 ```
 
+### Run e2e tests on AWS
+
+To run the tests on AWS you will need to set the AWS_B64ENCODED_CREDENTIALS environment variable.
+
+Then, you can run:
+
+```shell
+make E2E_INFRA=aws test-e2e
+```
+
+**Note**: The remediation tests do not pass on cloud providers. We suggest excluding them from the test run. See https://kubernetes.slack.com/archives/C8TSNPY4T/p1680525266510109.
+
 ### Running the tests with Tilt
 
 This section explains how to run the E2E tests on AWS using a management cluster run by Tilt.
@@ -52,15 +64,9 @@ enable_providers:
 - aws
 - ck8s-bootstrap
 - ck8s-control-plane
-kustomize_substitutions:
-  EXP_CLUSTER_RESOURCE_SET: "true" # todo(eac): revisit these exp. features
-  EXP_MACHINE_POOL: "true"
-  CAPA_EKS_IAM: "false"
-  CAPA_EKS_ADD_ROLES: "false"
-  AWS_B64ENCODED_CREDENTIALS: ""
 ```
 
-Tilt will know how to run the aws provider controllers because the `cluster-api-provider-aws` repository has a `tilt-provider.json` file at it's root. Canonical Kubernetes also provides this file at the root of the repository. The CK8s provider names, ck8s-bootstrap and ck8s-control-plane, are defined in CK8's `tilt-provider.yaml` file.
+Tilt will know how to run the aws provider controllers because the `cluster-api-provider-aws` repository has a `tilt-provider.yaml` file at it's root. Canonical Kubernetes also provides this file at the root of the repository. The CK8s provider names, ck8s-bootstrap and ck8s-control-plane, are defined in CK8's `tilt-provider.yaml` file.
 
 Next, you have to customize the variables that will be substituted into the cluster templates applied by the tests (these are under `test/e2e/data/infrastructure-aws`). You can customize the variables in the `test/e2e/config/ck8s-aws.yaml` file under the `variables` key.
 
@@ -74,35 +80,7 @@ The test framework tries it's best to cleanup resources after a test suite, but 
 cloud resources are left over. This can be very problematic especially if you run the tests multiple times
 while iterating on development (see [Cluster API Book - Tear down](https://cluster-api.sigs.k8s.io/developer/e2e#tear-down)).
 
-You can use a tool like [aws-nuke](https://github.com/rebuy-de/aws-nuke) to cleanup your AWS account after a test. Here is a config. you can use that should cover most resources:
-
-```yaml
-regions:
-  - us-east-2
-
-account-blocklist:
-  - "<your prod account number>"
-
-accounts:
-  "<your account number>": {}
-
-resource-types:
-  targets:
-  - EC2Instance
-  - EC2SecurityGroup
-  - EC2Volume
-  - EC2InternetGateway
-  - EC2NATGateway
-  - EC2RouteTable
-  - EC2Subnet
-  - EC2VPC
-  - EC2VPCEndpoint
-  - EC2VPCEndpointServiceConfiguration
-  - EC2ElasticIP
-  - EC2NetworkInterface
-  - ELBv2
-  - ELBv2TargetGroup
-```
+You can use a tool like [aws-nuke](https://github.com/eriksten/aws-nuke) to cleanup your AWS account after a test.
 
 ## Develop an e2e test
 
