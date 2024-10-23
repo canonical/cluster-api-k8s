@@ -63,7 +63,7 @@ func (r *OrchestratedInPlaceUpgradeController) SetupWithManager(mgr ctrl.Manager
 	return nil
 }
 
-// +kubebuilder:rbac:groups=core,resources=configmaps,verbs=get;create;delete
+// +kubebuilder:rbac:groups=core,resources=configmaps,verbs=get;create;delete;list;watch
 // +kubebuilder:rbac:groups=cluster.x-k8s.io,resources=clusters;clusters/status,verbs=get;list;watch
 // +kubebuilder:rbac:groups=cluster.x-k8s.io,resources=machines;machines/status,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=cluster.x-k8s.io,resources=machinesets;machinesets/status,verbs=get;list;watch
