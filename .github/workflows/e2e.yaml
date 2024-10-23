@@ -109,4 +109,4 @@ jobs:
           sudo sysctl fs.inotify.max_user_instances=8192
       - name: Run e2e tests
         run: |
-          sudo E2E_INFRA=docker GINKGO_FOCUS="${{ matrix.ginkgo_focus }}" SKIP_RESOURCE_CLEANUP=true make test-e2e
+          sudo GINKGO_FOCUS="${{ matrix.ginkgo_focus }}" SKIP_RESOURCE_CLEANUP=true make test-e2e
