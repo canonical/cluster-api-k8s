@@ -65,6 +65,7 @@ jobs:
           - "Workload cluster creation"
           - "Workload cluster scaling"
           - "Workload cluster upgrade"
+          - "Certificate Refresh"
       # TODO(ben): Remove once all tests are running stable.
       fail-fast: false
     steps:

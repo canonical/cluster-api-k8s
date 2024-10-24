@@ -209,7 +209,9 @@ func (w *Workload) GetCertificatesExpiryDate(ctx context.Context, machine *clust
 }
 
 func (w *Workload) ApproveCertificates(ctx context.Context, machine *clusterv1.Machine, seed int) error {
-	request := apiv1.ClusterAPIApproveWorkerCSRRequest{}
+	request := apiv1.ClusterAPIApproveWorkerCSRRequest{
+		Seed: seed,
+	}
 	response := &apiv1.ClusterAPIApproveWorkerCSRResponse{}
 	k8sdProxy, err := w.GetK8sdProxyForControlPlane(ctx, k8sdProxyOptions{})
 	if err != nil {

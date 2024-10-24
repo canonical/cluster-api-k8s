@@ -554,6 +554,148 @@ func WaitForControlPlaneAndMachinesReady(ctx context.Context, input WaitForContr
 	})
 }
 
+type ApplyCertificateRefreshAndWaitInput struct {
+	Getter                  framework.Getter
+	Machine                 *clusterv1.Machine
+	ClusterProxy            framework.ClusterProxy
+	TTL                     string
+	WaitForRefreshIntervals []interface{}
+}
+
+func ApplyCertificateRefreshAndWait(ctx context.Context, input ApplyCertificateRefreshAndWaitInput) {
+	Expect(ctx).NotTo(BeNil())
+	Expect(input.Machine).ToNot(BeNil())
+	Expect(input.ClusterProxy).ToNot(BeNil())
+	Expect(input.TTL).ToNot(BeEmpty())
+
+	mgmtClient := input.ClusterProxy.GetClient()
+
+	patchHelper, err := patch.NewHelper(input.Machine, mgmtClient)
+	Expect(err).ToNot(HaveOccurred())
+
+	mAnnotations := input.Machine.GetAnnotations()
+	if mAnnotations == nil {
+		mAnnotations = map[string]string{}
+	}
+
+	mAnnotations[bootstrapv1.CertificatesRefreshAnnotation] = input.TTL
+	input.Machine.SetAnnotations(mAnnotations)
+	err = patchHelper.Patch(ctx, input.Machine)
+	Expect(err).ToNot(HaveOccurred())
+
+	By("Waiting for certificates to be refreshed")
+	Eventually(func() (bool, error) {
+		machine := &clusterv1.Machine{}
+		if err := input.Getter.Get(ctx, client.ObjectKey{
+			Namespace: input.Machine.Namespace,
+			Name:      input.Machine.Name,
+		}, machine); err != nil {
+			return false, err
+		}
+
+		mAnnotations := machine.GetAnnotations()
+		if mAnnotations == nil {
+			return false, nil
+		}
+
+		status, ok := mAnnotations[bootstrapv1.CertificatesRefreshStatusAnnotation]
+		if !ok {
+			return false, nil
+		}
+
+		if status == bootstrapv1.CertificatesRefreshFailedStatus {
+			return false, fmt.Errorf("certificates refresh failed for machine %s", machine.Name)
+		}
+
+		return status == bootstrapv1.CertificatesRefreshDoneStatus, nil
+	}, input.WaitForRefreshIntervals...).Should(BeTrue(), "Certificates refresh failed for %s", input.Machine.Name)
+}
+
+type ApplyCertificateRefreshForControlPlaneInput struct {
+	Lister                  framework.Lister
+	Getter                  framework.Getter
+	ClusterProxy            framework.ClusterProxy
+	Cluster                 *clusterv1.Cluster
+	TTL                     string
+	WaitForRefreshIntervals []interface{}
+}
+
+func ApplyCertificateRefreshForControlPlane(ctx context.Context, input ApplyCertificateRefreshForControlPlaneInput) {
+	Expect(ctx).NotTo(BeNil())
+	Expect(input.ClusterProxy).ToNot(BeNil())
+	Expect(input.Cluster).ToNot(BeNil())
+	Expect(input.TTL).ToNot(BeEmpty())
+
+	By("Looking up control plane machines")
+	machineList := &clusterv1.MachineList{}
+	Eventually(func() error {
+		return input.Lister.List(ctx, machineList,
+			client.InNamespace(input.Cluster.Namespace),
+			client.MatchingLabels{
+				clusterv1.ClusterNameLabel:         input.Cluster.Name,
+				clusterv1.MachineControlPlaneLabel: "",
+			})
+	}, retryableOperationTimeout, retryableOperationInterval).Should(Succeed(),
+		"Failed to list control plane machines for cluster %q", input.Cluster.Name)
+
+	for i := range machineList.Items {
+		machine := &machineList.Items[i]
+		By(fmt.Sprintf("Refreshing certificates for control plane machine: %s", machine.Name))
+		ApplyCertificateRefreshAndWait(ctx, ApplyCertificateRefreshAndWaitInput{
+			Getter:                  input.Getter,
+			Machine:                 machine,
+			ClusterProxy:            input.ClusterProxy,
+			TTL:                     input.TTL,
+			WaitForRefreshIntervals: input.WaitForRefreshIntervals,
+		})
+	}
+}
+
+type ApplyCertificateRefreshForWorkerInput struct {
+	Lister                  framework.Lister
+	Getter                  framework.Getter
+	ClusterProxy            framework.ClusterProxy
+	Cluster                 *clusterv1.Cluster
+	MachineDeployments      []*clusterv1.MachineDeployment
+	TTL                     string
+	WaitForRefreshIntervals []interface{}
+}
+
+func ApplyCertificateRefreshForWorker(ctx context.Context, input ApplyCertificateRefreshForWorkerInput) {
+	Expect(ctx).NotTo(BeNil())
+	Expect(input.ClusterProxy).ToNot(BeNil())
+	Expect(input.Cluster).ToNot(BeNil())
+	Expect(input.MachineDeployments).ToNot(BeNil())
+	Expect(input.TTL).ToNot(BeEmpty())
+
+	for _, md := range input.MachineDeployments {
+		By(fmt.Sprintf("Refreshing certificates for machines in deployment %s", md.Name))
+
+		inClustersNamespaceListOption := client.InNamespace(input.Cluster.Namespace)
+		matchClusterListOption := client.MatchingLabels{
+			clusterv1.ClusterNameLabel:           input.Cluster.Name,
+			clusterv1.MachineDeploymentNameLabel: md.Name,
+		}
+
+		machineList := &clusterv1.MachineList{}
+		Eventually(func() error {
+			return input.Lister.List(ctx, machineList, inClustersNamespaceListOption, matchClusterListOption)
+		}, retryableOperationTimeout, retryableOperationInterval).Should(Succeed(), "Couldn't list machines for deployment %q in the cluster %q", md.Name, input.Cluster.Name)
+
+		for i := range machineList.Items {
+			machine := &machineList.Items[i]
+			By(fmt.Sprintf("Refreshing certificates for worker machine: %s", machine.Name))
+			ApplyCertificateRefreshAndWait(ctx, ApplyCertificateRefreshAndWaitInput{
+				Getter:                  input.Getter,
+				Machine:                 machine,
+				ClusterProxy:            input.ClusterProxy,
+				TTL:                     input.TTL,
+				WaitForRefreshIntervals: input.WaitForRefreshIntervals,
+			})
+		}
+	}
+}
+
 type ApplyInPlaceUpgradeAndWaitInput struct {
 	Getter                  framework.Getter
 	Machine                 *clusterv1.Machine
