@@ -1,12 +1,11 @@
 run:
-  skip-files:
-  - ".*zz_generated.*\\.go"
-  - "contrib/.*"
   timeout: 5m
-issue:
-  max-same-issues: 0
-  max-per-linter: 0
 issues:
+  max-same-issues: 0
+  max-issues-per-linter: 0
+  exclude-files:
+    - ".*zz_generated.*\\.go"
+    - "contrib/.*"
   exclude-rules:
     - path: "test/e2e/*"
       linters:
@@ -118,6 +117,7 @@ linters-settings:
     excludes:
     - G307 # Deferring unsafe method "Close" on type "\*os.File"
     - G108 # Profiling endpoint is automatically exposed on /debug/pprof
+    - G115 # Integer overflow conversion int -> int32, Kubernetes replicas field is type int32
   importas:
     # Do not allow unaliased imports of aliased packages.
     # Default: false
@@ -148,15 +148,9 @@ linters-settings:
           - disableStutteringCheck
       - name: unused-parameter
         disabled: true
-  staticcheck:
-    go: "1.22"
-  stylecheck:
-    go: "1.22"
   tagliatelle:
     case:
       rules:
         # Any struct tag type can be used.
         # Support string case: `camel`, `pascal`, `kebab`, `snake`, `goCamel`, `goPascal`, `goKebab`, `goSnake`, `upper`, `lower`, `header`
         json: goCamel
-  unused:
-    go: "1.22"
