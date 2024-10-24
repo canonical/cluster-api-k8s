@@ -79,7 +79,7 @@ ENVSUBST_BIN := envsubst
 ENVSUBST := $(TOOLS_BIN_DIR)/$(ENVSUBST_BIN)
 
 # Bump as necessary/desired to latest that supports our version of go at https://github.com/golangci/golangci-lint/releases
-GOLANGCI_LINT_VER := v1.55.2
+GOLANGCI_LINT_VER := v1.61.0
 GOLANGCI_LINT_BIN := golangci-lint
 GOLANGCI_LINT := $(TOOLS_BIN_DIR)/$(GOLANGCI_LINT_BIN)-$(GOLANGCI_LINT_VER)
 
@@ -193,15 +193,15 @@ test-common:
 all-bootstrap: manager-bootstrap
 
 # Run tests
-test-bootstrap: envtest generate-bootstrap generate-bootstrap-conversions lint manifests-bootstrap
+test-bootstrap: envtest generate-bootstrap generate-bootstrap-conversions manifests-bootstrap
 	KUBEBUILDER_ASSETS="$(shell $(ENVTEST) use $(ENVTEST_K8S_VERSION) --bin-dir $(TOOLS_BIN_DIR) -p path)" go test $(shell pwd)/bootstrap/... -coverprofile cover.out
 
 # Build manager binary
-manager-bootstrap: generate-bootstrap lint
+manager-bootstrap: generate-bootstrap
 	CGO_ENABLED=0 GOOS=linux go build -a -ldflags '-extldflags "-static"' -o bin/manager bootstrap/main.go
 
 # Run against the configured Kubernetes cluster in ~/.kube/config
-run-bootstrap: generate-bootstrap lint manifests-bootstrap
+run-bootstrap: generate-bootstrap manifests-bootstrap
 	go run ./bootstrap/main.go
 
 # Install CRDs into a cluster
@@ -263,7 +263,7 @@ docker-manifest-bootstrap: docker-push-bootstrap
 all-controlplane: manager-controlplane
 
 # Run tests
-test-controlplane: envtest generate-controlplane generate-controlplane-conversions lint manifests-controlplane
+test-controlplane: envtest generate-controlplane generate-controlplane-conversions manifests-controlplane
 	KUBEBUILDER_ASSETS="$(shell $(ENVTEST) use $(ENVTEST_K8S_VERSION) --bin-dir $(TOOLS_BIN_DIR) -p path)" go test $(shell pwd)/controlplane/... -coverprofile cover.out
 
 .PHONY: docker-build-e2e
@@ -284,11 +284,11 @@ test-e2e: $(GINKGO) $(KUSTOMIZE) ## Run the end-to-end tests
 	    -e2e.skip-resource-cleanup=$(SKIP_RESOURCE_CLEANUP) -e2e.use-existing-cluster=$(USE_EXISTING_CLUSTER)
 
 # Build manager binary
-manager-controlplane: generate-controlplane lint
+manager-controlplane: generate-controlplane
 	CGO_ENABLED=0 GOOS=linux go build -a -ldflags '-extldflags "-static"' -o bin/manager controlplane/main.go
 
 # Run against the configured Kubernetes cluster in ~/.kube/config
-run-controlplane: generate-controlplane lint manifests-controlplane
+run-controlplane: generate-controlplane manifests-controlplane
 	go run ./controlplane/main.go
 
 # Install CRDs into a cluster
@@ -389,8 +389,9 @@ $(ENVTEST): $(TOOLS_BIN_DIR)
 $(ENVSUBST): ## Build envsubst from tools folder.
 	GOBIN=$(TOOLS_BIN_DIR) $(GO_INSTALL) github.com/drone/envsubst/v2/cmd/envsubst $(ENVSUBST_BIN) $(ENVSUBST_VER)
 
-$(GOLANGCI_LINT): ## Build golangci-lint from tools folder.
-	GOBIN=$(TOOLS_BIN_DIR) $(GO_INSTALL) github.com/golangci/golangci-lint/cmd/golangci-lint $(GOLANGCI_LINT_BIN) $(GOLANGCI_LINT_VER)
+$(GOLANGCI_LINT): ## Download the golangci-lint binary, `go get` or `go install` is not supported https://golangci-lint.run/welcome/install/#install-from-sources
+	curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(TOOLS_BIN_DIR) $(GOLANGCI_LINT_VER)
+	mv "$(TOOLS_BIN_DIR)/golangci-lint" $(GOLANGCI_LINT)
 
 $(GINKGO): # Build ginkgo from tools folder.
 	GOBIN=$(TOOLS_BIN_DIR) $(GO_INSTALL) $(GINKGO_PKG) $(GINKGO_BIN) $(GINKGO_VER)
