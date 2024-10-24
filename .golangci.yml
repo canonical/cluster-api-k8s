@@ -1,5 +1,6 @@
 run:
   timeout: 5m
+  go: '1.22'
 issues:
   max-same-issues: 0
   max-issues-per-linter: 0
