@@ -27,15 +27,15 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/utils/pointer"
+	"k8s.io/utils/ptr"
 	"sigs.k8s.io/cluster-api/test/framework/clusterctl"
 	"sigs.k8s.io/cluster-api/util"
 )
 
-var _ = Describe("Workload cluster creation", func() {
+var _ = Describe("Machine Deployment Orchestrated In place upgrades", func() {
 	var (
 		ctx                    = context.TODO()
-		specName               = "workload-cluster-creation"
+		specName               = "workload-cluster-md-inplace"
 		namespace              *corev1.Namespace
 		cancelWatches          context.CancelFunc
 		result                 *ApplyClusterTemplateAndWaitResult
@@ -47,7 +47,7 @@ var _ = Describe("Workload cluster creation", func() {
 	BeforeEach(func() {
 		Expect(e2eConfig.Variables).To(HaveKey(KubernetesVersion))
 
-		clusterName = fmt.Sprintf("capick8s-create-%s", util.RandomString(6))
+		clusterName = fmt.Sprintf("capick8s-md-in-place-%s", util.RandomString(6))
 		infrastructureProvider = clusterctl.DefaultInfrastructureProvider
 
 		// Setup a Namespace where to host objects for this spec and create a watcher for the namespace events.
@@ -73,9 +73,9 @@ var _ = Describe("Workload cluster creation", func() {
 		dumpSpecResourcesAndCleanup(ctx, cleanInput)
 	})
 
-	Context("Creating a cluster", func() {
-		It("Should create a workload cluster with 1 control plane and 3 worker nodes [PR-Blocking]", func() {
-			By("Creating a workload cluster")
+	Context("Performing Machine Deployment Orchestrated in-place upgrades", func() {
+		It("Creating a workload cluster and applying in-place upgrade to Machine Deployment [MD-InPlace] [PR-Blocking]", func() {
+			By("Creating a workload cluster of 1 control plane and 3 worker nodes")
 			ApplyClusterTemplateAndWait(ctx, ApplyClusterTemplateAndWaitInput{
 				ClusterProxy: bootstrapClusterProxy,
 				ConfigCluster: clusterctl.ConfigClusterInput{
@@ -86,13 +86,27 @@ var _ = Describe("Workload cluster creation", func() {
 					Namespace:                namespace.Name,
 					ClusterName:              clusterName,
 					KubernetesVersion:        e2eConfig.GetVariable(KubernetesVersion),
-					ControlPlaneMachineCount: pointer.Int64Ptr(1),
-					WorkerMachineCount:       pointer.Int64Ptr(3),
+					ControlPlaneMachineCount: ptr.To(int64(1)),
+					WorkerMachineCount:       ptr.To(int64(3)),
 				},
 				WaitForClusterIntervals:      e2eConfig.GetIntervals(specName, "wait-cluster"),
 				WaitForControlPlaneIntervals: e2eConfig.GetIntervals(specName, "wait-control-plane"),
 				WaitForMachineDeployments:    e2eConfig.GetIntervals(specName, "wait-worker-nodes"),
 			}, result)
+
+			bootstrapProxyClient := bootstrapClusterProxy.GetClient()
+
+			By("Applying in place upgrade with local path for MachineDeployment object")
+			ApplyInPlaceUpgradeForMachineDeployment(ctx, ApplyInPlaceUpgradeForMachineDeploymentInput{
+				Lister:                  bootstrapProxyClient,
+				Getter:                  bootstrapProxyClient,
+				ClusterProxy:            bootstrapClusterProxy,
+				Cluster:                 result.Cluster,
+				WaitForUpgradeIntervals: e2eConfig.GetIntervals(specName, "wait-machine-upgrade"),
+				UpgradeOption:           e2eConfig.GetVariable(InPlaceUpgradeOption),
+				MachineDeployments:      result.MachineDeployments,
+			})
 		})
 	})
+
 })
