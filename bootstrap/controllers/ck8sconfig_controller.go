@@ -254,7 +254,7 @@ func (r *CK8sConfigReconciler) joinControlplane(ctx context.Context, scope *Scop
 
 	files, err := r.resolveFiles(ctx, scope.Config)
 	if err != nil {
-		conditions.MarkFalse(scope.Config, bootstrapv1.DataSecretAvailableCondition, bootstrapv1.DataSecretGenerationFailedReason, clusterv1.ConditionSeverityWarning, err.Error())
+		conditions.MarkFalse(scope.Config, bootstrapv1.DataSecretAvailableCondition, bootstrapv1.DataSecretGenerationFailedReason, clusterv1.ConditionSeverityWarning, "%s", err.Error())
 		return err
 	}
 
@@ -320,7 +320,7 @@ func (r *CK8sConfigReconciler) joinWorker(ctx context.Context, scope *Scope) err
 
 	authToken, err := token.Lookup(ctx, r.Client, client.ObjectKeyFromObject(scope.Cluster))
 	if err != nil {
-		conditions.MarkFalse(scope.Config, bootstrapv1.DataSecretAvailableCondition, bootstrapv1.DataSecretGenerationFailedReason, clusterv1.ConditionSeverityWarning, err.Error())
+		conditions.MarkFalse(scope.Config, bootstrapv1.DataSecretAvailableCondition, bootstrapv1.DataSecretGenerationFailedReason, clusterv1.ConditionSeverityWarning, "%s", err.Error())
 		return err
 	}
 
@@ -352,7 +352,7 @@ func (r *CK8sConfigReconciler) joinWorker(ctx context.Context, scope *Scope) err
 
 	files, err := r.resolveFiles(ctx, scope.Config)
 	if err != nil {
-		conditions.MarkFalse(scope.Config, bootstrapv1.DataSecretAvailableCondition, bootstrapv1.DataSecretGenerationFailedReason, clusterv1.ConditionSeverityWarning, err.Error())
+		conditions.MarkFalse(scope.Config, bootstrapv1.DataSecretAvailableCondition, bootstrapv1.DataSecretGenerationFailedReason, clusterv1.ConditionSeverityWarning, "%s", err.Error())
 		return err
 	}
 
@@ -615,7 +615,7 @@ func (r *CK8sConfigReconciler) handleClusterNotInitialized(ctx context.Context, 
 		*metav1.NewControllerRef(scope.Config, bootstrapv1.GroupVersion.WithKind("CK8sConfig")),
 	)
 	if err != nil {
-		conditions.MarkFalse(scope.Config, bootstrapv1.CertificatesAvailableCondition, bootstrapv1.CertificatesGenerationFailedReason, clusterv1.ConditionSeverityWarning, err.Error())
+		conditions.MarkFalse(scope.Config, bootstrapv1.CertificatesAvailableCondition, bootstrapv1.CertificatesGenerationFailedReason, clusterv1.ConditionSeverityWarning, "%s", err.Error())
 		return ctrl.Result{}, err
 	}
 	conditions.MarkTrue(scope.Config, bootstrapv1.CertificatesAvailableCondition)
@@ -661,13 +661,13 @@ func (r *CK8sConfigReconciler) handleClusterNotInitialized(ctx context.Context, 
 
 	files, err := r.resolveFiles(ctx, scope.Config)
 	if err != nil {
-		conditions.MarkFalse(scope.Config, bootstrapv1.DataSecretAvailableCondition, bootstrapv1.DataSecretGenerationFailedReason, clusterv1.ConditionSeverityWarning, err.Error())
+		conditions.MarkFalse(scope.Config, bootstrapv1.DataSecretAvailableCondition, bootstrapv1.DataSecretGenerationFailedReason, clusterv1.ConditionSeverityWarning, "%s", err.Error())
 		return ctrl.Result{}, err
 	}
 
 	userSuppliedBootstrapConfig, err := r.resolveUserBootstrapConfig(ctx, scope.Config)
 	if err != nil {
-		conditions.MarkFalse(scope.Config, bootstrapv1.DataSecretAvailableCondition, bootstrapv1.DataSecretGenerationFailedReason, clusterv1.ConditionSeverityWarning, err.Error())
+		conditions.MarkFalse(scope.Config, bootstrapv1.DataSecretAvailableCondition, bootstrapv1.DataSecretGenerationFailedReason, clusterv1.ConditionSeverityWarning, "%s", err.Error())
 		return ctrl.Result{}, err
 	}
 
@@ -679,7 +679,7 @@ func (r *CK8sConfigReconciler) handleClusterNotInitialized(ctx context.Context, 
 
 	snapInstallData, err := r.getSnapInstallDataFromSpec(scope.Config.Spec)
 	if err != nil {
-		conditions.MarkFalse(scope.Config, bootstrapv1.SnapInstallDataValidatedCondition, bootstrapv1.SnapInstallValidationFailedReason, clusterv1.ConditionSeverityError, err.Error())
+		conditions.MarkFalse(scope.Config, bootstrapv1.SnapInstallDataValidatedCondition, bootstrapv1.SnapInstallValidationFailedReason, clusterv1.ConditionSeverityError, "%s", err.Error())
 		return ctrl.Result{Requeue: true}, fmt.Errorf("failed to get snap install data from spec: %w", err)
 	}
 
