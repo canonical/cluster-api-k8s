@@ -6,6 +6,7 @@ import (
 
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gstruct"
+	"github.com/onsi/gomega/types"
 
 	"github.com/canonical/cluster-api-k8s/pkg/cloudinit"
 )
@@ -66,6 +67,7 @@ func TestNewJoinWorker(t *testing.T) {
 		HaveField("Path", "/capi/scripts/wait-apiserver-ready.sh"),
 		HaveField("Path", "/capi/scripts/deploy-manifests.sh"),
 		HaveField("Path", "/capi/scripts/configure-auth-token.sh"),
+		HaveField("Path", "/capi/scripts/configure-proxy.sh"),
 		HaveField("Path", "/capi/scripts/configure-node-token.sh"),
 		HaveField("Path", "/capi/scripts/create-sentinel-bootstrap.sh"),
 		HaveField("Path", "/capi/scripts/configure-snapstore-proxy.sh"),
@@ -80,6 +82,74 @@ func TestNewJoinWorker(t *testing.T) {
 		HaveField("Path", "/capi/etc/snapstore-proxy-id"),
 		HaveField("Path", "/tmp/file"),
 	), "Some /capi/scripts files are missing")
+}
+
+func TestNewJoinWorkerWithProxySettings(t *testing.T) {
+	g := NewWithT(t)
+	for _, tc := range []struct {
+		name             string
+		baseUserData     cloudinit.BaseUserData
+		expectRunCommand bool
+		expectWriteFiles []types.GomegaMatcher
+	}{
+		{
+			name: "AllProxyFieldsSet",
+			baseUserData: cloudinit.BaseUserData{
+				KubernetesVersion:   "v1.30.0",
+				HTTPProxy:           "http://proxy.internal",
+				HTTPSProxy:          "https://proxy.internal",
+				NoProxy:             "10.0.0.0/8,10.152.183.1,192.168.0.0/16",
+				MicroclusterAddress: "10.0.0.0/8",
+			},
+			expectRunCommand: true,
+			expectWriteFiles: []types.GomegaMatcher{
+				HaveField("Path", "/capi/scripts/configure-proxy.sh"),
+				HaveField("Path", "/capi/etc/http-proxy"),
+				HaveField("Path", "/capi/etc/https-proxy"),
+				HaveField("Path", "/capi/etc/no-proxy"),
+			},
+		},
+		{
+			name: "HTTPSProxyOnly",
+			baseUserData: cloudinit.BaseUserData{
+				KubernetesVersion:   "v1.30.0",
+				HTTPSProxy:          "https://proxy.internal",
+				NoProxy:             "10.0.0.0/8,10.152.183.1,192.168.0.0/16",
+				MicroclusterAddress: "10.0.0.0/8",
+			},
+			expectRunCommand: true,
+			expectWriteFiles: []types.GomegaMatcher{
+				HaveField("Path", "/capi/scripts/configure-proxy.sh"),
+				HaveField("Path", "/capi/etc/https-proxy"),
+			},
+		},
+		{
+			name: "NoProxyFields",
+			baseUserData: cloudinit.BaseUserData{
+				KubernetesVersion:   "v1.30.0",
+				MicroclusterAddress: "10.0.0.0/8",
+			},
+			expectRunCommand: false,
+			expectWriteFiles: []types.GomegaMatcher{
+				HaveField("Path", "/capi/scripts/configure-proxy.sh"),
+			},
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			config, err := cloudinit.NewJoinWorker(cloudinit.JoinWorkerInput{BaseUserData: tc.baseUserData})
+
+			g.Expect(err).ToNot(HaveOccurred())
+			// Verify proxy run command.
+			if tc.expectRunCommand {
+				g.Expect(config.RunCommands).To(ContainElement("/capi/scripts/configure-proxy.sh"))
+			} else {
+				g.Expect(config.RunCommands).NotTo(ContainElement("/capi/scripts/configure-proxy.sh"))
+			}
+			// Verify proxy files present.
+			g.Expect(config.WriteFiles).To(ContainElements(tc.expectWriteFiles),
+				"Required files in /capi directory  are missing")
+		})
+	}
 }
 
 func TestNewJoinWorkerInvalidVersionError(t *testing.T) {

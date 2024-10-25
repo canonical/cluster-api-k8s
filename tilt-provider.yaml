@@ -1,0 +1,24 @@
+- name: ck8s-bootstrap
+  config:
+    context: bootstrap
+    image: ghcr.io/canonical/cluster-api-k8s/bootstrap-controller
+    live_reload_deps:
+      - main.go
+      - api
+      - controllers
+      - ../go.mod
+      - ../go.sum
+      - ../pkg
+    label: CABPCK
+- name: ck8s-control-plane
+  config:
+    context: controlplane
+    image: ghcr.io/canonical/cluster-api-k8s/controlplane-controller
+    live_reload_deps:
+      - main.go
+      - api
+      - controllers
+      - ../go.mod
+      - ../go.sum
+      - ../pkg
+    label: CACPPCK

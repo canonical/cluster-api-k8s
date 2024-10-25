@@ -1,0 +1,128 @@
+---
+managementClusterName: capi-test
+
+# E2E test scenario using local dev images and manifests built from the source tree for following providers:
+# - bootstrap ck8s
+# - control-plane ck8s
+images:
+  # Use local dev images built source tree;
+  - name: ghcr.io/canonical/cluster-api-k8s/controlplane-controller:dev
+    loadBehavior: mustLoad
+  - name: ghcr.io/canonical/cluster-api-k8s/bootstrap-controller:dev
+    loadBehavior: mustLoad
+
+# List of providers that will be installed into the management cluster
+# See InitManagementClusterAndWatchControllerLogs function call
+providers:
+  - name: cluster-api
+    type: CoreProvider
+    versions:
+      - name: v1.8.4
+        value: https://github.com/kubernetes-sigs/cluster-api/releases/download/v1.8.4/core-components.yaml
+        type: url
+        contract: v1beta1
+        files:
+          - sourcePath: "../data/shared/v1beta1/metadata.yaml"
+        replacements:
+          - old: "imagePullPolicy: Always"
+            new: "imagePullPolicy: IfNotPresent"
+  - name: aws
+    type: InfrastructureProvider
+    versions:
+      - name: v2.6.1
+        value: "https://github.com/kubernetes-sigs/cluster-api-provider-aws/releases/download/v2.6.1/infrastructure-components.yaml"
+        type: url
+        contract: v1beta2
+        files:
+          - sourcePath: "../data/shared/v1beta1_aws/metadata.yaml"
+        replacements:
+          - old: "imagePullPolicy: Always"
+            new: "imagePullPolicy: IfNotPresent"
+
+      # when bootstrapping with tilt, it will use
+      # https://github.com/kubernetes-sigs/cluster-api/blob/main/hack/tools/internal/tilt-prepare/main.go
+      # name here should match defaultProviderVersion
+      - name: v1.9.99
+        value: "https://github.com/kubernetes-sigs/cluster-api-provider-aws/releases/download/v2.6.1/infrastructure-components.yaml"
+        type: url
+        contract: v1beta2
+        files:
+          - sourcePath: "../data/shared/v1beta1_aws/metadata.yaml"
+        replacements:
+          - old: "imagePullPolicy: Always"
+            new: "imagePullPolicy: IfNotPresent"
+    files:
+      - sourcePath: "../data/infrastructure-aws/cluster-template.yaml"
+  - name: ck8s
+    type: BootstrapProvider
+    versions:
+      # Could add older release version for upgrading test, but
+      # by default, will only use the latest version defined in
+      # ${ProjectRoot}/metadata.yaml to init the management cluster
+      # this version should be updated when ${ProjectRoot}/metadata.yaml
+      # is modified
+      - name: v0.1.99 # next; use manifest from source files
+        value: "../../../bootstrap/config/default"
+        replacements:
+          - old: "ghcr.io/canonical/cluster-api-k8s/bootstrap-controller:latest"
+            new: "ghcr.io/canonical/cluster-api-k8s/bootstrap-controller:dev"
+    files:
+      - sourcePath: "../../../metadata.yaml"
+  - name: ck8s
+    type: ControlPlaneProvider
+    versions:
+      - name: v0.1.99 # next; use manifest from source files
+        value: "../../../controlplane/config/default"
+        replacements:
+          - old: "ghcr.io/canonical/cluster-api-k8s/controlplane-controller:latest"
+            new: "ghcr.io/canonical/cluster-api-k8s/controlplane-controller:dev"
+    files:
+      - sourcePath: "../../../metadata.yaml"
+
+# These variables replace the variables in test/e2e/data/infrastructure-aws manifests
+# They are used during clusterctl generate cluster
+variables:
+  KUBERNETES_VERSION_MANAGEMENT: "v1.30.0"
+  KUBERNETES_VERSION: "v1.30.0"
+  KUBERNETES_VERSION_UPGRADE_TO: "v1.30.1"
+  IP_FAMILY: "IPv4"
+  KIND_IMAGE_VERSION: "v1.30.0"
+  AWS_CONTROL_PLANE_INSTANCE_TYPE: t3.large
+  AWS_NODE_INSTANCE_TYPE: t3.large
+  AWS_PUBLIC_IP: true
+  AWS_CREATE_BASTION: true
+  AWS_SSH_KEY_NAME: "default"
+  AWS_AMI_ID: "ami-01b139e6226d65e4f"
+  AWS_CONTROL_PLANE_ROOT_VOLUME_SIZE: 16
+  AWS_NODE_ROOT_VOLUME_SIZE: 16
+  AWS_REGION: "us-east-2"
+  AWS_CCM_IMAGE: "registry.k8s.io/provider-aws/cloud-controller-manager:v1.28.3"
+  # https://github.com/kubernetes-sigs/cluster-api-provider-aws/blob/main/test/e2e/data/e2e_conf.yaml#L203C1-L205C27
+  # There is some work to be done here on figuring out which experimental features
+  # we want to enable/disable.
+  EXP_CLUSTER_RESOURCE_SET: "true"
+  EXP_MACHINE_SET_PREFLIGHT_CHECKS: "false"
+  CLUSTER_TOPOLOGY: "true"
+  CAPA_LOGLEVEL: "4"
+
+intervals:
+  # Ref: https://github.com/kubernetes-sigs/cluster-api-provider-aws/blob/main/test/e2e/data/e2e_conf.yaml
+  default/wait-machines: [ "35m", "10s" ]
+  default/wait-cluster: [ "35m", "10s" ]
+  default/wait-control-plane: [ "35m", "10s" ]
+  default/wait-worker-nodes: [ "35m", "10s" ]
+  conformance/wait-control-plane: [ "35m", "10s" ]
+  conformance/wait-worker-nodes: [ "35m", "10s" ]
+  default/wait-controllers: [ "35m", "10s" ]
+  default/wait-delete-cluster: [ "35m", "10s" ]
+  default/wait-machine-upgrade: [ "35m", "10s" ]
+  default/wait-contolplane-upgrade: [ "35m", "10s" ]
+  default/wait-machine-status: [ "35m", "10s" ]
+  default/wait-failed-machine-status: [ "35m", "10s" ]
+  default/wait-infra-subnets: [ "5m", "30s" ]
+  default/wait-machine-pool-nodes: [ "35m", "10s" ]
+  default/wait-machine-pool-upgrade: [ "35m", "10s" ]
+  default/wait-create-identity: [ "3m", "10s" ]
+  default/wait-job: [ "35m", "10s" ]
+  default/wait-deployment-ready: [ "35m", "10s" ]
+  default/wait-loadbalancer-ready: [ "5m", "30s" ]

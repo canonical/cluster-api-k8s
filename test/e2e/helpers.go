@@ -525,7 +525,7 @@ type WaitForControlPlaneAndMachinesReadyInput struct {
 	ControlPlane *controlplanev1.CK8sControlPlane
 }
 
-// WaitForControlPlaneAndMachinesReady waits for a KThreeControlPlane object to be ready (all the machine provisioned and one node ready).
+// WaitForControlPlaneAndMachinesReady waits for a CK8sControlPlane object to be ready (all the machine provisioned and one node ready).
 func WaitForControlPlaneAndMachinesReady(ctx context.Context, input WaitForControlPlaneAndMachinesReadyInput, intervals ...interface{}) {
 	Expect(ctx).NotTo(BeNil(), "ctx is required for WaitForControlPlaneReady")
 	Expect(input.GetLister).ToNot(BeNil(), "Invalid argument. input.GetLister can't be nil when calling WaitForControlPlaneReady")
@@ -697,44 +697,50 @@ func ApplyCertificateRefreshForWorker(ctx context.Context, input ApplyCertificat
 }
 
 type ApplyInPlaceUpgradeAndWaitInput struct {
-	Getter                  framework.Getter
-	Machine                 *clusterv1.Machine
+	Getter framework.Getter
+	Obj    client.Object
+	// DestinationObj is used as a destination to decode whatever is retrieved from the client.
+	// e.g:
+	// 	{DestinationObj: &clusterv1.Machine{}, ...}
+	// 	client.Get(ctx, objKey, DestinationObj)
+	DestinationObj          client.Object
 	ClusterProxy            framework.ClusterProxy
 	UpgradeOption           string
 	WaitForUpgradeIntervals []interface{}
 }
 
+// ApplyInPlaceUpgradeAndWait applies an in-place upgrade to an object and waits for the upgrade to complete.
 func ApplyInPlaceUpgradeAndWait(ctx context.Context, input ApplyInPlaceUpgradeAndWaitInput) {
 	Expect(ctx).NotTo(BeNil())
-	Expect(input.Machine).ToNot(BeNil())
+	Expect(input.Obj).ToNot(BeNil())
+	Expect(input.DestinationObj).ToNot(BeNil())
 	Expect(input.ClusterProxy).ToNot(BeNil())
 	Expect(input.UpgradeOption).ToNot(BeEmpty())
 
 	mgmtClient := input.ClusterProxy.GetClient()
 
-	patchHelper, err := patch.NewHelper(input.Machine, mgmtClient)
+	patchHelper, err := patch.NewHelper(input.Obj, mgmtClient)
 	Expect(err).ToNot(HaveOccurred())
-	mAnnotations := input.Machine.GetAnnotations()
+	annotations := input.Obj.GetAnnotations()
 
-	if mAnnotations == nil {
-		mAnnotations = map[string]string{}
+	if annotations == nil {
+		annotations = map[string]string{}
 	}
 
-	mAnnotations[bootstrapv1.InPlaceUpgradeToAnnotation] = input.UpgradeOption
-	input.Machine.SetAnnotations(mAnnotations)
-	err = patchHelper.Patch(ctx, input.Machine)
+	annotations[bootstrapv1.InPlaceUpgradeToAnnotation] = input.UpgradeOption
+	input.Obj.SetAnnotations(annotations)
+	err = patchHelper.Patch(ctx, input.Obj)
 	Expect(err).ToNot(HaveOccurred())
 
 	By("Checking for in-place upgrade status to be equal to done")
 
 	Eventually(func() (bool, error) {
-		um := &clusterv1.Machine{}
-		if err := input.Getter.Get(ctx, client.ObjectKey{Namespace: input.Machine.Namespace, Name: input.Machine.Name}, um); err != nil {
-			Byf("Failed to get the machine: %+v", err)
+		if err := input.Getter.Get(ctx, client.ObjectKeyFromObject(input.Obj), input.DestinationObj); err != nil {
+			Byf("Failed to get the object: %+v", err)
 			return false, err
 		}
 
-		mAnnotations := um.GetAnnotations()
+		mAnnotations := input.DestinationObj.GetAnnotations()
 
 		status, ok := mAnnotations[bootstrapv1.InPlaceUpgradeStatusAnnotation]
 		if !ok {
@@ -742,7 +748,7 @@ func ApplyInPlaceUpgradeAndWait(ctx context.Context, input ApplyInPlaceUpgradeAn
 		}
 
 		return status == bootstrapv1.InPlaceUpgradeDoneStatus, nil
-	}, input.WaitForUpgradeIntervals...).Should(BeTrue(), "In-place upgrade failed for %s", input.Machine.Name)
+	}, input.WaitForUpgradeIntervals...).Should(BeTrue(), "In-place upgrade failed for %s", input.Obj.GetName())
 }
 
 type ApplyInPlaceUpgradeForControlPlaneInput struct {
@@ -775,7 +781,8 @@ func ApplyInPlaceUpgradeForControlPlane(ctx context.Context, input ApplyInPlaceU
 	for _, machine := range machineList.Items {
 		ApplyInPlaceUpgradeAndWait(ctx, ApplyInPlaceUpgradeAndWaitInput{
 			Getter:                  input.Getter,
-			Machine:                 &machine,
+			Obj:                     &machine,
+			DestinationObj:          &clusterv1.Machine{},
 			ClusterProxy:            input.ClusterProxy,
 			UpgradeOption:           input.UpgradeOption,
 			WaitForUpgradeIntervals: input.WaitForUpgradeIntervals,
@@ -801,7 +808,7 @@ func ApplyInPlaceUpgradeForWorker(ctx context.Context, input ApplyInPlaceUpgrade
 	Expect(input.UpgradeOption).ToNot(BeEmpty())
 
 	for _, md := range input.MachineDeployments {
-		// Look up all the control plane machines.
+		// Look up all the worker machines.
 		inClustersNamespaceListOption := client.InNamespace(input.Cluster.Namespace)
 		matchClusterListOption := client.MatchingLabels{
 			clusterv1.ClusterNameLabel:           input.Cluster.Name,
@@ -811,17 +818,158 @@ func ApplyInPlaceUpgradeForWorker(ctx context.Context, input ApplyInPlaceUpgrade
 		machineList := &clusterv1.MachineList{}
 		Eventually(func() error {
 			return input.Lister.List(ctx, machineList, inClustersNamespaceListOption, matchClusterListOption)
-		}, retryableOperationTimeout, retryableOperationInterval).Should(Succeed(), "Couldn't list control-plane machines for the cluster %q", input.Cluster.Name)
+		}, retryableOperationTimeout, retryableOperationInterval).Should(Succeed(), "Couldn't list worker machines for the cluster %q", input.Cluster.Name)
 
 		for _, machine := range machineList.Items {
 			ApplyInPlaceUpgradeAndWait(ctx, ApplyInPlaceUpgradeAndWaitInput{
 				Getter:                  input.Getter,
-				Machine:                 &machine,
+				Obj:                     &machine,
+				DestinationObj:          &clusterv1.Machine{},
 				ClusterProxy:            input.ClusterProxy,
 				UpgradeOption:           input.UpgradeOption,
 				WaitForUpgradeIntervals: input.WaitForUpgradeIntervals,
 			})
 		}
+	}
+}
+
+type ApplyInPlaceUpgradeForMachineDeploymentInput struct {
+	Lister                  framework.Lister
+	Getter                  framework.Getter
+	ClusterProxy            framework.ClusterProxy
+	Cluster                 *clusterv1.Cluster
+	MachineDeployments      []*clusterv1.MachineDeployment
+	UpgradeOption           string
+	WaitForUpgradeIntervals []interface{}
+}
+
+func ApplyInPlaceUpgradeForMachineDeployment(ctx context.Context, input ApplyInPlaceUpgradeForMachineDeploymentInput) {
+	Expect(ctx).NotTo(BeNil())
+	Expect(input.ClusterProxy).ToNot(BeNil())
+	Expect(input.Cluster).ToNot(BeNil())
+	Expect(input.MachineDeployments).ToNot(BeNil())
+	Expect(input.UpgradeOption).ToNot(BeEmpty())
+
+	var machineDeployment *clusterv1.MachineDeployment
+	for _, md := range input.MachineDeployments {
+		if md.Labels[clusterv1.ClusterNameLabel] == input.Cluster.Name {
+			machineDeployment = md
+			break
+		}
+	}
+	Expect(machineDeployment).ToNot(BeNil())
+
+	ApplyInPlaceUpgradeAndWait(ctx, ApplyInPlaceUpgradeAndWaitInput{
+		Getter:                  input.Getter,
+		Obj:                     machineDeployment,
+		DestinationObj:          &clusterv1.MachineDeployment{},
+		ClusterProxy:            input.ClusterProxy,
+		UpgradeOption:           input.UpgradeOption,
+		WaitForUpgradeIntervals: input.WaitForUpgradeIntervals,
+	})
+
+	// Make sure all the machines are upgraded
+	inClustersNamespaceListOption := client.InNamespace(input.Cluster.Namespace)
+	belongsToMDListOption := client.MatchingLabels{
+		clusterv1.ClusterNameLabel:           input.Cluster.Name,
+		clusterv1.MachineDeploymentNameLabel: machineDeployment.Name,
+	}
+
+	mdMachineList := &clusterv1.MachineList{}
+	Eventually(func() error {
+		return input.Lister.List(ctx, mdMachineList, inClustersNamespaceListOption, belongsToMDListOption)
+	}, retryableOperationTimeout, retryableOperationInterval).Should(Succeed(), "Couldn't list machines for the machineDeployment %q", machineDeployment.Name)
+
+	for _, machine := range mdMachineList.Items {
+		Expect(machine.Annotations[bootstrapv1.InPlaceUpgradeStatusAnnotation]).To(Equal(bootstrapv1.InPlaceUpgradeDoneStatus))
+		Expect(machine.Annotations[bootstrapv1.InPlaceUpgradeReleaseAnnotation]).To(Equal(input.UpgradeOption))
+	}
+
+	// Make sure other machines are not upgraded
+	allMachines := &clusterv1.MachineList{}
+	Eventually(func() error {
+		return input.Lister.List(ctx, allMachines, inClustersNamespaceListOption)
+	}, retryableOperationTimeout, retryableOperationInterval).Should(Succeed(), "Couldn't list all machines")
+
+	for _, machine := range allMachines.Items {
+		// skip the ones belong to the MD under test machines
+		if isMachineInList(machine, mdMachineList) {
+			continue
+		}
+
+		Expect(machine.Annotations[bootstrapv1.InPlaceUpgradeToAnnotation]).To(BeEmpty())
+		Expect(machine.Annotations[bootstrapv1.InPlaceUpgradeLastFailedAttemptAtAnnotation]).To(BeEmpty())
+		Expect(machine.Annotations[bootstrapv1.InPlaceUpgradeChangeIDAnnotation]).To(BeEmpty())
+		Expect(machine.Annotations[bootstrapv1.InPlaceUpgradeStatusAnnotation]).To(BeEmpty())
+		Expect(machine.Annotations[bootstrapv1.InPlaceUpgradeReleaseAnnotation]).To(BeEmpty())
+	}
+}
+
+type ApplyInPlaceUpgradeForCK8sControlPlaneInput struct {
+	Lister                  framework.Lister
+	Getter                  framework.Getter
+	ClusterProxy            framework.ClusterProxy
+	Cluster                 *clusterv1.Cluster
+	UpgradeOption           string
+	WaitForUpgradeIntervals []interface{}
+}
+
+func ApplyInPlaceUpgradeForCK8sControlPlane(ctx context.Context, input ApplyInPlaceUpgradeForCK8sControlPlaneInput) {
+	Expect(ctx).NotTo(BeNil())
+	Expect(input.ClusterProxy).ToNot(BeNil())
+	Expect(input.Cluster).ToNot(BeNil())
+	Expect(input.UpgradeOption).ToNot(BeEmpty())
+
+	ck8sCP := GetCK8sControlPlaneByCluster(ctx, GetCK8sControlPlaneByClusterInput{
+		Lister:      input.Lister,
+		ClusterName: input.Cluster.Name,
+		Namespace:   input.Cluster.Namespace,
+	})
+	Expect(ck8sCP).ToNot(BeNil())
+
+	ApplyInPlaceUpgradeAndWait(ctx, ApplyInPlaceUpgradeAndWaitInput{
+		Getter:                  input.Getter,
+		Obj:                     ck8sCP,
+		DestinationObj:          &controlplanev1.CK8sControlPlane{},
+		ClusterProxy:            input.ClusterProxy,
+		UpgradeOption:           input.UpgradeOption,
+		WaitForUpgradeIntervals: input.WaitForUpgradeIntervals,
+	})
+
+	// Make sure all the machines are upgraded
+	inClustersNamespaceListOption := client.InNamespace(input.Cluster.Namespace)
+	cpMatchLabelsListOption := client.MatchingLabels{
+		clusterv1.ClusterNameLabel:         input.Cluster.Name,
+		clusterv1.MachineControlPlaneLabel: "",
+	}
+
+	cpMachineList := &clusterv1.MachineList{}
+	Eventually(func() error {
+		return input.Lister.List(ctx, cpMachineList, inClustersNamespaceListOption, cpMatchLabelsListOption)
+	}, retryableOperationTimeout, retryableOperationInterval).Should(Succeed(), "Couldn't list machines for the CK8sControlPlane %q", ck8sCP.Name)
+
+	for _, machine := range cpMachineList.Items {
+		Expect(machine.Annotations[bootstrapv1.InPlaceUpgradeStatusAnnotation]).To(Equal(bootstrapv1.InPlaceUpgradeDoneStatus))
+		Expect(machine.Annotations[bootstrapv1.InPlaceUpgradeReleaseAnnotation]).To(Equal(input.UpgradeOption))
+	}
+
+	// Make sure other machines (non-cp ones) are not upgraded
+	allMachines := &clusterv1.MachineList{}
+	Eventually(func() error {
+		return input.Lister.List(ctx, allMachines, inClustersNamespaceListOption)
+	}, retryableOperationTimeout, retryableOperationInterval).Should(Succeed(), "Couldn't list all machines")
+
+	for _, machine := range allMachines.Items {
+		// skip the control plane machines
+		if isMachineInList(machine, cpMachineList) {
+			continue
+		}
+
+		Expect(machine.Annotations[bootstrapv1.InPlaceUpgradeToAnnotation]).To(BeEmpty())
+		Expect(machine.Annotations[bootstrapv1.InPlaceUpgradeLastFailedAttemptAtAnnotation]).To(BeEmpty())
+		Expect(machine.Annotations[bootstrapv1.InPlaceUpgradeChangeIDAnnotation]).To(BeEmpty())
+		Expect(machine.Annotations[bootstrapv1.InPlaceUpgradeStatusAnnotation]).To(BeEmpty())
+		Expect(machine.Annotations[bootstrapv1.InPlaceUpgradeReleaseAnnotation]).To(BeEmpty())
 	}
 }
 
@@ -957,4 +1105,17 @@ func byClusterOptions(name, namespace string) []client.ListOption {
 			clusterv1.ClusterNameLabel: name,
 		},
 	}
+}
+
+func isMachineInList(machine clusterv1.Machine, list *clusterv1.MachineList) bool {
+	if list == nil {
+		return false
+	}
+
+	for _, m := range list.Items {
+		if m.Name == machine.Name {
+			return true
+		}
+	}
+	return false
 }

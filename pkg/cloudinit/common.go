@@ -49,6 +49,12 @@ type BaseUserData struct {
 	SnapstoreProxyDomain string
 	// The snap store proxy ID
 	SnapstoreProxyID string
+	// HTTPProxy is http_proxy configuration.
+	HTTPProxy string
+	// HTTPSProxy is https_proxy configuration.
+	HTTPSProxy string
+	// NoProxy is no_proxy configuration.
+	NoProxy string
 	// MicroclusterAddress is the address to use for microcluster.
 	MicroclusterAddress string
 	// MicroclusterPort is the port to use for microcluster.
@@ -95,6 +101,12 @@ func NewBaseCloudConfig(data BaseUserData) (CloudConfig, error) {
 		config.RunCommands = append(config.RunCommands, "/capi/scripts/configure-snapstore-proxy.sh")
 	}
 
+	// proxy configuration
+	if proxyConfigFiles := getProxyConfigFiles(data); proxyConfigFiles != nil {
+		config.WriteFiles = append(config.WriteFiles, proxyConfigFiles...)
+		config.RunCommands = append(config.RunCommands, "/capi/scripts/configure-proxy.sh")
+	}
+
 	var configFileContents string
 	if data.BootstrapConfig != "" {
 		configFileContents = data.BootstrapConfig
@@ -139,7 +151,6 @@ func NewBaseCloudConfig(data BaseUserData) (CloudConfig, error) {
 			},
 		)...,
 	)
-
 	// boot commands
 	config.BootCommands = data.BootCommands
 
@@ -189,4 +200,37 @@ func getSnapstoreProxyConfigFiles(data BaseUserData) []File {
 	}
 
 	return []File{schemeFile, domainFile, storeIDFile}
+}
+
+// getProxyConfigFiles returns the proxy config files.
+// Returns slice of files for each proxy parameters are present in data structure with corresponding value
+// Nil indicates that no files are returned.
+func getProxyConfigFiles(data BaseUserData) []File {
+	var files []File
+	if data.HTTPProxy != "" {
+		files = append(files, File{
+			Path:        "/capi/etc/http-proxy",
+			Content:     data.HTTPProxy,
+			Permissions: "0400",
+			Owner:       "root:root",
+		})
+	}
+	if data.HTTPSProxy != "" {
+		files = append(files, File{
+			Path:        "/capi/etc/https-proxy",
+			Content:     data.HTTPSProxy,
+			Permissions: "0400",
+			Owner:       "root:root",
+		})
+	}
+	if data.NoProxy != "" {
+		files = append(files, File{
+			Path:        "/capi/etc/no-proxy",
+			Content:     data.NoProxy,
+			Permissions: "0400",
+			Owner:       "root:root",
+		})
+	}
+
+	return files
 }

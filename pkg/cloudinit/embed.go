@@ -20,6 +20,7 @@ var (
 	scriptBootstrap               script = "bootstrap.sh"
 	scriptLoadImages              script = "load-images.sh"
 	scriptConfigureAuthToken      script = "configure-auth-token.sh" // #nosec G101
+	scriptConfigureProxy          script = "configure-proxy.sh"
 	scriptConfigureNodeToken      script = "configure-node-token.sh" // #nosec G101
 	scriptJoinCluster             script = "join-cluster.sh"
 	scriptWaitAPIServerReady      script = "wait-apiserver-ready.sh"
@@ -44,6 +45,7 @@ var (
 		scriptBootstrap:               mustEmbed(scriptBootstrap),
 		scriptLoadImages:              mustEmbed(scriptLoadImages),
 		scriptConfigureAuthToken:      mustEmbed(scriptConfigureAuthToken),
+		scriptConfigureProxy:          mustEmbed(scriptConfigureProxy),
 		scriptConfigureNodeToken:      mustEmbed(scriptConfigureNodeToken),
 		scriptJoinCluster:             mustEmbed(scriptJoinCluster),
 		scriptWaitAPIServerReady:      mustEmbed(scriptWaitAPIServerReady),

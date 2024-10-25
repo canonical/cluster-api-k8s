@@ -69,6 +69,18 @@ type CK8sConfigSpec struct {
 	// +optional
 	SnapstoreProxyID string `json:"snapstoreProxyId,omitempty"`
 
+	// HTTPSProxy is optional https proxy configuration
+	// +optional
+	HTTPSProxy string `json:"httpsProxy,omitempty"`
+
+	// HTTPProxy is optional http proxy configuration
+	// +optional
+	HTTPProxy string `json:"httpProxy,omitempty"`
+
+	// NoProxy is optional no proxy configuration
+	// +optional
+	NoProxy string `json:"noProxy,omitempty"`
+
 	// Channel is the channel to use for the snap install.
 	// +optional
 	Channel string `json:"channel,omitempty"`
