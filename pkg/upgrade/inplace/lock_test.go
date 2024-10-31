@@ -406,7 +406,7 @@ func TestLock(t *testing.T) {
 
 		g.Expect(err).To(HaveOccurred())
 		lockInfo, err := lock.semaphore.getLockInfo()
-		g.Expect(err).To(HaveOccurred())
+		g.Expect(err).ToNot(HaveOccurred())
 		g.Expect(lockInfo.MachineName).To(Equal(machine.Name))
 		g.Expect(lockInfo.MachineNamespace).To(Equal(machine.Namespace))
 	})
