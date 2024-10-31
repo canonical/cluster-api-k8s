@@ -37,9 +37,9 @@ func TestNewSemaphore(t *testing.T) {
 }
 
 func TestSetLockInfo(t *testing.T) {
+	const machineNamespace = "test-namespace"
+	const machineName = "test-machine"
 	g := NewWithT(t)
-	machineName := "test-machine"
-	machineNamespace := "test-namespace"
 	sem := &semaphore{}
 	li := lockInformation{
 		MachineName:      machineName,
