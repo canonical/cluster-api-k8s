@@ -4,16 +4,16 @@ import (
 	"context"
 	"testing"
 
-	bootstrapv1 "github.com/canonical/cluster-api-k8s/bootstrap/api/v1beta2"
-	controlplanev1 "github.com/canonical/cluster-api-k8s/controlplane/api/v1beta2"
-	"github.com/canonical/cluster-api-k8s/pkg/upgrade/inplace"
-
 	. "github.com/onsi/gomega"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
 	"sigs.k8s.io/cluster-api/util/patch"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
+
+	bootstrapv1 "github.com/canonical/cluster-api-k8s/bootstrap/api/v1beta2"
+	controlplanev1 "github.com/canonical/cluster-api-k8s/controlplane/api/v1beta2"
+	"github.com/canonical/cluster-api-k8s/pkg/upgrade/inplace"
 )
 
 func TestMarkMachineToUpgrade(t *testing.T) {

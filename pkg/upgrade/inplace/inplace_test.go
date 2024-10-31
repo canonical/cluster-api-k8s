@@ -4,13 +4,13 @@ import (
 	"testing"
 	"time"
 
-	bootstrapv1 "github.com/canonical/cluster-api-k8s/bootstrap/api/v1beta2"
-	controlplanev1 "github.com/canonical/cluster-api-k8s/controlplane/api/v1beta2"
-	"github.com/canonical/cluster-api-k8s/pkg/upgrade/inplace"
-
 	. "github.com/onsi/gomega"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
+
+	bootstrapv1 "github.com/canonical/cluster-api-k8s/bootstrap/api/v1beta2"
+	controlplanev1 "github.com/canonical/cluster-api-k8s/controlplane/api/v1beta2"
+	"github.com/canonical/cluster-api-k8s/pkg/upgrade/inplace"
 )
 
 func TestIsUpgraded(t *testing.T) {
