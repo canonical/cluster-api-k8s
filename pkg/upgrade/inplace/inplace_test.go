@@ -24,8 +24,8 @@ func TestIsUpgraded(t *testing.T) {
 	}{
 		{
 			name:          "notUpgraded",
-			annotations:   map[string]string{bootstrapv1.InPlaceUpgradeReleaseAnnotation: "v1.30"},
-			releaseString: "v1.29",
+			annotations:   map[string]string{bootstrapv1.InPlaceUpgradeReleaseAnnotation: "v1.29"},
+			releaseString: "v1.30",
 			isUpgraded:    false,
 		},
 		{
@@ -68,6 +68,13 @@ func TestGetUpgradeInstructions(t *testing.T) {
 			name: "InPlaceUpgradeReleaseAnnotationOnly",
 			annotations: map[string]string{
 				bootstrapv1.InPlaceUpgradeReleaseAnnotation: "v1.30",
+			},
+			upgradeTo: "v1.30",
+		},
+		{
+			name: "InPlaceUpgradeToAnnotationOnly",
+			annotations: map[string]string{
+				bootstrapv1.InPlaceUpgradeToAnnotation: "v1.30",
 			},
 			upgradeTo: "v1.30",
 		},
