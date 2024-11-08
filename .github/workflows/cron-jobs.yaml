@@ -29,9 +29,6 @@ jobs:
       - name: Save provider image
         run: |
           echo asf
-#      - name: asd
-#        run: |
-#          go mod download
       - name: TICS scan
         run: |
           export TICSAUTHTOKEN=${{ secrets.TICSAUTHTOKEN }}
