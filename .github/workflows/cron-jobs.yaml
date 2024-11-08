@@ -26,9 +26,12 @@ jobs:
         uses: actions/setup-go@v5
         with:
           go-version: "1.22"
-      - name: asd
+      - name: Save provider image
         run: |
-          go mod download
+          echo asf
+#      - name: asd
+#        run: |
+#          go mod download
       - name: TICS scan
         run: |
           export TICSAUTHTOKEN=${{ secrets.TICSAUTHTOKEN }}
