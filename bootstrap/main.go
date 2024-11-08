@@ -120,11 +120,11 @@ func main() {
 		os.Exit(1)
 	}
 
-	if err = (&controllers.MachineDeploymentReconciler{
+	if err = (&controllers.OrchestratedInPlaceUpgradeController{
 		Client: mgr.GetClient(),
-		Log:    ctrl.Log.WithName("controllers").WithName("MachineDeployment"),
+		Log:    ctrl.Log.WithName("controllers").WithName("OrchestratedInPlaceUpgrade"),
 	}).SetupWithManager(mgr); err != nil {
-		setupLog.Error(err, "unable to create controller", "controller", "MachineDeployment")
+		setupLog.Error(err, "unable to create controller", "controller", "OrchestratedInPlaceUpgrade")
 		os.Exit(1)
 	}
 
