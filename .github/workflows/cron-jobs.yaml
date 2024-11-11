@@ -35,7 +35,7 @@ jobs:
 
           # TICS requires us to have the test results in cobertura xml format under the
           # directory use below
-          sudo make go.unit
+          sudo make test-unit
           go install github.com/boumenot/gocover-cobertura@latest
           gocover-cobertura < coverage.txt > coverage.xml
           mkdir .coverage
