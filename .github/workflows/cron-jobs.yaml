@@ -33,6 +33,13 @@ jobs:
         run: |
           export TICSAUTHTOKEN=${{ secrets.TICSAUTHTOKEN }}
 
+          # TICS requires us to have the test results in cobertura xml format under the
+          # directory use below
+          sudo make go.unit
+          go install github.com/boumenot/gocover-cobertura@latest
+          gocover-cobertura < coverage.txt > coverage.xml
+          mkdir .coverage
+          mv ./coverage.xml ./.coverage/
 
           # Install the TICS and staticcheck
           go install honnef.co/go/tools/cmd/staticcheck@v0.5.1
@@ -50,8 +57,7 @@ jobs:
 
           TICSQServer -project  ${{ github.event.repository.name }} -tmpdir /tmp/tics -branchdir $HOME/work/cluster-api-k8s/cluster-api-k8s/
                
-          ls -la $HOME/work/ || true
-          ls -la $HOME/work/cluster-api-k8s/ || true
+          ls -la $HOME/work/cluster-api-k8s/cluster-api-k8s/
 #  Trivy:
 #    permissions:
 #      contents: read # for actions/checkout to fetch code
