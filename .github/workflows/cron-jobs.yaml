@@ -37,7 +37,7 @@ jobs:
           # directory use below
           sudo make test-common
           go install github.com/boumenot/gocover-cobertura@latest
-          gocover-cobertura < cover.out > coverage.xml
+          gocover-cobertura < cover_all.out> coverage.xml
           mkdir .coverage
           mv ./coverage.xml ./.coverage/
 
