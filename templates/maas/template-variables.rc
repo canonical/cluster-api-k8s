@@ -1,5 +1,6 @@
 # Kubernetes cluster configuration
 export KUBERNETES_VERSION=v1.30.2
+export CHANNEL=latest/edge
 export CONTROL_PLANE_MACHINE_COUNT=1
 export WORKER_MACHINE_COUNT=1
 
