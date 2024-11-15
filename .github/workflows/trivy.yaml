@@ -1,7 +1,6 @@
 name: Trivy
 
 on:
-  pull_request:
   schedule:
     - cron: '0 10 * * *'
 
@@ -22,9 +21,8 @@ jobs:
           #  origin/1.28
           #  origin/v1.1
           #  origin/release-1.30
-          #  origin/master
           #  origin/main
-          BRANCHES=$(git branch -r | grep  -E '^  origin\/(((v|release-)?[0-9]+.[0-9]+)|(master|main))$' | \
+          BRANCHES=$(git branch -r | grep  -E '^  origin\/(((v|release-)?[0-9]+.[0-9]+)|(main))$' | \
             sed -e 's#^  origin/##'  | jq -R -s -c 'split("\n")[:-1]')
           echo "branches=$(echo $BRANCHES)" >> $GITHUB_OUTPUT
   scan:
