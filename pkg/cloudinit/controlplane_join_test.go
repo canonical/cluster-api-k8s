@@ -202,7 +202,7 @@ func TestNewJoinControlPlaneSnapInstall(t *testing.T) {
 		g.Expect(err).NotTo(HaveOccurred())
 		g.Expect(config.WriteFiles).To(ContainElement(gstruct.MatchFields(gstruct.IgnoreExtras, gstruct.Fields{
 			"Path":    Equal(fmt.Sprintf("/capi/etc/snap-%s", cloudinit.InstallOptionChannel)),
-			"Content": Equal("1.30-classic/edge"),
+			"Content": Equal("1.30-classic/stable"),
 		})))
 		g.Expect(config.WriteFiles).ToNot(ContainElement(HaveField("Path", fmt.Sprintf("/capi/etc/snap-%s", cloudinit.InstallOptionRevision))))
 		g.Expect(config.WriteFiles).ToNot(ContainElement(HaveField("Path", fmt.Sprintf("/capi/etc/snap-%s", cloudinit.InstallOptionLocalPath))))

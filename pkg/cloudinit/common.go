@@ -74,10 +74,9 @@ func NewBaseCloudConfig(data BaseUserData) (CloudConfig, error) {
 	snapInstall := data.SnapInstallData
 	// Default to k8s version if snap install option is not set or empty.
 	if snapInstall == nil || snapInstall.Option == "" {
-		// TODO: consider using "stable" once we'll have a stable channel.
 		snapInstall = &SnapInstallData{
 			Option: InstallOptionChannel,
-			Value:  fmt.Sprintf("%d.%d-classic/edge", kubernetesVersion.Major(), kubernetesVersion.Minor()),
+			Value:  fmt.Sprintf("%d.%d-classic/stable", kubernetesVersion.Major(), kubernetesVersion.Minor()),
 		}
 	}
 
