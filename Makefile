@@ -185,16 +185,21 @@ go-vet:
 go-fmt:
 	go fmt ./...
 
-test-unit: test-common test-bootstrap test-controlplane
+test-unit: clear-cover_all test-common test-bootstrap test-controlplane
+
+clear-cover_all:
+	rm -f cover_all.out
 
 test-common:
 	go test $(shell pwd)/pkg/... -coverprofile cover.out
+	cat cover.out >> cover_all.out
 
 all-bootstrap: manager-bootstrap
 
 # Run tests
 test-bootstrap: envtest generate-bootstrap generate-bootstrap-conversions manifests-bootstrap
 	KUBEBUILDER_ASSETS="$(shell $(ENVTEST) use $(ENVTEST_K8S_VERSION) --bin-dir $(TOOLS_BIN_DIR) -p path)" go test $(shell pwd)/bootstrap/... -coverprofile cover.out
+	cat cover.out >>  cover_all.out
 
 # Build manager binary
 manager-bootstrap: generate-bootstrap
@@ -265,6 +270,7 @@ all-controlplane: manager-controlplane
 # Run tests
 test-controlplane: envtest generate-controlplane generate-controlplane-conversions manifests-controlplane
 	KUBEBUILDER_ASSETS="$(shell $(ENVTEST) use $(ENVTEST_K8S_VERSION) --bin-dir $(TOOLS_BIN_DIR) -p path)" go test $(shell pwd)/controlplane/... -coverprofile cover.out
+	cat cover.out >>  cover_all.out
 
 .PHONY: docker-build-e2e
 docker-build-e2e: ## Run docker-build-* targets for all the images with settings to be used for the e2e tests
