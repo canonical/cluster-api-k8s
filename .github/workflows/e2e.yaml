@@ -9,7 +9,7 @@ permissions:
 jobs:
   build-e2e-images:
     name: Build & Run E2E Images
-    runs-on: [self-hosted, linux, X64, jammy, large]
+    runs-on: [self-hosted, linux, X64, jammy, xlarge]
     steps:
       -
         name: Login to GitHub Container Registry
