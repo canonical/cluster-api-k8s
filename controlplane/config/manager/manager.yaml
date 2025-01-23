@@ -29,4 +29,5 @@ spec:
         - --enable-leader-election
         image: controller:latest
         name: manager
+      serviceAccountName: manager
       terminationGracePeriodSeconds: 10
