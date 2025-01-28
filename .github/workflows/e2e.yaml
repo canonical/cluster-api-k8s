@@ -60,13 +60,16 @@ jobs:
     strategy:
       matrix:
         ginkgo_focus:
-          - "KCP remediation"
-          - "MachineDeployment remediation"
-          - "Workload cluster creation"
           - "Workload cluster scaling"
-          - "Workload cluster upgrade"
-          - "Certificate Refresh"
-          - "Orchestrated In place upgrades"
+          - "Workload cluster scaling"
+          - "Workload cluster scaling"
+          - "Workload cluster scaling"
+          - "Workload cluster scaling"
+          - "Workload cluster scaling"
+          - "Workload cluster scaling"
+          - "Workload cluster scaling"
+          - "Workload cluster scaling"
+          - "Workload cluster scaling"
       # TODO(ben): Remove once all tests are running stable.
       fail-fast: false
     steps:
