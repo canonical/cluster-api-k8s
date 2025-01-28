@@ -50,10 +50,4 @@ spec:
         - -t 5
         - TCP4-LISTEN:2380,fork,reuseaddr,nodelay
         - TCP4:$(HOSTIP):$(K8SD_PORT),nodelay
-        resources:
-          limits:
-            memory: 200Mi
-          requests:
-            cpu: 100m
-            memory: 200Mi
       terminationGracePeriodSeconds: 30
