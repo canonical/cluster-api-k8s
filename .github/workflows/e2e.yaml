@@ -61,6 +61,10 @@ jobs:
       matrix:
         ginkgo_focus:
           - "Workload cluster scaling"
+          - "Workload cluster scaling"
+          - "Workload cluster scaling"
+          - "Workload cluster scaling"
+          - "Workload cluster scaling"
       # TODO(ben): Remove once all tests are running stable.
       fail-fast: false
     steps:
