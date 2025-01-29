@@ -124,7 +124,28 @@ jobs:
           sudo sysctl fs.inotify.max_user_instances=8192
       - name: Run e2e tests
         run: |
+          set +e
+          ./pebble-follower.sh &
           sudo GINKGO_FOCUS="${{ matrix.ginkgo_focus }}" SKIP_RESOURCE_CLEANUP=true make test-e2e
+          exit_code="$?"
+
+          # Stop log collectors.
+          ps aux | grep "docker exec" | awk '{print $2}' | xargs kill
+
+          tar -czvf test-logs.tar.gz docker-ps.txt logs
+
+          # Generate a random string for the artefact name.
+          echo "RANDOM_STRING=$(tr -dc A-Za-z0-9 </dev/urandom | head -c 13)" >> $GITHUB_ENV
+          exit $exit_code
+
+      - name: Upload test service logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-test-logs-${{ github.run_id }}-${{ env.RANDOM_STRING }}
+          path: |
+            test-logs.tar.gz
+
       - name: Change artifact permissions
         if: always()
         run: |
