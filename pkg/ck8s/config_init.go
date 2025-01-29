@@ -122,7 +122,8 @@ func GenerateInitControlPlaneConfig(cfg InitControlPlaneConfig) (apiv1.Bootstrap
 		}
 	}
 
-	// extra SANs
+	out.ExtraSANs = cfg.ControlPlaneConfig.ExtraSANs
+	// ControlPlaneEndpoint IP should be added to the ExtraSANs
 	out.ExtraSANs = append(out.ExtraSANs, cfg.ControlPlaneEndpoint)
 
 	if v := cfg.ControlPlaneConfig.NodeTaints; len(v) > 0 {
