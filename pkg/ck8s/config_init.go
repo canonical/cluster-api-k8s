@@ -23,9 +23,9 @@ type InitControlPlaneConfig struct {
 
 	ClusterNetwork *clusterv1.ClusterNetwork
 
-	ExtraKubeProxyArgs map[string]*string
-	ExtraKubeletArgs map[string]*string
-	ExtraContainerdArgs map[string]*string
+	ExtraKubeProxyArgs         map[string]*string
+	ExtraKubeletArgs           map[string]*string
+	ExtraContainerdArgs        map[string]*string
 	ExtraK8sAPIServerProxyArgs map[string]*string
 }
 

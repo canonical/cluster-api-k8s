@@ -182,7 +182,7 @@ type CK8sControlPlaneConfig struct {
 
 	// ExtraK8sDqliteArgs - extra arguments to add to k8s-dqlite.
 	// +optional
-	ExtraK8sDqliteArgs  map[string]*string `json:"ExtraK8sDqliteArgs,omitempty"`
+	ExtraK8sDqliteArgs map[string]*string `json:"ExtraK8sDqliteArgs,omitempty"`
 }
 
 // GetMicroclusterPort returns the port to use for microcluster.

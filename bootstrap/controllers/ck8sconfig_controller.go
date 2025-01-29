@@ -247,8 +247,8 @@ func (r *CK8sConfigReconciler) joinControlplane(ctx context.Context, scope *Scop
 		ControlPlaneEndpoint: scope.Cluster.Spec.ControlPlaneEndpoint.Host,
 		ControlPlaneConfig:   controlPlaneConfig,
 
-		ExtraKubeProxyArgs: scope.Config.Spec.ExtraKubeProxyArgs,
-		ExtraKubeletArgs: scope.Config.Spec.ExtraKubeletArgs,
+		ExtraKubeProxyArgs:  scope.Config.Spec.ExtraKubeProxyArgs,
+		ExtraKubeletArgs:    scope.Config.Spec.ExtraKubeletArgs,
 		ExtraContainerdArgs: scope.Config.Spec.ExtraContainerdArgs,
 	})
 	joinConfig, err := kubeyaml.Marshal(configStruct)
@@ -349,9 +349,9 @@ func (r *CK8sConfigReconciler) joinWorker(ctx context.Context, scope *Scope) err
 	}
 
 	configStruct := ck8s.GenerateJoinWorkerConfig(ck8s.JoinWorkerConfig{
-		ExtraKubeProxyArgs: scope.Config.Spec.ExtraKubeProxyArgs,
-		ExtraKubeletArgs: scope.Config.Spec.ExtraKubeletArgs,
-		ExtraContainerdArgs: scope.Config.Spec.ExtraContainerdArgs,
+		ExtraKubeProxyArgs:         scope.Config.Spec.ExtraKubeProxyArgs,
+		ExtraKubeletArgs:           scope.Config.Spec.ExtraKubeletArgs,
+		ExtraContainerdArgs:        scope.Config.Spec.ExtraContainerdArgs,
 		ExtraK8sAPIServerProxyArgs: scope.Config.Spec.ExtraK8sAPIServerProxyArgs,
 	})
 	joinConfig, err := kubeyaml.Marshal(configStruct)
@@ -647,9 +647,9 @@ func (r *CK8sConfigReconciler) handleClusterNotInitialized(ctx context.Context, 
 
 		ClusterNetwork: scope.Cluster.Spec.ClusterNetwork,
 
-		ExtraKubeProxyArgs: scope.Config.Spec.ExtraKubeProxyArgs,
-		ExtraKubeletArgs: scope.Config.Spec.ExtraKubeletArgs,
-		ExtraContainerdArgs: scope.Config.Spec.ExtraContainerdArgs,
+		ExtraKubeProxyArgs:         scope.Config.Spec.ExtraKubeProxyArgs,
+		ExtraKubeletArgs:           scope.Config.Spec.ExtraKubeletArgs,
+		ExtraContainerdArgs:        scope.Config.Spec.ExtraContainerdArgs,
 		ExtraK8sAPIServerProxyArgs: scope.Config.Spec.ExtraK8sAPIServerProxyArgs,
 	}
 
