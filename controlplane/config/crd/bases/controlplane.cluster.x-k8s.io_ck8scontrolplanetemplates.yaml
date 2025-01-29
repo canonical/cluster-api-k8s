@@ -209,6 +209,12 @@ spec:
                           CK8sConfigSpec is a CK8sConfigSpec
                           to use for initializing and joining machines to the control plane.
                         properties:
+                          ExtraK8sAPIServerProxyArgs:
+                            additionalProperties:
+                              type: string
+                            description: ExtraK8sAPIServerProxyArgs - extra arguments
+                              to add to k8s-api-server-proxy.
+                            type: object
                           airGapped:
                             description: |-
                               AirGapped is used to signal that we are deploying to an airgap environment. In this case,
@@ -262,6 +268,12 @@ spec:
                             description: CK8sControlPlaneConfig is configuration for
                               the control plane node.
                             properties:
+                              ExtraK8sDqliteArgs:
+                                additionalProperties:
+                                  type: string
+                                description: ExtraK8sDqliteArgs - extra arguments
+                                  to add to k8s-dqlite.
+                                type: object
                               cloudProvider:
                                 description: CloudProvider is the cloud-provider configuration
                                   option to set.
@@ -288,8 +300,20 @@ spec:
                               extraKubeAPIServerArgs:
                                 additionalProperties:
                                   type: string
-                                description: ExtraKubeAPIServerArgs is extra arguments
+                                description: ExtraKubeAPIServerArgs - extra arguments
                                   to add to kube-apiserver.
+                                type: object
+                              extraKubeControllerManagerArgs:
+                                additionalProperties:
+                                  type: string
+                                description: ExtraKubeControllerManagerArgs - extra
+                                  arguments to add to kube-controller-manager.
+                                type: object
+                              extraKubeSchedulerArgs:
+                                additionalProperties:
+                                  type: string
+                                description: ExtraKubeSchedulerArgs - extra arguments
+                                  to add to kube-scheduler.
                                 type: object
                               extraSANs:
                                 description: ExtraSANs is a list of SANs to include
@@ -317,6 +341,24 @@ spec:
                                 items:
                                   type: string
                                 type: array
+                            type: object
+                          extraContainerdArgs:
+                            additionalProperties:
+                              type: string
+                            description: ExtraContainerdArgs - extra arguments to
+                              add to containerd.
+                            type: object
+                          extraKubeProxyArgs:
+                            additionalProperties:
+                              type: string
+                            description: ExtraKubeProxyArgs - extra arguments to add
+                              to kube-proxy.
+                            type: object
+                          extraKubeletArgs:
+                            additionalProperties:
+                              type: string
+                            description: ExtraKubeletArgs - extra arguments to add
+                              to kubelet.
                             type: object
                           files:
                             description: Files specifies extra files to be passed
