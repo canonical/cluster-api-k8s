@@ -246,6 +246,10 @@ func (r *CK8sConfigReconciler) joinControlplane(ctx context.Context, scope *Scop
 	configStruct := ck8s.GenerateJoinControlPlaneConfig(ck8s.JoinControlPlaneConfig{
 		ControlPlaneEndpoint: scope.Cluster.Spec.ControlPlaneEndpoint.Host,
 		ControlPlaneConfig:   controlPlaneConfig,
+
+		ExtraKubeProxyArgs:  scope.Config.Spec.ExtraKubeProxyArgs,
+		ExtraKubeletArgs:    scope.Config.Spec.ExtraKubeletArgs,
+		ExtraContainerdArgs: scope.Config.Spec.ExtraContainerdArgs,
 	})
 	joinConfig, err := kubeyaml.Marshal(configStruct)
 	if err != nil {
@@ -344,7 +348,12 @@ func (r *CK8sConfigReconciler) joinWorker(ctx context.Context, scope *Scope) err
 		return fmt.Errorf("failed to request join token: %w", err)
 	}
 
-	configStruct := ck8s.GenerateJoinWorkerConfig(ck8s.JoinWorkerConfig{})
+	configStruct := ck8s.GenerateJoinWorkerConfig(ck8s.JoinWorkerConfig{
+		ExtraKubeProxyArgs:         scope.Config.Spec.ExtraKubeProxyArgs,
+		ExtraKubeletArgs:           scope.Config.Spec.ExtraKubeletArgs,
+		ExtraContainerdArgs:        scope.Config.Spec.ExtraContainerdArgs,
+		ExtraK8sAPIServerProxyArgs: scope.Config.Spec.ExtraK8sAPIServerProxyArgs,
+	})
 	joinConfig, err := kubeyaml.Marshal(configStruct)
 	if err != nil {
 		return err
@@ -637,6 +646,11 @@ func (r *CK8sConfigReconciler) handleClusterNotInitialized(ctx context.Context, 
 		InitConfig:            scope.Config.Spec.InitConfig,
 
 		ClusterNetwork: scope.Cluster.Spec.ClusterNetwork,
+
+		ExtraKubeProxyArgs:         scope.Config.Spec.ExtraKubeProxyArgs,
+		ExtraKubeletArgs:           scope.Config.Spec.ExtraKubeletArgs,
+		ExtraContainerdArgs:        scope.Config.Spec.ExtraContainerdArgs,
+		ExtraK8sAPIServerProxyArgs: scope.Config.Spec.ExtraK8sAPIServerProxyArgs,
 	}
 
 	if !scope.Config.Spec.IsEtcdManaged() {

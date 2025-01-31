@@ -108,6 +108,22 @@ type CK8sConfigSpec struct {
 	// typically set in Jinja template form, e.g."{{ ds.meta_data.local_hostname }}".
 	// +optional
 	NodeName string `json:"nodeName,omitempty"`
+
+	// ExtraKubeProxyArgs - extra arguments to add to kube-proxy.
+	// +optional
+	ExtraKubeProxyArgs map[string]*string `json:"extraKubeProxyArgs,omitempty"`
+
+	// ExtraKubeletArgs - extra arguments to add to kubelet.
+	// +optional
+	ExtraKubeletArgs map[string]*string `json:"extraKubeletArgs,omitempty"`
+
+	// ExtraContainerdArgs - extra arguments to add to containerd.
+	// +optional
+	ExtraContainerdArgs map[string]*string `json:"extraContainerdArgs,omitempty"`
+
+	// ExtraK8sAPIServerProxyArgs - extra arguments to add to k8s-api-server-proxy.
+	// +optional
+	ExtraK8sAPIServerProxyArgs map[string]*string `json:"ExtraK8sAPIServerProxyArgs,omitempty"`
 }
 
 // IsEtcdManaged returns true if the control plane is using k8s-dqlite.
@@ -152,9 +168,21 @@ type CK8sControlPlaneConfig struct {
 	// +optional
 	MicroclusterPort *int `json:"microclusterPort,omitempty"`
 
-	// ExtraKubeAPIServerArgs is extra arguments to add to kube-apiserver.
+	// ExtraKubeAPIServerArgs - extra arguments to add to kube-apiserver.
 	// +optional
 	ExtraKubeAPIServerArgs map[string]*string `json:"extraKubeAPIServerArgs,omitempty"`
+
+	// ExtraKubeControllerManagerArgs - extra arguments to add to kube-controller-manager.
+	// +optional
+	ExtraKubeControllerManagerArgs map[string]*string `json:"extraKubeControllerManagerArgs,omitempty"`
+
+	// ExtraKubeSchedulerArgs - extra arguments to add to kube-scheduler.
+	// +optional
+	ExtraKubeSchedulerArgs map[string]*string `json:"extraKubeSchedulerArgs,omitempty"`
+
+	// ExtraK8sDqliteArgs - extra arguments to add to k8s-dqlite.
+	// +optional
+	ExtraK8sDqliteArgs map[string]*string `json:"ExtraK8sDqliteArgs,omitempty"`
 }
 
 // GetMicroclusterPort returns the port to use for microcluster.

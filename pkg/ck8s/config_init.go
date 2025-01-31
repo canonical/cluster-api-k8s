@@ -22,6 +22,11 @@ type InitControlPlaneConfig struct {
 	DatastoreServers      []string
 
 	ClusterNetwork *clusterv1.ClusterNetwork
+
+	ExtraKubeProxyArgs         map[string]*string
+	ExtraKubeletArgs           map[string]*string
+	ExtraContainerdArgs        map[string]*string
+	ExtraK8sAPIServerProxyArgs map[string]*string
 }
 
 func GenerateInitControlPlaneConfig(cfg InitControlPlaneConfig) (apiv1.BootstrapConfig, error) {
@@ -131,6 +136,13 @@ func GenerateInitControlPlaneConfig(cfg InitControlPlaneConfig) (apiv1.Bootstrap
 	}
 
 	out.ExtraNodeKubeAPIServerArgs = cfg.ControlPlaneConfig.ExtraKubeAPIServerArgs
+	out.ExtraNodeKubeControllerManagerArgs = cfg.ControlPlaneConfig.ExtraKubeControllerManagerArgs
+	out.ExtraNodeKubeSchedulerArgs = cfg.ControlPlaneConfig.ExtraKubeSchedulerArgs
+	out.ExtraNodeK8sDqliteArgs = cfg.ControlPlaneConfig.ExtraK8sDqliteArgs
+
+	out.ExtraNodeKubeProxyArgs = cfg.ExtraKubeProxyArgs
+	out.ExtraNodeKubeletArgs = cfg.ExtraKubeletArgs
+	out.ExtraNodeContainerdArgs = cfg.ExtraContainerdArgs
 
 	return out, nil
 }
