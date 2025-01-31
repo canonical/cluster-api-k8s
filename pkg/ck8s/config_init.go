@@ -103,6 +103,9 @@ func GenerateInitControlPlaneConfig(cfg InitControlPlaneConfig) (apiv1.Bootstrap
 
 	// features
 	out.ClusterConfig.DNS.Enabled = ptr.To(cfg.InitConfig.GetEnableDefaultDNS())
+	out.ClusterConfig.LoadBalancer.Enabled = ptr.To(cfg.InitConfig.GetEnableDefaultLoadBalancer())
+	out.ClusterConfig.Gateway.Enabled = ptr.To(cfg.InitConfig.GetEnableDefaultGateway())
+	out.ClusterConfig.Ingress.Enabled = ptr.To(cfg.InitConfig.GetEnableDefaultIngress())
 	out.ClusterConfig.LocalStorage.Enabled = ptr.To(cfg.InitConfig.GetEnableDefaultLocalStorage())
 	out.ClusterConfig.MetricsServer.Enabled = ptr.To(cfg.InitConfig.GetEnableDefaultMetricsServer())
 	out.ClusterConfig.Network.Enabled = ptr.To(cfg.InitConfig.GetEnableDefaultNetwork())

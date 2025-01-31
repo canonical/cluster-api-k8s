@@ -204,6 +204,18 @@ type CK8sInitConfiguration struct {
 	// +optional
 	EnableDefaultDNS *bool `json:"enableDefaultDNS,omitempty"`
 
+	// EnableDefaultLoadBalancer specifies whether to enable the default load-balancer configuration.
+	// +optional
+	EnableDefaultLoadBalancer *bool `json:"enableDefaultLoadBalancer,omitempty"`
+
+	// EnableDefaultGateway specifies whether to enable the default Gateway configuration.
+	// +optional
+	EnableDefaultGateway *bool `json:"enableDefaultGateway,omitempty"`
+
+	// EnableDefaultIngress specifies whether to enable the default Ingress configuration.
+	// +optional
+	EnableDefaultIngress *bool `json:"enableDefaultIngress,omitempty"`
+
 	// EnableDefaultLocalStorage specifies whether to enable the default local storage.
 	// +optional
 	EnableDefaultLocalStorage *bool `json:"enableDefaultLocalStorage,omitempty"`
@@ -217,13 +229,40 @@ type CK8sInitConfiguration struct {
 	EnableDefaultNetwork *bool `json:"enableDefaultNetwork,omitempty"`
 }
 
-// GetEnableDefaultNetwork returns the EnableDefaultNetwork field.
+// GetEnableDefaultDNS returns the EnableDefaultDNS field.
 // If the field is not set, it returns true.
 func (c *CK8sInitConfiguration) GetEnableDefaultDNS() bool {
 	if c.EnableDefaultDNS == nil {
 		return true
 	}
 	return *c.EnableDefaultDNS
+}
+
+// GetEnableDefaultLoadBalancer returns the EnableDefaultLoadBalancer field.
+// If the field is not set, it returns true.
+func (c *CK8sInitConfiguration) GetEnableDefaultLoadBalancer() bool {
+	if c.EnableDefaultLoadBalancer == nil {
+		return true
+	}
+	return *c.EnableDefaultLoadBalancer
+}
+
+// GetEnableDefaultGateway returns the EnableDefaultGateway field.
+// If the field is not set, it returns true.
+func (c *CK8sInitConfiguration) GetEnableDefaultGateway() bool {
+	if c.EnableDefaultGateway == nil {
+		return true
+	}
+	return *c.EnableDefaultGateway
+}
+
+// GetEnableDefaultIngress returns the EnableDefaultIngress field.
+// If the field is not set, it returns true.
+func (c *CK8sInitConfiguration) GetEnableDefaultIngress() bool {
+	if c.EnableDefaultIngress == nil {
+		return true
+	}
+	return *c.EnableDefaultIngress
 }
 
 // GetEnableDefaultLocalStorage returns the EnableDefaultLocalStorage field.
