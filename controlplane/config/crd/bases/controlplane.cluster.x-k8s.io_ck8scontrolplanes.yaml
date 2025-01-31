@@ -457,6 +457,18 @@ spec:
                         description: EnableDefaultDNS specifies whether to enable
                           the default DNS configuration.
                         type: boolean
+                      enableDefaultGateway:
+                        description: EnableDefaultGateway specifies whether to enable
+                          the default Gateway configuration.
+                        type: boolean
+                      enableDefaultIngress:
+                        description: EnableDefaultIngress specifies whether to enable
+                          the default Ingress configuration.
+                        type: boolean
+                      enableDefaultLoadBalancer:
+                        description: EnableDefaultLoadBalancer specifies whether to
+                          enable the default LoadBalancer configuration.
+                        type: boolean
                       enableDefaultLocalStorage:
                         description: EnableDefaultLocalStorage specifies whether to
                           enable the default local storage.
