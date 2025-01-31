@@ -204,7 +204,7 @@ type CK8sInitConfiguration struct {
 	// +optional
 	EnableDefaultDNS *bool `json:"enableDefaultDNS,omitempty"`
 
-	// EnableDefaultLoadBalancer specifies whether to enable the default load-balancer configuration.
+	// EnableDefaultLoadBalancer specifies whether to enable the default LoadBalancer configuration.
 	// +optional
 	EnableDefaultLoadBalancer *bool `json:"enableDefaultLoadBalancer,omitempty"`
 

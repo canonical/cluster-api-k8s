@@ -448,7 +448,7 @@ spec:
                                 type: boolean
                               enableDefaultLoadBalancer:
                                 description: EnableDefaultLoadBalancer specifies whether
-                                  to enable the default load-balancer configuration.
+                                  to enable the default LoadBalancer configuration.
                                 type: boolean
                               enableDefaultLocalStorage:
                                 description: EnableDefaultLocalStorage specifies whether
