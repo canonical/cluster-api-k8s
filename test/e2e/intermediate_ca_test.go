@@ -128,6 +128,12 @@ var _ = Describe("Intermediate CA", func() {
                 ctx, &secret, metav1.CreateOptions{})
             Expect(err).ShouldNot(HaveOccurred())
 
+            // Create front-proxy CA cert secret
+            secret.Name = clusterName + "-proxy"
+            _, err = mgmtClient.CoreV1().Secrets(namespace.Name).Create(
+                ctx, &secret, metav1.CreateOptions{})
+            Expect(err).ShouldNot(HaveOccurred())
+
             By("Creating a workload cluster")
             ApplyClusterTemplateAndWait(ctx, ApplyClusterTemplateAndWaitInput{
                 ClusterProxy: bootstrapClusterProxy,
@@ -139,7 +145,7 @@ var _ = Describe("Intermediate CA", func() {
                     Namespace:                namespace.Name,
                     ClusterName:              clusterName,
                     KubernetesVersion:        e2eConfig.GetVariable(KubernetesVersion),
-                    ControlPlaneMachineCount: pointer.Int64Ptr(1),
+                    ControlPlaneMachineCount: pointer.Int64Ptr(3),
                     WorkerMachineCount:       pointer.Int64Ptr(3),
                 },
                 WaitForClusterIntervals:      e2eConfig.GetIntervals(specName, "wait-cluster"),
