@@ -124,7 +124,7 @@ jobs:
           exit $exit_code
 
       - name: Upload test service logs
-        if: ${{ failure() }}
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: e2e-test-logs-${{ github.run_id }}-${{ env.RANDOM_STRING }}
