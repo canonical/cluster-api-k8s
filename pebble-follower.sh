@@ -8,7 +8,7 @@ mkdir -p logs
 
 until [ `docker ps -a | grep "control-plane-" | wc -l` = "6" ]; do
   echo "Waiting for control plane nodes...";
-  sleep 60
+  sleep 15
 done
 
 # k8s services may still need to be initialized before we start collecting logs.
