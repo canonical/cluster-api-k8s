@@ -201,7 +201,7 @@ func (w *Workload) GetCertificatesExpiryDate(ctx context.Context, machine *clust
 		return "", fmt.Errorf("failed to create k8sd proxy: %w", err)
 	}
 
-	if err := w.doK8sdRequest(ctx, k8sdProxy, http.MethodPost, "1.0/x/capi/certificates-expiry", header, request, response); err != nil {
+	if err := w.doK8sdRequest(ctx, k8sdProxy, http.MethodPost, fmt.Sprintf("%s/%s", apiv1.K8sdAPIVersion, apiv1.ClusterAPICertificatesExpiryRPC), header, request, response); err != nil {
 		return "", fmt.Errorf("failed to get certificates expiry date: %w", err)
 	}
 
@@ -220,7 +220,7 @@ func (w *Workload) ApproveCertificates(ctx context.Context, machine *clusterv1.M
 
 	header := w.newHeaderWithCAPIAuthToken()
 
-	if err := w.doK8sdRequest(ctx, k8sdProxy, http.MethodPost, "1.0/x/capi/refresh-certs/approve", header, request, response); err != nil {
+	if err := w.doK8sdRequest(ctx, k8sdProxy, http.MethodPost, fmt.Sprintf("%s/%s", apiv1.K8sdAPIVersion, apiv1.ClusterAPIApproveWorkerCSRRPC), header, request, response); err != nil {
 		return fmt.Errorf("failed to approve certificates: %w", err)
 	}
 
@@ -238,7 +238,7 @@ func (w *Workload) refreshCertificatesPlan(ctx context.Context, machine *cluster
 		return 0, fmt.Errorf("failed to create k8sd proxy: %w", err)
 	}
 
-	if err := w.doK8sdRequest(ctx, k8sdProxy, http.MethodPost, "1.0/x/capi/refresh-certs/plan", header, planRequest, planResponse); err != nil {
+	if err := w.doK8sdRequest(ctx, k8sdProxy, http.MethodPost, fmt.Sprintf("%s/%s", apiv1.K8sdAPIVersion, apiv1.ClusterAPICertificatesPlanRPC), header, planRequest, planResponse); err != nil {
 		return 0, fmt.Errorf("failed to refresh certificates: %w", err)
 	}
 
@@ -254,7 +254,7 @@ func (w *Workload) refreshCertificatesRun(ctx context.Context, machine *clusterv
 		return 0, fmt.Errorf("failed to create k8sd proxy: %w", err)
 	}
 
-	if err := w.doK8sdRequest(ctx, k8sdProxy, http.MethodPost, "1.0/x/capi/refresh-certs/run", header, request, runResponse); err != nil {
+	if err := w.doK8sdRequest(ctx, k8sdProxy, http.MethodPost, fmt.Sprintf("%s/%s", apiv1.K8sdAPIVersion, apiv1.ClusterAPICertificatesRunRPC), header, request, runResponse); err != nil {
 		return 0, fmt.Errorf("failed to run refresh certificates: %w", err)
 	}
 
@@ -356,7 +356,7 @@ func (w *Workload) RefreshMachine(ctx context.Context, machine *clusterv1.Machin
 
 	header := w.newHeaderWithNodeToken(nodeToken)
 
-	if err := w.doK8sdRequest(ctx, k8sdProxy, http.MethodPost, "1.0/snap/refresh", header, request, response); err != nil {
+	if err := w.doK8sdRequest(ctx, k8sdProxy, http.MethodPost, fmt.Sprintf("%s/%s", apiv1.K8sdAPIVersion, apiv1.SnapRefreshRPC), header, request, response); err != nil {
 		return "", fmt.Errorf("failed to refresh machine %s: %w", machine.Name, err)
 	}
 
@@ -375,7 +375,7 @@ func (w *Workload) GetRefreshStatusForMachine(ctx context.Context, machine *clus
 
 	header := w.newHeaderWithNodeToken(nodeToken)
 
-	if err := w.doK8sdRequest(ctx, k8sdProxy, http.MethodPost, "1.0/snap/refresh-status", header, request, response); err != nil {
+	if err := w.doK8sdRequest(ctx, k8sdProxy, http.MethodPost, fmt.Sprintf("%s/%s", apiv1.K8sdAPIVersion, apiv1.SnapRefreshStatusRPC), header, request, response); err != nil {
 		return nil, fmt.Errorf("failed to refresh machine %s: %w", machine.Name, err)
 	}
 
@@ -408,7 +408,7 @@ func (w *Workload) requestJoinToken(ctx context.Context, name string, worker boo
 
 	header := w.newHeaderWithCAPIAuthToken()
 
-	if err := w.doK8sdRequest(ctx, k8sdProxy, http.MethodPost, "1.0/x/capi/generate-join-token", header, request, response); err != nil {
+	if err := w.doK8sdRequest(ctx, k8sdProxy, http.MethodPost, fmt.Sprintf("%s/%s", apiv1.K8sdAPIVersion, apiv1.ClusterAPIGetJoinTokenRPC), header, request, response); err != nil {
 		return "", fmt.Errorf("failed to get join token: %w", err)
 	}
 
@@ -435,7 +435,7 @@ func (w *Workload) RemoveMachineFromCluster(ctx context.Context, machine *cluste
 
 	header := w.newHeaderWithCAPIAuthToken()
 
-	if err := w.doK8sdRequest(ctx, k8sdProxy, http.MethodPost, "1.0/x/capi/remove-node", header, request, nil); err != nil {
+	if err := w.doK8sdRequest(ctx, k8sdProxy, http.MethodPost, fmt.Sprintf("%s/%s", apiv1.K8sdAPIVersion, apiv1.ClusterAPIRemoveNodeRPC), header, request, nil); err != nil {
 		return fmt.Errorf("failed to remove %s from cluster: %w", machine.Name, err)
 	}
 	return nil
