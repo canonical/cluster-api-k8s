@@ -13,7 +13,7 @@ elif [ -f "/capi/etc/snap-revision" ]; then
   snap install k8s --classic --revision "${snap_revision}"
 elif [ -f "/capi/etc/snap-local-path" ]; then
   snap_local_path="$(cat /capi/etc/snap-local-path)"
-  snap install k8s --classic --dangerous "${snap_local_path}"
+  snap install --classic --dangerous "${snap_local_path}"
 else
   echo "No snap installation option found"
   exit 1
