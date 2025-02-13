@@ -90,7 +90,7 @@ type CK8sConfigSpec struct {
 	// +optional
 	Revision string `json:"revision,omitempty"`
 
-	// LocalPath is the path of a local snap file in the workload cluster to use for the snap install.
+	// LocalPath is the path of a local snap file (or a folder containing local snap files) in the workload cluster to use for the snap install.
 	// If Channel or Revision are set, this will be ignored.
 	// +optional
 	LocalPath string `json:"localPath,omitempty"`

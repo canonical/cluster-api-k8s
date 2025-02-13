@@ -286,7 +286,7 @@ spec:
                 type: object
               localPath:
                 description: |-
-                  LocalPath is the path of a local snap file in the workload cluster to use for the snap install.
+                  LocalPath is the path of a local snap file (or a folder containing local snap files) in the workload cluster to use for the snap install.
                   If Channel or Revision are set, this will be ignored.
                 type: string
               noProxy:
