@@ -112,3 +112,10 @@ jobs:
       - name: Run e2e tests
         run: |
           sudo GINKGO_FOCUS="${{ matrix.ginkgo_focus }}" SKIP_RESOURCE_CLEANUP=true make test-e2e
+
+      - name: Upload test artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-test-artifacts-${{ github.run_id }}-${{ env.RANDOM_STRING }}-${{ matrix.ginkgo_focus }}
+          path: _artifacts
