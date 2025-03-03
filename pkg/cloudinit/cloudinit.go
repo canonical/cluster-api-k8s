@@ -71,7 +71,6 @@ func GenerateCloudConfig(config CloudConfig) ([]byte, error) {
 }
 
 func FormatAdditionalUserData(additionalUserData map[string]string) error {
-
 	// managed keys are removed from provided additional user data
 	for _, key := range managedCloudInitFields {
 		delete(additionalUserData, key)

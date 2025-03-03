@@ -3,8 +3,9 @@ package cloudinit_test
 import (
 	"testing"
 
-	"github.com/canonical/cluster-api-k8s/pkg/cloudinit"
 	. "github.com/onsi/gomega"
+
+	"github.com/canonical/cluster-api-k8s/pkg/cloudinit"
 )
 
 func TestFormatAdditionalUserData(t *testing.T) {

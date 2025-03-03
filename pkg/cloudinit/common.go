@@ -88,7 +88,7 @@ func NewBaseCloudConfig(data BaseUserData) (CloudConfig, error) {
 		WriteFiles:  make([]File, 0, len(scripts)+len(data.ExtraFiles)+3),
 	}
 
-	// additonal user defined cloud-init configurations
+	// additoinal user defined cloud-init configurations
 	config.AdditionalUserData = data.AdditionalUserData
 	if config.AdditionalUserData == nil {
 		config.AdditionalUserData = make(map[string]string)

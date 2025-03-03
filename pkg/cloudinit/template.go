@@ -30,7 +30,6 @@ var (
 )
 
 func templateToYAML(v interface{}) (string, error) {
-
 	buf := &bytes.Buffer{}
 	en := yaml.NewEncoder(buf)
 	en.SetIndent(defaultYamlIndent)
