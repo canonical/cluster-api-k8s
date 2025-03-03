@@ -1,6 +1,7 @@
 package cloudinit_test
 
 import (
+	"fmt"
 	"testing"
 
 	. "github.com/onsi/gomega"
@@ -156,11 +157,12 @@ runcmd:
 bootcmd:
   - bootCmd
 
-disk_setup:
+disk_setup: 
   ephemeral0:
     layout: false
     overwrite: false
     table_type: mbr
+  
 package_update: true
 users: 
 - expiredate: "2032-09-01"
@@ -183,7 +185,7 @@ users:
 			cloudinitScript, err := cloudinit.GenerateCloudConfig(c.config)
 
 			g.Expect(err).ToNot(HaveOccurred())
-
+			fmt.Println(string(cloudinitScript))
 			g.Expect(string(cloudinitScript)).To(Equal(c.expectedCloudInitScript))
 		})
 	}
