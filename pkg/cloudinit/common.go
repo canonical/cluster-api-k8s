@@ -35,6 +35,8 @@ type BaseUserData struct {
 	PreRunCommands []string
 	// PostRunCommands is a list of commands to run after k8s installation.
 	PostRunCommands []string
+	// AdditionalUserData is a key/value map of user defined cloud-init configuration.
+	AdditionalUserData map[string]string
 	// BootstrapConfig is the user supplied bootstrap configuration, taking
 	// precedence over ConfigFileContents.
 	BootstrapConfig string
@@ -84,6 +86,12 @@ func NewBaseCloudConfig(data BaseUserData) (CloudConfig, error) {
 	config := CloudConfig{
 		RunCommands: []string{"set -x"},
 		WriteFiles:  make([]File, 0, len(scripts)+len(data.ExtraFiles)+3),
+	}
+
+	// additonal user defined cloud-init configurations
+	config.AdditionalUserData = data.AdditionalUserData
+	if config.AdditionalUserData == nil {
+		config.AdditionalUserData = make(map[string]string)
 	}
 
 	// base files
