@@ -1,7 +1,6 @@
 package cloudinit_test
 
 import (
-	"fmt"
 	"testing"
 
 	. "github.com/onsi/gomega"
@@ -185,7 +184,7 @@ users:
 			cloudinitScript, err := cloudinit.GenerateCloudConfig(c.config)
 
 			g.Expect(err).ToNot(HaveOccurred())
-			fmt.Println(string(cloudinitScript))
+
 			g.Expect(string(cloudinitScript)).To(Equal(c.expectedCloudInitScript))
 		})
 	}

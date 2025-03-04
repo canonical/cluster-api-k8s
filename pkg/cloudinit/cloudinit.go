@@ -18,7 +18,7 @@ package cloudinit
 
 import (
 	"bytes"
-	_ "embed"
+	"embed"
 	"fmt"
 	"strings"
 	"text/template"
@@ -53,24 +53,34 @@ type CloudConfig struct {
 }
 
 //go:embed scripts/cloud-config-template
-var cloudConfigTemplate string
+//go:embed scripts/additional-user-data-template
+var cloudConfigTemplate embed.FS
 
 // GenerateCloudConfig generates userdata from a CloudConfig.
 func GenerateCloudConfig(config CloudConfig) ([]byte, error) {
-	tmpl := template.Must(template.New("CloudConfigTemplate").Funcs(templateFuncsMap).Parse(cloudConfigTemplate))
+	tmpl := template.Must(template.New("cloud-config-template").Funcs(templateFuncsMap).ParseFS(
+		cloudConfigTemplate,
+		"scripts/cloud-config-template",
+		"scripts/additional-user-data-template",
+	))
 
 	if err := FormatAdditionalUserData(config.AdditionalUserData); err != nil {
 		return nil, fmt.Errorf("failed to parse additional user data: %w", err)
 	}
 
-	b := &bytes.Buffer{}
-	if err := tmpl.Execute(b, config); err != nil {
+	buf := &bytes.Buffer{}
+	if err := tmpl.Execute(buf, config); err != nil {
 		return nil, fmt.Errorf("failed to render cloud-config: %w", err)
 	}
-	return b.Bytes(), nil
+	return buf.Bytes(), nil
 }
 
 func FormatAdditionalUserData(additionalUserData map[string]string) error {
+	tmpl := template.Must(template.New("cloud-config-template").Funcs(templateFuncsMap).ParseFS(
+		cloudConfigTemplate,
+		"scripts/additional-user-data-template"))
+	tmpl = template.Must(tmpl.Parse(`{{template "additional" .}}`))
+
 	// managed keys are removed from provided additional user data
 	for _, key := range managedCloudInitFields {
 		delete(additionalUserData, key)
@@ -119,6 +129,17 @@ func FormatAdditionalUserData(additionalUserData map[string]string) error {
 		// a valid yaml value
 		// e.g. map[string]string{"key": "value"} becomes
 		// key: value
+	}
+
+	// validate the formatted user data key/value map
+	buf := &bytes.Buffer{}
+	if err := tmpl.Execute(buf, additionalUserData); err != nil {
+		return fmt.Errorf("failed to generate scripts/additional-user-data-template: %w", err)
+	}
+
+	out := make(map[string]interface{})
+	if err := yaml.Unmarshal(buf.Bytes(), out); err != nil {
+		return fmt.Errorf("failed to validate additional cloud-init user data: %w, please check if you have provided a valid yaml content: %s", err, buf.String())
 	}
 
 	return nil

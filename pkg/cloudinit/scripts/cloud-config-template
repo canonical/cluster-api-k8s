@@ -1,9 +1,3 @@
-{{- define "additional" -}}
-{{- range $key, $value := . }}
-{{ $key -}}: {{ $value -}}
-{{- end -}}
-{{- end -}}
-
 ## template: jinja
 #cloud-config
 {{ . | ToYAML -}}
