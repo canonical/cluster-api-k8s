@@ -1,6 +1,7 @@
 package cloudinit_test
 
 import (
+	"context"
 	"testing"
 
 	. "github.com/onsi/gomega"
@@ -71,7 +72,7 @@ func TestFormatAdditionalUserData(t *testing.T) {
 
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
-			err := cloudinit.FormatAdditionalUserData(c.inputAdditionalUserData)
+			err := cloudinit.FormatAdditionalUserData(context.Background(), c.inputAdditionalUserData)
 			if c.expectError {
 				g.Expect(err).To(HaveOccurred())
 				return
@@ -181,7 +182,7 @@ users:
 
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
-			cloudinitScript, err := cloudinit.GenerateCloudConfig(c.config)
+			cloudinitScript, err := cloudinit.GenerateCloudConfig(context.Background(), c.config)
 
 			g.Expect(err).ToNot(HaveOccurred())
 

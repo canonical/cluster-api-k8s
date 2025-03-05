@@ -302,7 +302,7 @@ func (r *CK8sConfigReconciler) joinControlplane(ctx context.Context, scope *Scop
 	if err != nil {
 		return err
 	}
-	cloudInitData, err := cloudinit.GenerateCloudConfig(cloudConfig)
+	cloudInitData, err := cloudinit.GenerateCloudConfig(logr.NewContext(ctx, r.Log), cloudConfig)
 	if err != nil {
 		return fmt.Errorf("failed to generate cloud-init: %w", err)
 	}
@@ -405,7 +405,7 @@ func (r *CK8sConfigReconciler) joinWorker(ctx context.Context, scope *Scope) err
 	if err != nil {
 		return err
 	}
-	cloudInitData, err := cloudinit.GenerateCloudConfig(cloudConfig)
+	cloudInitData, err := cloudinit.GenerateCloudConfig(logr.NewContext(ctx, r.Log), cloudConfig)
 	if err != nil {
 		return fmt.Errorf("failed to generate cloud-init: %w", err)
 	}
@@ -730,7 +730,8 @@ func (r *CK8sConfigReconciler) handleClusterNotInitialized(ctx context.Context, 
 	if err != nil {
 		return ctrl.Result{}, err
 	}
-	cloudInitData, err := cloudinit.GenerateCloudConfig(cloudConfig)
+
+	cloudInitData, err := cloudinit.GenerateCloudConfig(logr.NewContext(ctx, r.Log), cloudConfig)
 	if err != nil {
 		return ctrl.Result{}, fmt.Errorf("failed to generate cloud-init: %w", err)
 	}
