@@ -89,9 +89,9 @@ func NewBaseCloudConfig(data BaseUserData) (CloudConfig, error) {
 	}
 
 	// additoinal user defined cloud-init configurations
-	config.AdditionalUserData = data.AdditionalUserData
+	config.AdditionalUserData = FormatAdditionalUserData(data.AdditionalUserData)
 	if config.AdditionalUserData == nil {
-		config.AdditionalUserData = make(map[string]string)
+		config.AdditionalUserData = make(map[string]any)
 	}
 
 	// base files

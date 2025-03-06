@@ -1,7 +1,6 @@
 package cloudinit_test
 
 import (
-	"context"
 	"testing"
 
 	. "github.com/onsi/gomega"
@@ -15,26 +14,73 @@ func TestFormatAdditionalUserData(t *testing.T) {
 	cases := []struct {
 		name                        string
 		inputAdditionalUserData     map[string]string
-		formattedAdditionalUserData map[string]string
-		expectError                 bool
+		formattedAdditionalUserData map[string]any
 	}{
+		{
+			name: "AdditionalUserData",
+			inputAdditionalUserData: map[string]string{
+				"disk_setup": `ephemeral0:
+  layout: false
+  overwrite: false
+  table_type: mbr`,
+				"package_update": "true",
+				"users": `- expiredate: "2032-09-01"
+  gecos: Foo B. Bar
+  groups: users
+  lock_passwd: false
+  name: foobar
+  passwd: $6$j212wezy$7H/1LT4f9/N3wpgNunhsIqtMj62OKiS3nyNwuizouQc3u7MbYCarYeAHWYPYb2FT.lbioDm2RrkJPb9BZMN1O/
+  primary_group: foobar
+  selinux_user: staff_u
+  ssh_import_id:
+    - lp:falcojr
+    - gh:TheRealFalcon
+`,
+			},
+			formattedAdditionalUserData: map[string]any{
+				"package_update": true,
+				"disk_setup": map[string]any{
+					"ephemeral0": map[string]any{
+						"table_type": "mbr",
+						"layout":     false,
+						"overwrite":  false,
+					},
+				},
+				"users": []any{
+					map[string]any{
+						"name":          "foobar",
+						"gecos":         "Foo B. Bar",
+						"primary_group": "foobar",
+						"groups":        "users",
+						"selinux_user":  "staff_u",
+						"expiredate":    "2032-09-01",
+						"ssh_import_id": []any{
+							"lp:falcojr",
+							"gh:TheRealFalcon",
+						},
+						"lock_passwd": false,
+						"passwd":      "$6$j212wezy$7H/1LT4f9/N3wpgNunhsIqtMj62OKiS3nyNwuizouQc3u7MbYCarYeAHWYPYb2FT.lbioDm2RrkJPb9BZMN1O/",
+					},
+				},
+			},
+		},
 		{
 			name: "MappingAdditionalUserData",
 			inputAdditionalUserData: map[string]string{
 				"disk_setup": `ephemeral0:
-    table_type: mbr
-    layout: False
-    overwrite: False`,
+  table_type: mbr
+  layout: False
+  overwrite: False`,
 			},
-			formattedAdditionalUserData: map[string]string{
-				"disk_setup": `
-  ephemeral0:
-    layout: false
-    overwrite: false
-    table_type: mbr
-  `,
+			formattedAdditionalUserData: map[string]any{
+				"disk_setup": map[string]any{
+					"ephemeral0": map[string]any{
+						"layout":     false,
+						"overwrite":  false,
+						"table_type": "mbr",
+					},
+				},
 			},
-			expectError: false,
 		},
 		{
 			name: "SequenceAdditionalUserData",
@@ -45,16 +91,17 @@ func TestFormatAdditionalUserData(t *testing.T) {
   groups: users,admin,wheel,lxd
   sudo: ALL=(ALL) NOPASSWD:ALL`,
 			},
-			formattedAdditionalUserData: map[string]string{
-				"users": `
-- gecos: Ansible User
-  groups: users,admin,wheel,lxd
-  name: ansible
-  shell: /bin/bash
-  sudo: ALL=(ALL) NOPASSWD:ALL
-`,
+			formattedAdditionalUserData: map[string]any{
+				"users": []any{
+					map[string]any{
+						"gecos":  "Ansible User",
+						"groups": "users,admin,wheel,lxd",
+						"name":   "ansible",
+						"shell":  "/bin/bash",
+						"sudo":   "ALL=(ALL) NOPASSWD:ALL",
+					},
+				},
 			},
-			expectError: false,
 		},
 		{
 			name: "LiteralAdditionalUserData",
@@ -62,24 +109,28 @@ func TestFormatAdditionalUserData(t *testing.T) {
 				"package_update":  "true",
 				"package_upgrade": "true",
 			},
-			formattedAdditionalUserData: map[string]string{
-				"package_update":  "true",
-				"package_upgrade": "true",
+			formattedAdditionalUserData: map[string]any{
+				"package_update":  true,
+				"package_upgrade": true,
 			},
-			expectError: false,
+		},
+		{
+			name: "WithManagedKeys",
+			inputAdditionalUserData: map[string]string{
+				"package_update":                         "true",
+				cloudinit.GetManagedCloudInitFields()[0]: "some-value",
+			},
+			formattedAdditionalUserData: map[string]any{
+				"package_update": true,
+				// managed key is ignored
+			},
 		},
 	}
 
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
-			err := cloudinit.FormatAdditionalUserData(context.Background(), c.inputAdditionalUserData)
-			if c.expectError {
-				g.Expect(err).To(HaveOccurred())
-				return
-			}
-
-			g.Expect(err).ToNot(HaveOccurred())
-			g.Expect(c.inputAdditionalUserData).To(Equal(c.formattedAdditionalUserData))
+			formatted := cloudinit.FormatAdditionalUserData(c.inputAdditionalUserData)
+			g.Expect(c.formattedAdditionalUserData).To(Equal(formatted))
 		})
 	}
 }
@@ -108,45 +159,35 @@ bootcmd:
 `,
 		},
 		{
-			name: "WithManagedKeysAsAdditionalUserdata",
-			config: cloudinit.CloudConfig{
-				RunCommands:  []string{"runCmd"},
-				BootCommands: []string{"bootCmd"},
-				AdditionalUserData: map[string]string{
-					"runcmd": "anotherRunCmd",
-				},
-			},
-			expectedCloudInitScript: `## template: jinja
-#cloud-config
-write_files: []
-runcmd:
-  - runCmd
-bootcmd:
-  - bootCmd
-`,
-		},
-		{
 			name: "WithAdditionalUserData",
 			config: cloudinit.CloudConfig{
 				RunCommands:  []string{"runCmd"},
 				BootCommands: []string{"bootCmd"},
-				AdditionalUserData: map[string]string{
-					"package_update": "true",
-					"disk_setup": `ephemeral0:
-    table_type: mbr
-    layout: False
-    overwrite: False`,
-					"users": `- name: foobar
-  gecos: Foo B. Bar
-  primary_group: foobar
-  groups: users
-  selinux_user: staff_u
-  expiredate: '2032-09-01'
-  ssh_import_id:
-  - lp:falcojr
-  - gh:TheRealFalcon
-  lock_passwd: false
-  passwd: $6$j212wezy$7H/1LT4f9/N3wpgNunhsIqtMj62OKiS3nyNwuizouQc3u7MbYCarYeAHWYPYb2FT.lbioDm2RrkJPb9BZMN1O/`,
+				AdditionalUserData: map[string]any{
+					"package_update": true,
+					"disk_setup": map[string]any{
+						"ephemeral0": map[string]any{
+							"table_type": "mbr",
+							"layout":     false,
+							"overwrite":  false,
+						},
+					},
+					"users": []any{
+						map[string]any{
+							"name":          "foobar",
+							"gecos":         "Foo B. Bar",
+							"primary_group": "foobar",
+							"groups":        "users",
+							"selinux_user":  "staff_u",
+							"expiredate":    "2032-09-01",
+							"ssh_import_id": []any{
+								"lp:falcojr",
+								"gh:TheRealFalcon",
+							},
+							"lock_passwd": false,
+							"passwd":      "$6$j212wezy$7H/1LT4f9/N3wpgNunhsIqtMj62OKiS3nyNwuizouQc3u7MbYCarYeAHWYPYb2FT.lbioDm2RrkJPb9BZMN1O/",
+						},
+					},
 				},
 			},
 			expectedCloudInitScript: `## template: jinja
@@ -156,36 +197,33 @@ runcmd:
   - runCmd
 bootcmd:
   - bootCmd
-
-disk_setup: 
+disk_setup:
   ephemeral0:
     layout: false
     overwrite: false
     table_type: mbr
-  
 package_update: true
-users: 
-- expiredate: "2032-09-01"
-  gecos: Foo B. Bar
-  groups: users
-  lock_passwd: false
-  name: foobar
-  passwd: $6$j212wezy$7H/1LT4f9/N3wpgNunhsIqtMj62OKiS3nyNwuizouQc3u7MbYCarYeAHWYPYb2FT.lbioDm2RrkJPb9BZMN1O/
-  primary_group: foobar
-  selinux_user: staff_u
-  ssh_import_id:
-    - lp:falcojr
-    - gh:TheRealFalcon
+users:
+  - expiredate: "2032-09-01"
+    gecos: Foo B. Bar
+    groups: users
+    lock_passwd: false
+    name: foobar
+    passwd: $6$j212wezy$7H/1LT4f9/N3wpgNunhsIqtMj62OKiS3nyNwuizouQc3u7MbYCarYeAHWYPYb2FT.lbioDm2RrkJPb9BZMN1O/
+    primary_group: foobar
+    selinux_user: staff_u
+    ssh_import_id:
+      - lp:falcojr
+      - gh:TheRealFalcon
 `,
 		},
 	}
 
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
-			cloudinitScript, err := cloudinit.GenerateCloudConfig(context.Background(), c.config)
+			cloudinitScript, err := cloudinit.GenerateCloudConfig(c.config)
 
 			g.Expect(err).ToNot(HaveOccurred())
-
 			g.Expect(string(cloudinitScript)).To(Equal(c.expectedCloudInitScript))
 		})
 	}
