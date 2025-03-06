@@ -239,28 +239,28 @@ func (c *CK8sInitConfiguration) GetEnableDefaultDNS() bool {
 }
 
 // GetEnableDefaultLoadBalancer returns the EnableDefaultLoadBalancer field.
-// If the field is not set, it returns true.
+// If the field is not set, it returns the value of GetEnableDefaultNetwork.
 func (c *CK8sInitConfiguration) GetEnableDefaultLoadBalancer() bool {
 	if c.EnableDefaultLoadBalancer == nil {
-		return true
+		return c.GetEnableDefaultNetwork()
 	}
 	return *c.EnableDefaultLoadBalancer
 }
 
 // GetEnableDefaultGateway returns the EnableDefaultGateway field.
-// If the field is not set, it returns true.
+// If the field is not set, it returns the value of GetEnableDefaultNetwork.
 func (c *CK8sInitConfiguration) GetEnableDefaultGateway() bool {
 	if c.EnableDefaultGateway == nil {
-		return true
+		return c.GetEnableDefaultNetwork()
 	}
 	return *c.EnableDefaultGateway
 }
 
 // GetEnableDefaultIngress returns the EnableDefaultIngress field.
-// If the field is not set, it returns true.
+// If the field is not set, it returns the value of GetEnableDefaultNetwork.
 func (c *CK8sInitConfiguration) GetEnableDefaultIngress() bool {
 	if c.EnableDefaultIngress == nil {
-		return true
+		return c.GetEnableDefaultNetwork()
 	}
 	return *c.EnableDefaultIngress
 }
