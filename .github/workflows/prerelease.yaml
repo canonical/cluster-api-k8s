@@ -1,0 +1,41 @@
+name: Create and promote prereleases
+
+on:
+  schedule:
+    - cron: '0 0 * * *'  # Runs every midnight
+  pull_request:
+    paths:
+      - .github/workflows/prerelease.yaml
+
+permissions:
+  contents: read
+
+jobs:
+  handle-prereleases:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@v2
+        with:
+          egress-policy: audit
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+      - run: pip install tox
+      - name: Define git credentials
+        run: |
+          # Needed to create commits.
+          git config --global user.name "Github Actions"
+          git config --global user.email "worker@org.com"
+      - name: Create pre-release tags
+        run: |
+          cd hack/release_promotion
+          # TODO: drop dry-run argument after the PR is reviewed.
+          tox -e promote -- --debug create_new_prereleases --dry-run
+      - name: Promote tags
+        run: |
+          cd hack/release_promotion
+          # TODO: drop dry-run argument after the PR is reviewed.
+          tox -e promote -- --debug promote_releases --dry-run
