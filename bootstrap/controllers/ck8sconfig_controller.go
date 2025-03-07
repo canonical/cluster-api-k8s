@@ -282,6 +282,7 @@ func (r *CK8sConfigReconciler) joinControlplane(ctx context.Context, scope *Scop
 			BootCommands:         scope.Config.Spec.BootCommands,
 			PreRunCommands:       scope.Config.Spec.PreRunCommands,
 			PostRunCommands:      scope.Config.Spec.PostRunCommands,
+			AdditionalUserData:   scope.Config.Spec.AdditionalUserData,
 			KubernetesVersion:    scope.Config.Spec.Version,
 			SnapInstallData:      snapInstallData,
 			ExtraFiles:           cloudinit.FilesFromAPI(files),
@@ -381,6 +382,7 @@ func (r *CK8sConfigReconciler) joinWorker(ctx context.Context, scope *Scope) err
 			BootCommands:         scope.Config.Spec.BootCommands,
 			PreRunCommands:       scope.Config.Spec.PreRunCommands,
 			PostRunCommands:      scope.Config.Spec.PostRunCommands,
+			AdditionalUserData:   scope.Config.Spec.AdditionalUserData,
 			KubernetesVersion:    scope.Config.Spec.Version,
 			SnapInstallData:      snapInstallData,
 			ExtraFiles:           cloudinit.FilesFromAPI(files),
@@ -702,6 +704,7 @@ func (r *CK8sConfigReconciler) handleClusterNotInitialized(ctx context.Context, 
 			BootCommands:         scope.Config.Spec.BootCommands,
 			PreRunCommands:       scope.Config.Spec.PreRunCommands,
 			PostRunCommands:      scope.Config.Spec.PostRunCommands,
+			AdditionalUserData:   scope.Config.Spec.AdditionalUserData,
 			KubernetesVersion:    scope.Config.Spec.Version,
 			BootstrapConfig:      userSuppliedBootstrapConfig,
 			SnapInstallData:      snapInstallData,
@@ -727,6 +730,7 @@ func (r *CK8sConfigReconciler) handleClusterNotInitialized(ctx context.Context, 
 	if err != nil {
 		return ctrl.Result{}, err
 	}
+
 	cloudInitData, err := cloudinit.GenerateCloudConfig(cloudConfig)
 	if err != nil {
 		return ctrl.Result{}, fmt.Errorf("failed to generate cloud-init: %w", err)

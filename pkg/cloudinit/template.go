@@ -17,7 +17,9 @@ limitations under the License.
 package cloudinit
 
 import (
-	"gopkg.in/yaml.v2"
+	"bytes"
+
+	"gopkg.in/yaml.v3"
 )
 
 var (
@@ -28,9 +30,13 @@ var (
 )
 
 func templateToYAML(v interface{}) (string, error) {
-	b, err := yaml.Marshal(v)
+	buf := &bytes.Buffer{}
+	en := yaml.NewEncoder(buf)
+	en.SetIndent(defaultYamlIndent)
+
+	err := en.Encode(v)
 	if err != nil {
 		return "", err
 	}
-	return string(b), nil
+	return buf.String(), nil
 }

@@ -44,6 +44,13 @@ type CK8sConfigSpec struct {
 	// +optional
 	PreRunCommands []string `json:"preRunCommands,omitempty"`
 
+	// AdditionalUserData is a field that allows users to specify additional cloud-init configuration inside the script.
+	// Th key/value pairs must adhere to
+	// https://cloudinit.readthedocs.io/en/latest/reference/modules.html
+	// to extend existing cloud-init configuration
+	//+optional
+	AdditionalUserData map[string]string `json:"additionalUserData,omitempty"`
+
 	// PostRunCommands specifies extra commands to run in cloud-init after k8s-snap setup runs.
 	// +optional
 	PostRunCommands []string `json:"postRunCommands,omitempty"`

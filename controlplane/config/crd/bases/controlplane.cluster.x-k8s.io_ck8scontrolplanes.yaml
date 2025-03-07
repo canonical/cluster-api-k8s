@@ -240,6 +240,15 @@ spec:
                     description: ExtraK8sAPIServerProxyArgs - extra arguments to add
                       to k8s-api-server-proxy.
                     type: object
+                  additionalUserData:
+                    additionalProperties:
+                      type: string
+                    description: |-
+                      AdditionalUserData is a field that allows users to specify additional cloud-init configuration inside the script.
+                      Th key/value pairs must adhere to
+                      https://cloudinit.readthedocs.io/en/latest/reference/modules.html
+                      to extend existing cloud-init configuration
+                    type: object
                   airGapped:
                     description: |-
                       AirGapped is used to signal that we are deploying to an airgap environment. In this case,

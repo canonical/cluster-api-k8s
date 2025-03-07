@@ -129,6 +129,13 @@ func (in *CK8sConfigSpec) DeepCopyInto(out *CK8sConfigSpec) {
 		*out = make([]string, len(*in))
 		copy(*out, *in)
 	}
+	if in.AdditionalUserData != nil {
+		in, out := &in.AdditionalUserData, &out.AdditionalUserData
+		*out = make(map[string]string, len(*in))
+		for key, val := range *in {
+			(*out)[key] = val
+		}
+	}
 	if in.PostRunCommands != nil {
 		in, out := &in.PostRunCommands, &out.PostRunCommands
 		*out = make([]string, len(*in))

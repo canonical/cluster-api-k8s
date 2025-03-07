@@ -20,8 +20,30 @@ import (
 	"bytes"
 	_ "embed"
 	"fmt"
+	"slices"
 	"text/template"
+
+	"gopkg.in/yaml.v3"
 )
+
+const (
+	defaultYamlIndent = 2
+)
+
+var (
+	// managedCloudInitFields is a list of fields that are managed internally
+	// and user cannot provide them as additional user data.
+	managedCloudInitFields = []string{"bootcmd", "runcmd", "write_files"}
+
+	//go:embed scripts/cloud-config-template
+	cloudConfigTemplate string
+)
+
+// GetManagedCloudInitFields returns a list of cloud init fields that are managed internally
+// and user cannot provide them as additional user data.
+func GetManagedCloudInitFields() []string {
+	return managedCloudInitFields
+}
 
 // CloudConfig is cloud-init userdata. The schema matches the examples found in
 // https://cloudinit.readthedocs.io/en/latest/topics/examples.html.
@@ -34,10 +56,10 @@ type CloudConfig struct {
 
 	// BootCommands is a list of commands to run early in the boot process.
 	BootCommands []string `yaml:"bootcmd,omitempty"`
-}
 
-//go:embed scripts/cloud-config-template
-var cloudConfigTemplate string
+	// AdditionalUserData is an arbitrary key/value map of user defined configuration
+	AdditionalUserData map[string]any `yaml:",inline"`
+}
 
 // GenerateCloudConfig generates userdata from a CloudConfig.
 func GenerateCloudConfig(config CloudConfig) ([]byte, error) {
@@ -48,4 +70,25 @@ func GenerateCloudConfig(config CloudConfig) ([]byte, error) {
 		return nil, fmt.Errorf("failed to render cloud-config: %w", err)
 	}
 	return b.Bytes(), nil
+}
+
+// FormatAdditionalUserData formats additional user data into a map of any type.
+func FormatAdditionalUserData(input map[string]string) map[string]any {
+	result := make(map[string]any, len(input))
+
+	for key, value := range input {
+		if slices.Contains(managedCloudInitFields, key) {
+			continue
+		}
+
+		var parsedData any
+		if err := yaml.Unmarshal([]byte(value), &parsedData); err == nil {
+			result[key] = parsedData
+		} else {
+			// If it fails, keep it as a string
+			result[key] = value
+		}
+	}
+
+	return result
 }
