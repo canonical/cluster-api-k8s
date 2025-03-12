@@ -59,6 +59,11 @@ def get_tags(ref: str = "", clone_dir: Optional[str] = None) -> List[str]:
     return [tag.strip(" ") for tag in stdout.split("\n") if tag]
 
 
+def fetch_remote(remote: str = "origin", clone_dir: Optional[str] = None):
+    cmd = ["git", "fetch", remote]
+    _exec(cmd, cwd=clone_dir)
+
+
 def get_tags_pointing_at_commit(
     commit_id: str, clone_dir: Optional[str] = None
 ) -> List[str]:
@@ -274,6 +279,8 @@ def version_to_tag(version: Version) -> str:
 def create_new_prereleases(
     dry_run: bool = False, clone_dir: Optional[str] = None, remote: str = "origin"
 ):
+    fetch_remote(remote=remote, clone_dir=clone_dir)
+
     managed_branches = get_managed_branches(clone_dir=clone_dir, remote=remote)
     for branch in managed_branches:
         tags = get_tags(ref=branch, clone_dir=clone_dir)
@@ -371,6 +378,8 @@ def promote_releases(
     clone_dir: Optional[str] = None,
     remote: str = "origin",
 ):
+    fetch_remote(remote=remote, clone_dir=clone_dir)
+
     versions = get_versions(clone_dir=clone_dir)
     for version in versions:
         if not version.pre:

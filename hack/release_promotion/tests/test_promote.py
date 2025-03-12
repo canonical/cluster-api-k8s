@@ -61,6 +61,20 @@ def test_get_tags_with_ref_no_tags(mock_run):
 
 
 @mock.patch("subprocess.run")
+def test_fetch_remote(mock_run):
+    promote.fetch_remote("remote", "clone-dir")
+
+    mock_run.assert_called_once_with(
+        ["git", "fetch", "remote"],
+        check=True,
+        timeout=promote.EXEC_TIMEOUT,
+        cwd="clone-dir",
+        capture_output=True,
+        text=True,
+    )
+
+
+@mock.patch("subprocess.run")
 def test_get_tags_pointing_at_commit(mock_run):
     mock_run.return_value = mock.Mock(stdout="some_tag\nsome_other_tag", stderr="")
 
@@ -437,6 +451,7 @@ def test_version_to_tag_invalid():
 
 
 @pytest.mark.parametrize("dry_run", (True, False))
+@mock.patch.object(promote, "fetch_remote")
 @mock.patch.object(promote, "push_tag")
 @mock.patch.object(promote, "create_tag")
 @mock.patch.object(promote, "get_commit_id")
@@ -448,6 +463,7 @@ def test_create_new_prereleases(
     mock_get_commit_id,
     mock_create_tag,
     mock_push_tag,
+    mock_fetch_remote,
     dry_run,
 ):
     branches = [
@@ -491,6 +507,7 @@ def test_create_new_prereleases(
         dry_run=dry_run, clone_dir="clone-dir", remote="origin"
     )
 
+    mock_fetch_remote.assert_called_once_with(remote="origin", clone_dir="clone-dir")
     if dry_run:
         mock_create_tag.assert_not_called()
         mock_push_tag.assert_not_called()
@@ -563,6 +580,7 @@ def test_promote_release(mock_get_commit_id, mock_create_tag, mock_push_tag, dry
         (False, False),
     ],
 )
+@mock.patch.object(promote, "fetch_remote")
 @mock.patch.object(promote, "push_tag")
 @mock.patch.object(promote, "create_tag")
 @mock.patch.object(promote, "get_commit_id")
@@ -574,6 +592,7 @@ def test_promote_releases(
     mock_get_commit_id,
     mock_create_tag,
     mock_push_tag,
+    mock_fetch_remote,
     dry_run,
     promote_immediately,
 ):
@@ -621,6 +640,7 @@ def test_promote_releases(
         remote="remote",
     )
 
+    mock_fetch_remote.assert_called_once_with(remote="remote", clone_dir="clone-dir")
     if dry_run:
         mock_create_tag.assert_not_called()
         mock_push_tag.assert_not_called()
