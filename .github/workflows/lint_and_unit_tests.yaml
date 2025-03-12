@@ -1,0 +1,71 @@
+name: Unit Tests & Code Quality
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  go-tests:
+    name: Go Unit Tests & Code Quality
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@v2
+        with:
+          egress-policy: audit
+
+      - name: Check out code
+        uses: actions/checkout@v4
+
+      - name: Install Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.22"
+
+      - name: golangci-lint
+        uses: golangci/golangci-lint-action@v6
+        with:
+          version: v1.61
+
+      - name: Unit Tests
+        run: make test-unit
+
+  release-mgmt-tests:
+    name: Release management tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@v2
+        with:
+          egress-policy: audit
+
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+
+      - run: pip install tox
+
+      - name: "Formatting tests"
+        run: |
+          cd hack/release_promotion
+          tox -e format
+
+      - name: "Lint tests"
+        run: |
+          cd hack/release_promotion
+          tox -e lint
+
+      - name: "Unit tests"
+        run: |
+          cd hack/release_promotion
+          tox -e unit
