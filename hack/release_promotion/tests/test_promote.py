@@ -106,7 +106,7 @@ def test_get_tag_timestamp(mock_run):
     assert exp_timestamp == ret_val
 
     mock_run.assert_called_once_with(
-        ["git", "tag", "-l", "test-tag", r"--format='%(creatordate:unix)'"],
+        ["git", "tag", "-l", "test-tag", "--format", r"%(creatordate:unix)"],
         check=True,
         timeout=promote.EXEC_TIMEOUT,
         cwd="clone_dir",

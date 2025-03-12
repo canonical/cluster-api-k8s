@@ -84,7 +84,7 @@ def get_tag_timestamp(tag: str, clone_dir: Optional[str] = None) -> datetime.dat
     if not tag:
         raise ValueError("No tag specified.")
 
-    cmd = ["git", "tag", "-l", tag, r"--format='%(creatordate:unix)'"]
+    cmd = ["git", "tag", "-l", tag, "--format", r"%(creatordate:unix)"]
     stdout, stderr = _exec(cmd, cwd=clone_dir)
     timestamps = [tag.strip(" ") for tag in stdout.split("\n") if tag]
     if len(timestamps) > 1:
@@ -103,7 +103,7 @@ def get_tag_timestamp(tag: str, clone_dir: Optional[str] = None) -> datetime.dat
 
 def get_tag_age(tag: str, clone_dir: Optional[str] = None) -> datetime.timedelta:
     timestamp = get_tag_timestamp(tag, clone_dir)
-    return datetime.datetime.now() - timestamp
+    return datetime.datetime.now(datetime.UTC) - timestamp
 
 
 def get_branches(clone_dir: Optional[str] = None) -> List[str]:
