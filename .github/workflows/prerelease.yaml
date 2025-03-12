@@ -6,6 +6,16 @@ on:
   pull_request:
     paths:
       - .github/workflows/prerelease.yaml
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        type: boolean
+        default: false
+        description: Dry run mode, do not submit any tags.
+      promote_immediately:
+        type: boolean
+        default: false
+        description: Promote prereleases without waiting for the standard interval.
 
 permissions:
   contents: read
@@ -31,11 +41,29 @@ jobs:
           git config --global user.email "worker@org.com"
       - name: Create pre-release tags
         run: |
+          set -x
           cd hack/release_promotion
-          # TODO: drop dry-run argument after the PR is reviewed.
-          tox -e promote -- --debug create_new_prereleases --dry-run
+
+          args=()
+          dry_run=${{ (github.event_name == 'workflow_dispatch' && inputs.dry_run) || github.event_name == 'pull_request'}}
+          if [[ "$dry_run" == "true" ]]; then
+            args+=(--dry-run)
+          fi
+
+          tox -e promote -- --debug create_new_prereleases ${args[@]}
       - name: Promote tags
         run: |
+          set -x
           cd hack/release_promotion
-          # TODO: drop dry-run argument after the PR is reviewed.
-          tox -e promote -- --debug promote_releases --dry-run
+
+          args=()
+          dry_run=${{ (github.event_name == 'workflow_dispatch' && inputs.dry_run) || github.event_name == 'pull_request'}}
+          if [[ "$dry_run" == "true" ]]; then
+            args+=(--dry-run)
+          fi
+          promote_immediately=${{ (github.event_name == 'workflow_dispatch' && inputs.promote_immediately) }}
+          if [[ "$promote_immediately" == "true" ]] ; then
+            args+=(--promote-immediately)
+          fi
+
+          tox -e promote -- --debug promote_releases ${args[@]}
