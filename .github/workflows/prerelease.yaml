@@ -1,0 +1,69 @@
+name: Create and promote prereleases
+
+on:
+  schedule:
+    - cron: '0 0 * * *'  # Runs every midnight
+  pull_request:
+    paths:
+      - .github/workflows/prerelease.yaml
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        type: boolean
+        default: false
+        description: Dry run mode, do not submit any tags.
+      promote_immediately:
+        type: boolean
+        default: false
+        description: Promote prereleases without waiting for the standard interval.
+
+permissions:
+  contents: read
+
+jobs:
+  handle-prereleases:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@v2
+        with:
+          egress-policy: audit
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+      - run: pip install tox
+      - name: Define git credentials
+        run: |
+          # Needed to create commits.
+          git config --global user.name "Github Actions"
+          git config --global user.email "worker@org.com"
+      - name: Create pre-release tags
+        run: |
+          set -x
+          cd hack/release_promotion
+
+          args=()
+          dry_run=${{ (github.event_name == 'workflow_dispatch' && inputs.dry_run) || github.event_name == 'pull_request'}}
+          if [[ "$dry_run" == "true" ]]; then
+            args+=(--dry-run)
+          fi
+
+          tox -e promote -- --debug create_new_prereleases ${args[@]}
+      - name: Promote tags
+        run: |
+          set -x
+          cd hack/release_promotion
+
+          args=()
+          dry_run=${{ (github.event_name == 'workflow_dispatch' && inputs.dry_run) || github.event_name == 'pull_request'}}
+          if [[ "$dry_run" == "true" ]]; then
+            args+=(--dry-run)
+          fi
+          promote_immediately=${{ (github.event_name == 'workflow_dispatch' && inputs.promote_immediately) }}
+          if [[ "$promote_immediately" == "true" ]] ; then
+            args+=(--promote-immediately)
+          fi
+
+          tox -e promote -- --debug promote_releases ${args[@]}

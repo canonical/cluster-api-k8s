@@ -1,0 +1,4 @@
+freezegun
+pytest
+types-requests
+types-mock
