@@ -47,11 +47,15 @@ func (g *k8sdClientGenerator) forNode(ctx context.Context, node *corev1.Node) (*
 		return nil, fmt.Errorf("failed to get proxy pods: %w", err)
 	}
 
-	podname, ok := podmap[node.Name]
+	pod, ok := podmap[node.Name]
 	if !ok {
 		return nil, fmt.Errorf("missing k8sd proxy pod for node %s", node.Name)
 	}
 
+	return g.forNodePod(ctx, node, pod.Name)
+}
+
+func (g *k8sdClientGenerator) forNodePod(ctx context.Context, node *corev1.Node, podname string) (*K8sdClient, error) {
 	nodeInternalIP, err := getNodeInternalIP(node)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get internal IP for node %s: %w", node.Name, err)
@@ -68,7 +72,7 @@ func (g *k8sdClientGenerator) forNode(ctx context.Context, node *corev1.Node) (*
 	}, nil
 }
 
-func (g *k8sdClientGenerator) getProxyPods(ctx context.Context) (map[string]string, error) {
+func (g *k8sdClientGenerator) getProxyPods(ctx context.Context) (map[string]corev1.Pod, error) {
 	pods, err := g.clientset.CoreV1().Pods("kube-system").List(ctx, metav1.ListOptions{LabelSelector: "app=k8sd-proxy"})
 	if err != nil {
 		return nil, fmt.Errorf("unable to list k8sd-proxy pods in target cluster: %w", err)
@@ -78,9 +82,9 @@ func (g *k8sdClientGenerator) getProxyPods(ctx context.Context) (map[string]stri
 		return nil, errors.New("there isn't any k8sd-proxy pods in target cluster")
 	}
 
-	podmap := make(map[string]string, len(pods.Items))
+	podmap := make(map[string]corev1.Pod, len(pods.Items))
 	for _, pod := range pods.Items {
-		podmap[pod.Spec.NodeName] = pod.Name
+		podmap[pod.Spec.NodeName] = pod
 	}
 
 	return podmap, nil

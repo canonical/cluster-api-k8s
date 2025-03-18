@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"strings"
@@ -15,6 +16,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/client-go/rest"
+	podv1 "k8s.io/kubernetes/pkg/api/v1/pod"
 	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
 	"sigs.k8s.io/cluster-api/util"
 	"sigs.k8s.io/cluster-api/util/collections"
@@ -157,20 +159,47 @@ func (w *Workload) GetK8sdProxyForControlPlane(ctx context.Context, options k8sd
 		return nil, fmt.Errorf("failed to get control plane nodes: %w", err)
 	}
 
+	// Fetch the Pods only once.
+	podmap, err := w.K8sdClientGenerator.getProxyPods(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get proxy pods: %w", err)
+	}
+
+	var allErrors []error
 	for _, node := range cplaneNodes.Items {
 		if _, ok := options.IgnoreNodes[node.Name]; ok {
 			continue
 		}
 
-		proxy, err := w.K8sdClientGenerator.forNode(ctx, &node) // #nosec G601
+		pod, ok := podmap[node.Name]
+		if !ok {
+			allErrors = append(allErrors, fmt.Errorf("node %s has no k8sd proxy pod", node.Name))
+			continue
+		}
+
+		if !podv1.IsPodReady(&pod) {
+			// if the Pod is not Ready, it won't be able to accept any k8sd API calls.
+			allErrors = append(allErrors, fmt.Errorf("pod '%s' is not Ready", pod.Name))
+			continue
+		}
+
+		proxy, err := w.K8sdClientGenerator.forNodePod(ctx, &node, pod.Name) // #nosec G601
 		if err != nil {
+			allErrors = append(allErrors, fmt.Errorf("could not create proxy client for node %s: %w", node.Name, err))
+			continue
+		}
+
+		// Check if there is any response from the proxy.
+		header := w.newHeaderWithCAPIAuthToken()
+		if err := w.doK8sdRequest(ctx, proxy, http.MethodGet, "", header, "", nil); err != nil {
+			allErrors = append(allErrors, fmt.Errorf("error while contacting proxy on node %s: %w", node.Name, err))
 			continue
 		}
 
 		return proxy, nil
 	}
 
-	return nil, fmt.Errorf("failed to get k8sd proxy for control plane")
+	return nil, fmt.Errorf("failed to get k8sd proxy for control plane, previous errors: %w", errors.Join(allErrors...))
 }
 
 // GetK8sdProxyForMachine returns a k8sd proxy client for the machine.
@@ -441,7 +470,6 @@ func (w *Workload) RemoveMachineFromCluster(ctx context.Context, machine *cluste
 	return nil
 }
 
-//nolint:unparam
 func (w *Workload) doK8sdRequest(ctx context.Context, k8sdProxy *K8sdClient, method, endpoint string, header map[string][]string, request any, response any) error {
 	type wrappedResponse struct {
 		Error    string          `json:"error"`
