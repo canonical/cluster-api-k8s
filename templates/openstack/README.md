@@ -133,6 +133,8 @@ kubectl apply -f c1.yaml
 
 ## Verifying the deployment
 
+### Without Octavia LBaaS
+
 The control plane instance should become active in a few minutes and be accessible through its
 floating ip address.
 
@@ -169,6 +171,55 @@ Verify the node status:
 sudo k8s kubectl get nodes
 NAME                     STATUS   ROLES                  AGE   VERSION
 c1-control-plane-9qtfm   Ready    control-plane,worker   68m   v1.32.2
+```
+
+Check the k8s status:
+
+```
+$ sudo k8s status
+cluster status:           ready
+control plane nodes:      10.6.0.123:2380 (voter)
+high availability:        no
+datastore:                k8s-dqlite
+network:                  enabled
+dns:                      enabled at 10.152.183.220
+ingress:                  enabled
+load-balancer:            enabled, L2 mode
+local-storage:            enabled at /var/snap/k8s/common/rawfile-storage
+gateway                   enabled
+```
+
+### With Octavia LBaaS
+
+When using Octavia load balancers, "amphora" instances are expected:
+
+```
+$ openstack server list
+
+# output
++------------------------------+------------------------------+--------+------------------------------+---------------------+------------+
+| ID                           | Name                         | Status | Networks                     | Image               | Flavor     |
++------------------------------+------------------------------+--------+------------------------------+---------------------+------------+
+| c78fe09b-25e2-440b-8ed3-     | amphora-6d42d843-f47b-4877-  | ACTIVE | k8s-clusterapi-cluster-      | amphora-x64-haproxy | m1.amphora |
+| 47ea61337ead                 | 82e7-5cffa725f0a8            |        | default-c1=10.6.0.101; lb-   |                     |            |
+|                              |                              |        | mgmt-net=192.168.0.183       |                     |            |
+| c948c827-4a72-41cd-8abd-     | c1-control-plane-kghlq       | ACTIVE | k8s-clusterapi-cluster-      | ubuntu-noble        | ds4G       |
+| 9f3b346988d9                 |                              |        | default-c1=10.6.0.28         |                     |            |
+| 4cc62981-581b-428f-a94d-     | amphora-387030cd-e528-436b-  | ACTIVE | k8s-clusterapi-cluster-      | amphora-x64-haproxy | m1.amphora |
+| 8d3a46820888                 | a780-91b93bc8d16b            |        | default-c1=10.6.0.35; lb-    |                     |            |
+|                              |                              |        | mgmt-net=192.168.0.11        |                     |            |
++------------------------------+------------------------------+--------+------------------------------+---------------------+------------+
+```
+
+Also, the control plane node won't have a floating ip attached when using Octavia.
+Kubernetes API traffic will go through the Octavia load balancer.
+
+Wowever, can create and attach a floating ip to access the node for debugging
+purposes.
+
+```
+cpFip=$(openstack floating ip create public -f json  | jq '.floating_ip_address' -r)
+openstack server add floating ip $cpNode $cpFip
 ```
 
 <!-- LINKS -->
