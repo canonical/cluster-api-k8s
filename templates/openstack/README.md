@@ -12,7 +12,7 @@ The templates use the following variables:
 
 | Variable | Description |
 |-|-|
-| KUBERNETES_VERSION | The Kubernets version of the cluster, e.g. "v1.32.2". |
+| KUBERNETES_VERSION | The Kubernetes version of the cluster, e.g. "v1.32.2". |
 | CONTROL_PLANE_MACHINE_COUNT | The number of control plane nodes. |
 | WORKER_MACHINE_COUNT | The number of worker nodes. |
 | OPENSTACK_SSH_KEY_NAME | The keypair used to access Openstack instances. |

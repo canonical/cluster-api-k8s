@@ -5,7 +5,7 @@
 #  * clusterctl init -i openstack -b canonical-kubernetes -c canonical-kubernetes
 # * sourced devstack/openrc
 
-KEY_NAME=${KEY_NAME:"k8s-key"}
+KEY_NAME=${KEY_NAME:-"k8s-key"}
 IMAGE_NAME=${IMAGE_NAME:-"ubuntu-noble"}
 IMAGE_URL=${IMAGE_URL:-"https://cloud-images.ubuntu.com/noble/current/noble-server-cloudimg-amd64.img"}
 SSH_PUBKEY=${SSH_PUBKEY:-"~/.ssh/id_rsa.pub"}
