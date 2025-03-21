@@ -61,12 +61,10 @@ IP_VERSION=4
 EOF
 ```
 
-Octavia (Load-Balancer-as-a-Service) can be enabled like so:
+We strongly recommend enabling Octavia (Load-Balancer-as-a-Service) as well:
 
 ```
 cat <<EOF >> local.sh
-
-IP_VERSION=4
 
 # Octavia (LoadBalancer-as-a-Service) settings.
 GIT_BASE=https://opendev.org
@@ -135,94 +133,51 @@ kubectl apply -f c1.yaml
 
 ## Verifying the deployment
 
-### Without Octavia LBaaS
+### With Octavia LBaaS
 
-The control plane instance should become active in a few minutes and be accessible through its
-floating ip address.
+The cluster should be ready in a few minutes. Using the default rc file, we'll
+have the following instances:
+
+* control plane node
+* worker node
+* two Octavia "amphora" instances, one for each Openstack load balancer:
+    * one load balancer handling kube-apiserver traffic
+    * another load balancer for Kubernetes ingress
 
 ```
 openstack server list
 
 # output
-+--------------------------------------+------------------------+--------+------------------------------------------------------------+--------------+-----------+
-| ID                                   | Name                   | Status | Networks                                                   | Image        | Flavor    |
-+--------------------------------------+------------------------+--------+------------------------------------------------------------+--------------+-----------+
-| a51e5053-59bd-4da3-98c9-479858a84b59 | c1-control-plane-9qtfm | ACTIVE | k8s-clusterapi-cluster-default-c1=10.6.0.123, 172.24.4.123 | ubuntu-noble | m1.medium |
-+--------------------------------------+------------------------+--------+------------------------------------------------------------+--------------+-----------+
++--------------------------------------+----------------------------------------------+--------+------------------------------------------------------------------------+---------------------+------------+
+| ID                                   | Name                                         | Status | Networks                                                               | Image               | Flavor     |
++--------------------------------------+----------------------------------------------+--------+------------------------------------------------------------------------+---------------------+------------+
+| 2e57a19c-ed7f-48bc-a611-a630d28c0fcc | c1-md-0-g6nrp-rwghf                          | ACTIVE | k8s-clusterapi-cluster-default-c1=10.6.0.31                            | ubuntu-noble        | ds4G       |
+| bd1e1c5d-bb56-410d-82cb-d3b79e9df5f3 | amphora-03efb47b-21ac-4f18-b6c7-bf83d01beef3 | ACTIVE | k8s-clusterapi-cluster-default-c1=10.6.0.225; lb-mgmt-net=192.168.0.39 | amphora-x64-haproxy | m1.amphora |
+| b5aad429-6799-42f8-a7ae-c49662b4f1f7 | c1-control-plane-x29bs                       | ACTIVE | k8s-clusterapi-cluster-default-c1=10.6.0.144                           | ubuntu-noble        | ds4G       |
+| e00db5a7-53fa-4b00-93ff-af56a394f4ef | c1-bastion                                   | ACTIVE | k8s-clusterapi-cluster-default-c1=10.6.0.73, 172.24.4.49               | ubuntu-noble        | m1.small   |
+| 68704dae-fa99-4b0f-a592-b8fd6326e78b | amphora-ac03b766-544e-43ea-90da-e7ef793d59a7 | ACTIVE | k8s-clusterapi-cluster-default-c1=10.6.0.27; lb-mgmt-net=192.168.0.53  | amphora-x64-haproxy | m1.amphora |
++--------------------------------------+----------------------------------------------+--------+------------------------------------------------------------------------+---------------------+------------+
 ```
 
-We'll create and assign a new security group to allow SSH traffic:
+Openstack instances normally use private networks and can be accessed
+through floating IPs from public networks.
 
-```
-cpNode=$(kubectl get machine -o "jsonpath={.items[0].status.nodeRef.name}"  | grep control-plane)
-openstack security group create ssh 
-openstack security group rule create ssh --protocol tcp --dst-port 22
-openstack server add security group $cpNode ssh
-```
+In our case, the Kubernetes API will be exposed through the floating ip
+associated with the load balancer port.
 
-Obtain the floating IP address and ssh into the control plane node:
+For debugging purposes, we can also use the bastion (jump server) machine to
+ssh into the Kubernetes nodes. This spares us from having to manually
+set floating ips and security group rules, which could interfere with the
+CAPO controller (e.g. prevent network deletion).
 
-```
-cpFip=$(openstack server show  $cpNode -f json | jq '.addresses[][1]' -r)
-ssh ubuntu@$cpFip
-```
+### Without Octavia
 
-Verify the node status:
+When Octavia is not available, the floating IPs are associated directly to
+the Kubernetes machines. This prevents us from having more than one
+control plane node and should only be used for testing purposes.
 
-```
-sudo k8s kubectl get nodes
-NAME                     STATUS   ROLES                  AGE   VERSION
-c1-control-plane-9qtfm   Ready    control-plane,worker   68m   v1.32.2
-```
-
-Check the k8s status:
-
-```
-$ sudo k8s status
-cluster status:           ready
-control plane nodes:      10.6.0.123:2380 (voter)
-high availability:        no
-datastore:                k8s-dqlite
-network:                  enabled
-dns:                      enabled at 10.152.183.220
-ingress:                  enabled
-load-balancer:            enabled, L2 mode
-local-storage:            enabled at /var/snap/k8s/common/rawfile-storage
-gateway                   enabled
-```
-
-### With Octavia LBaaS
-
-When using Octavia load balancers, "amphora" instances are expected:
-
-```
-$ openstack server list
-
-# output
-+------------------------------+------------------------------+--------+------------------------------+---------------------+------------+
-| ID                           | Name                         | Status | Networks                     | Image               | Flavor     |
-+------------------------------+------------------------------+--------+------------------------------+---------------------+------------+
-| c78fe09b-25e2-440b-8ed3-     | amphora-6d42d843-f47b-4877-  | ACTIVE | k8s-clusterapi-cluster-      | amphora-x64-haproxy | m1.amphora |
-| 47ea61337ead                 | 82e7-5cffa725f0a8            |        | default-c1=10.6.0.101; lb-   |                     |            |
-|                              |                              |        | mgmt-net=192.168.0.183       |                     |            |
-| c948c827-4a72-41cd-8abd-     | c1-control-plane-kghlq       | ACTIVE | k8s-clusterapi-cluster-      | ubuntu-noble        | ds4G       |
-| 9f3b346988d9                 |                              |        | default-c1=10.6.0.28         |                     |            |
-| 4cc62981-581b-428f-a94d-     | amphora-387030cd-e528-436b-  | ACTIVE | k8s-clusterapi-cluster-      | amphora-x64-haproxy | m1.amphora |
-| 8d3a46820888                 | a780-91b93bc8d16b            |        | default-c1=10.6.0.35; lb-    |                     |            |
-|                              |                              |        | mgmt-net=192.168.0.11        |                     |            |
-+------------------------------+------------------------------+--------+------------------------------+---------------------+------------+
-```
-
-Also, the control plane node won't have a floating ip attached when using Octavia.
-Kubernetes API traffic will go through the Octavia load balancer.
-
-Wowever, can create and attach a floating ip to access the node for debugging
-purposes.
-
-```
-cpFip=$(openstack floating ip create public -f json  | jq '.floating_ip_address' -r)
-openstack server add floating ip $cpNode $cpFip
-```
+``kube-vip`` may be used as a workaround, however this setup is not officially
+supported by the Openstack CAPI provider.
 
 ### Obtaining the workload cluster kubeconfig
 
@@ -249,26 +204,8 @@ Use the kubeconfig node to check the workload cluster nodes:
 ```
 KUBECONFIG=$kubeconfig kubectl get nodes
 NAME                     STATUS   ROLES                  AGE   VERSION
-c1-control-plane-kghlq   Ready    control-plane,worker   17h   v1.32.2
-```
-
-### Bastion node
-
-TODO: use a bastion, we shouldn't assign FIPs directly. This breaks the
-cluster delete workflow.
-
-The OpenStack CAPI provider can deploy a SSH bastion (jump server). Add the
-following to the OpenstackCluster spec:
-
-```yaml
-spec:
-  ...
-  bastion:
-    enabled: true
-    spec:
-      flavor: <Flavor name>
-      image:  <Image name>
-      sshKeyName: <Key pair name>
+c1-control-plane-x29bs   Ready    control-plane,worker   40m   v1.32.2
+c1-md-0-g6nrp-rwghf      Ready    worker                 37m   v1.32.2.2
 ```
 
 <!-- LINKS -->
