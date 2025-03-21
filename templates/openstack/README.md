@@ -17,7 +17,7 @@ The templates use the following variables:
 | WORKER_MACHINE_COUNT | The number of worker nodes. |
 | OPENSTACK_BASTION_ENABLED | Deploy an ssh bastion (jump server) instance that can be used to access the cluster nodes. |
 | OPENSTACK_SSH_KEY_NAME | The keypair used to access Openstack instances. |
-| OPENSTACK_IMAGE_NAME | The Openstack image used when deploying Canonical K8s nodes. |
+| OPENSTACK_IMAGE_NAME | The Openstack image used when deploying instances. |
 | OPENSTACK_EXTERNAL_NETWORK_ID | The external Openstack network id. |
 | OPENSTACK_CLOUD | The name of the cloud from the [clouds.yaml] file. |
 | OPENSTACK_CLOUD_YAML_B64 | Base64 encoded [clouds.yaml] file, containing Openstack credentials. |
@@ -213,7 +213,7 @@ c1-md-0-g6nrp-rwghf      Ready    worker                 37m   v1.32.2.2
 [CAPO provider]: https://github.com/kubernetes-sigs/cluster-api-provider-openstack
 [Openstack Cloud Controller Manager]: https://github.com/kubernetes/cloud-provider-openstack/blob/master/docs/openstack-cloud-controller-manager/using-openstack-cloud-controller-manager.md
 [template-varaibles.rc]: ./template-variables.rc
-[template-varaibles-devstack.rc]: ./template-variables-devstack.rc
+[template-variables-devstack.rc]: ./template-variables-devstack.rc
 [Devstack]: https://github.com/openstack/devstack
 [Kind]: https://kind.sigs.k8s.io/docs/user/quick-start/#installation
 [clusterctl]: https://cluster-api.sigs.k8s.io/user/quick-start.html#install-clusterctl
