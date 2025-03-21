@@ -15,6 +15,7 @@ The templates use the following variables:
 | KUBERNETES_VERSION | The Kubernetes version of the cluster, e.g. "v1.32.2". |
 | CONTROL_PLANE_MACHINE_COUNT | The number of control plane nodes. |
 | WORKER_MACHINE_COUNT | The number of worker nodes. |
+| OPENSTACK_BASTION_ENABLED | Deploy an ssh bastion (jump server) instance that can be used to access the cluster nodes. |
 | OPENSTACK_SSH_KEY_NAME | The keypair used to access Openstack instances. |
 | OPENSTACK_IMAGE_NAME | The Openstack image used when deploying Canonical K8s nodes. |
 | OPENSTACK_EXTERNAL_NETWORK_ID | The external Openstack network id. |
@@ -26,6 +27,7 @@ The templates use the following variables:
 | OPENSTACK_FAILURE_DOMAIN | The OpenStack Nova availability zone. |
 | OPENSTACK_CONTROL_PLANE_MACHINE_FLAVOR | The Opentack flavor used to deploy control plane nodes. |
 | OPENSTACK_NODE_MACHINE_FLAVOR | The Opentack flavor used to deploy worker nodes. |
+| OPENSTACK_BASTION_MACHINE_FLAVOR | The Openstack flavor used to deploy the bastion machine. |
 | OPENSTACK_DNS_NAMESERVERS | The list of DNS nameservers to use for Openstack instances. |
 
 Feel free to use the [template-varaibles.rc] template to define the environment variables or
@@ -251,6 +253,9 @@ c1-control-plane-kghlq   Ready    control-plane,worker   17h   v1.32.2
 ```
 
 ### Bastion node
+
+TODO: use a bastion, we shouldn't assign FIPs directly. This breaks the
+cluster delete workflow.
 
 The OpenStack CAPI provider can deploy a SSH bastion (jump server). Add the
 following to the OpenstackCluster spec:

@@ -90,6 +90,14 @@ kind: OpenStackCluster
 metadata:
   name: ${CLUSTER_NAME}
 spec:
+  bastion:
+    enabled: ${OPENSTACK_BASTION_ENABLED}
+    spec:
+      flavor: ${OPENSTACK_BASTION_MACHINE_FLAVOR}
+      image:
+        filter:
+          name: ${OPENSTACK_IMAGE_NAME}
+      sshKeyName: ${OPENSTACK_SSH_KEY_NAME}
   apiServerLoadBalancer:
     enabled: ${OPENSTACK_ENABLE_APISERVER_LOADBALANCER}
   externalNetwork:
@@ -114,6 +122,16 @@ spec:
       etherType: IPv4
       name: IP-in-IP (calico)
       protocol: "4"
+      remoteManagedGroups:
+      - controlplane
+      - worker
+    - description: Created by cluster-api-provider-openstack - Microcluster
+      direction: ingress
+      etherType: IPv4
+      name: Microcluster
+      portRangeMax: 2380
+      portRangeMin: 2380
+      protocol: tcp
       remoteManagedGroups:
       - controlplane
       - worker

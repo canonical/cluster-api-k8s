@@ -3,6 +3,9 @@ export KUBERNETES_VERSION="v1.32.2"
 
 export CONTROL_PLANE_MACHINE_COUNT=1
 export WORKER_MACHINE_COUNT=1
+# Deploy an ssh bastion (jump server) instance that can be used to access the
+# cluster nodes.
+export OPENSTACK_BASTION_ENABLED="true"
 
 # Source:
 # * https://github.com/kubernetes-sigs/cluster-api-provider-openstack/blob/main/docs/book/src/clusteropenstack/configuration.md
@@ -36,5 +39,7 @@ export OPENSTACK_FAILURE_DOMAIN=
 export OPENSTACK_CONTROL_PLANE_MACHINE_FLAVOR="m1.medium"
 # The Opentack flavor used to deploy worker nodes.
 export OPENSTACK_NODE_MACHINE_FLAVOR="m1.medium"
+# The Openstack flavor used to deploy the bastion machine.
+export OPENSTACK_BASTION_MACHINE_FLAVOR="m1.small"
 # The list of DNS nameservers to use for Openstack instances.
 export OPENSTACK_DNS_NAMESERVERS="8.8.8.8"
