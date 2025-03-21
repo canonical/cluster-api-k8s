@@ -222,6 +222,50 @@ cpFip=$(openstack floating ip create public -f json  | jq '.floating_ip_address'
 openstack server add floating ip $cpNode $cpFip
 ```
 
+### Obtaining the workload cluster kubeconfig
+
+Use the following to obtain a kubeconfig for the workload cluster:
+
+```
+clusterName="c1"
+kubeconfig=/tmp/${clusterName}_kubeconfig
+clusterctl get kubeconfig $clusterName > $kubeconfig
+```
+
+The kubeconfig uses a floating ip address, which can be attached to either the
+load balancer port when using Octavia or the control plane node otherwise.
+
+```
+grep server $kubeconfig
+
+# output
+    server: https://172.24.4.199:6443
+```
+
+Use the kubeconfig node to check the workload cluster nodes:
+
+```
+KUBECONFIG=$kubeconfig kubectl get nodes
+NAME                     STATUS   ROLES                  AGE   VERSION
+c1-control-plane-kghlq   Ready    control-plane,worker   17h   v1.32.2
+```
+
+### Bastion node
+
+The OpenStack CAPI provider can deploy a SSH bastion (jump server). Add the
+following to the OpenstackCluster spec:
+
+```yaml
+spec:
+  ...
+  bastion:
+    enabled: true
+    spec:
+      flavor: <Flavor name>
+      image:  <Image name>
+      sshKeyName: <Key pair name>
+```
+
 <!-- LINKS -->
 [clouds.yaml]: https://docs.openstack.org/python-openstackclient/2024.2/configuration/index.html#clouds-yaml
 [CAPO provider]: https://github.com/kubernetes-sigs/cluster-api-provider-openstack
