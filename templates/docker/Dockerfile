@@ -5,8 +5,8 @@
 ##
 ## # Example usage
 ##
-## $ docker build -t ghcr.io/canonical/cluster-api-k8s/k8s-snap:v1.30.1
-## $ docker build -t ghcr.io/canonical/cluster-api-k8s/k8s-snap:v1.30.1-moonray --build-arg BRANCH=autoupdate/moonray
+## $ docker build -t ghcr.io/canonical/cluster-api-k8s/k8s-snap:v1.32.2
+## $ docker build -t ghcr.io/canonical/cluster-api-k8s/k8s-snap:v1.32.2-moonray --build-arg BRANCH=autoupdate/moonray
 ##
 ## # Notes
 ##
@@ -20,7 +20,7 @@
 ## See https://kind.sigs.k8s.io/docs/design/node-image/
 ##
 ## !!!IMPORTANT!!! Keep this up to date with the minor version of k8s-snap.
-ARG BASE=kindest/node:v1.30.0
+ARG BASE=kindest/node:v1.32.2
 
 ## NOTE(neoaggelos): Builder uses the ubuntu:20.04 as base image
 ##

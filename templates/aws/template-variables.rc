@@ -1,5 +1,5 @@
 # Kubernetes cluster configuration
-export KUBERNETES_VERSION=v1.31.0
+export KUBERNETES_VERSION=v1.32.2
 export CONTROL_PLANE_MACHINE_COUNT=3
 export WORKER_MACHINE_COUNT=3
 
