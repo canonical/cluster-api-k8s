@@ -355,6 +355,11 @@ func (r *CK8sControlPlaneReconciler) updateStatus(ctx context.Context, kcp *cont
 	kcp.Status.ReadyReplicas = 0
 	kcp.Status.UnavailableReplicas = replicas
 
+	lowestVersion := ownedMachines.LowestVersion()
+	if lowestVersion != nil {
+		kcp.Status.Version = lowestVersion
+	}
+
 	// Return early if the deletion timestamp is set, because we don't want to try to connect to the workload cluster
 	// and we don't want to report resize condition (because it is set to deleting into reconcile delete).
 	if !kcp.DeletionTimestamp.IsZero() {
