@@ -1,0 +1,45 @@
+# K8s Version of the cluster, e.g. "v1.32.2"
+export KUBERNETES_VERSION="v1.32.2"
+
+export CONTROL_PLANE_MACHINE_COUNT=1
+export WORKER_MACHINE_COUNT=1
+# Deploy an ssh bastion (jump server) instance that can be used to access the
+# cluster nodes.
+export OPENSTACK_BASTION_ENABLED="true"
+
+# Source:
+# * https://github.com/kubernetes-sigs/cluster-api-provider-openstack/blob/main/docs/book/src/clusteropenstack/configuration.md
+# * https://github.com/kubernetes-sigs/cluster-api-provider-openstack/blob/cb7f90559b99fd8c64d742cdf07c3f7bd4582ce7/test/e2e/data/e2e_conf.yaml#L152-L193
+# * https://github.com/kubernetes-sigs/cluster-api-provider-openstack/tree/main/templates
+
+# The keypair used to access Openstack instances.
+export OPENSTACK_SSH_KEY_NAME=
+# The Openstack image used when deploying Canonical K8s nodes.
+export OPENSTACK_IMAGE_NAME=
+# The external Openstack network id.
+export OPENSTACK_EXTERNAL_NETWORK_ID=
+# The name of the cloud from the clouds.yaml file.
+export OPENSTACK_CLOUD=
+# Base64 encoded clouds.yaml file, containing Openstack credentials.
+# https://docs.openstack.org/python-openstackclient/2024.2/configuration/index.html#clouds-yaml
+export OPENSTACK_CLOUD_YAML_B64=
+
+# The Openstack Cloud Contrller Manager configuration, base64 encoded.
+# https://github.com/kubernetes/cloud-provider-openstack/blob/master/docs/openstack-cloud-controller-manager/using-openstack-cloud-controller-manager.md
+export OPENSTACK_CLOUD_CONFIG_B64=
+
+# Optional: base64 encoded CA certificate used when contacting Openstack services.
+export OPENSTACK_CLOUD_CACERT_B64="Cg=="
+export OPENSTACK_ENABLE_APISERVER_LOADBALANCER="false"
+
+# The OpenStack Nova availability zone.
+export OPENSTACK_FAILURE_DOMAIN=
+
+# The Opentack flavor used to deploy control plane nodes.
+export OPENSTACK_CONTROL_PLANE_MACHINE_FLAVOR="m1.medium"
+# The Opentack flavor used to deploy worker nodes.
+export OPENSTACK_NODE_MACHINE_FLAVOR="m1.medium"
+# The Openstack flavor used to deploy the bastion machine.
+export OPENSTACK_BASTION_MACHINE_FLAVOR="m1.small"
+# The list of DNS nameservers to use for Openstack instances.
+export OPENSTACK_DNS_NAMESERVERS="8.8.8.8"

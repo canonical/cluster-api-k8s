@@ -1,0 +1,79 @@
+# Prerequisites:
+# * ORC (Openstack Resource Controller):
+#   * kubectl apply -f https://github.com/k-orc/openstack-resource-controller/releases/latest/download/install.yaml
+# * Openstack and Canonical K8s providers: 
+#  * clusterctl init -i openstack -b canonical-kubernetes -c canonical-kubernetes
+# * sourced devstack/openrc
+
+KEY_NAME=${KEY_NAME:-"k8s-key"}
+IMAGE_NAME=${IMAGE_NAME:-"ubuntu-noble"}
+IMAGE_URL=${IMAGE_URL:-"https://cloud-images.ubuntu.com/noble/current/noble-server-cloudimg-amd64.img"}
+SSH_PUBKEY=${SSH_PUBKEY:-"~/.ssh/id_rsa.pub"}
+
+if ! openstack keypair show $KEY_NAME; then
+    openstack keypair create $KEY_NAME --public-key $SSH_PUBKEY
+fi
+
+if ! openstack image show $IMAGE_NAME; then
+    download_path=/tmp/capi-image.img
+    wget $IMAGE_URL -O $download_path
+    openstack image create $IMAGE_NAME \
+        --file $download_path \
+        --container-format=bare --disk-format=qcow2 \
+        --property hw_firmware_type=uefi
+    rm $download_path
+fi
+
+if openstack endpoint list | grep load-balancer; then
+    export OPENSTACK_ENABLE_APISERVER_LOADBALANCER="true"
+else
+    export OPENSTACK_ENABLE_APISERVER_LOADBALANCER="false"
+fi
+
+# $OS_* env variables are provided by the devstack openrc file.
+# https://github.com/kubernetes/cloud-provider-openstack/blob/master/docs/openstack-cloud-controller-manager/using-openstack-cloud-controller-manager.md
+cat <<EOF > /tmp/ccm_cloud_config
+[Global]
+auth-url = $OS_AUTH_URL
+os-endpoint-type = "public"
+password = $OS_PASSWORD
+region = $OS_REGION_NAME
+tenant-domain-id = $OS_PROJECT_DOMAIN_ID
+tenant-name = $OS_PROJECT_NAME
+user-domain-id = $OS_USER_DOMAIN_ID
+username = $OS_USERNAME
+
+[Networking]
+
+[LoadBalancer]
+enabled = $OPENSTACK_ENABLE_APISERVER_LOADBALANCER
+EOF
+export OPENSTACK_CLOUD_CONFIG_B64=$(cat /tmp/ccm_cloud_config | base64 -w0)
+
+export KUBERNETES_VERSION="v1.32.2"
+
+export CONTROL_PLANE_MACHINE_COUNT=1
+export WORKER_MACHINE_COUNT=1
+export OPENSTACK_BASTION_ENABLED="true"
+
+# Source:
+# * https://github.com/kubernetes-sigs/cluster-api-provider-openstack/blob/main/docs/book/src/clusteropenstack/configuration.md
+# * https://github.com/kubernetes-sigs/cluster-api-provider-openstack/blob/cb7f90559b99fd8c64d742cdf07c3f7bd4582ce7/test/e2e/data/e2e_conf.yaml#L152-L193
+
+# For this test, we'll use the devstack clouds.yaml and admin credentials.
+export OPENSTACK_CLOUD_YAML_B64=$(cat /etc/openstack/clouds.yaml | base64 -w0)
+export OPENSTACK_CLOUD="devstack-admin"
+
+export OPENSTACK_SSH_KEY_NAME=$KEY_NAME
+export OPENSTACK_IMAGE_NAME=$IMAGE_NAME
+# We'll use the default public network created by Devstack.
+export OPENSTACK_EXTERNAL_NETWORK_ID=$(openstack network list | grep public | cut -d " " -f 2)
+
+export OPENSTACK_CLOUD_CACERT_B64=""
+
+export OPENSTACK_CONTROL_PLANE_MACHINE_FLAVOR="ds4G"
+export OPENSTACK_NODE_MACHINE_FLAVOR="ds4G"
+export OPENSTACK_BASTION_MACHINE_FLAVOR="m1.small"
+export OPENSTACK_DNS_NAMESERVERS="8.8.8.8"
+# The OpenStack availability zone.
+export OPENSTACK_FAILURE_DOMAIN="nova"

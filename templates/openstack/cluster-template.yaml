@@ -1,0 +1,451 @@
+apiVersion: v1
+data:
+  cacert: ${OPENSTACK_CLOUD_CACERT_B64}
+  clouds.yaml: ${OPENSTACK_CLOUD_YAML_B64}
+kind: Secret
+metadata:
+  labels:
+    clusterctl.cluster.x-k8s.io/move: "true"
+  name: ${CLUSTER_NAME}-cloud-config
+---
+apiVersion: controlplane.cluster.x-k8s.io/v1beta2
+kind: CK8sControlPlane
+metadata:
+  name: ${CLUSTER_NAME}
+spec:
+  spec:
+    controlPlane:
+      cloudProvider: external
+    extraKubeletArgs:
+      --provider-id: openstack:///'{{ instance_id }}'
+  machineTemplate:
+    infrastructureTemplate:
+      apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
+      kind: OpenStackMachineTemplate
+      name: ${CLUSTER_NAME}-control-plane
+  replicas: ${CONTROL_PLANE_MACHINE_COUNT}
+  version: ${KUBERNETES_VERSION}
+---
+apiVersion: cluster.x-k8s.io/v1beta1
+kind: MachineDeployment
+metadata:
+  name: "${CLUSTER_NAME}-md-0"
+spec:
+  clusterName: "${CLUSTER_NAME}"
+  replicas: ${WORKER_MACHINE_COUNT}
+  selector:
+    matchLabels:
+  template:
+    spec:
+      clusterName: "${CLUSTER_NAME}"
+      version: "${KUBERNETES_VERSION}"
+      failureDomain: ${OPENSTACK_FAILURE_DOMAIN}
+      bootstrap:
+        configRef:
+          apiVersion: bootstrap.cluster.x-k8s.io/v1beta1
+          kind: CK8sConfigTemplate
+          name: ${CLUSTER_NAME}-md-0
+      infrastructureRef:
+        name: "${CLUSTER_NAME}-md-0"
+        apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
+        kind: OpenStackMachineTemplate
+---
+apiVersion: bootstrap.cluster.x-k8s.io/v1beta2
+kind: CK8sConfigTemplate
+metadata:
+  name: ${CLUSTER_NAME}-md-0
+spec:
+  template:
+    spec:
+      controlPlane:
+        cloudProvider: external
+      extraKubeletArgs:
+        --provider-id: openstack:///'{{ instance_id }}'
+---
+apiVersion: cluster.x-k8s.io/v1beta1
+kind: Cluster
+metadata:
+  labels:
+    cluster.x-k8s.io/cluster-name: ${CLUSTER_NAME}
+  name: ${CLUSTER_NAME}
+spec:
+  clusterNetwork:
+    pods:
+      cidrBlocks:
+        - 10.1.0.0/16
+    services:
+      cidrBlocks:
+        - 10.152.183.0/24
+  controlPlaneRef:
+    apiVersion: controlplane.cluster.x-k8s.io/v1beta2
+    kind: CK8sControlPlane
+    name: ${CLUSTER_NAME}
+  infrastructureRef:
+    apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
+    kind: OpenStackCluster
+    name: ${CLUSTER_NAME}
+---
+apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
+kind: OpenStackCluster
+metadata:
+  name: ${CLUSTER_NAME}
+spec:
+  bastion:
+    enabled: ${OPENSTACK_BASTION_ENABLED}
+    spec:
+      flavor: ${OPENSTACK_BASTION_MACHINE_FLAVOR}
+      image:
+        filter:
+          name: ${OPENSTACK_IMAGE_NAME}
+      sshKeyName: ${OPENSTACK_SSH_KEY_NAME}
+  apiServerLoadBalancer:
+    enabled: ${OPENSTACK_ENABLE_APISERVER_LOADBALANCER}
+  externalNetwork:
+    id: ${OPENSTACK_EXTERNAL_NETWORK_ID}
+  identityRef:
+    cloudName: ${OPENSTACK_CLOUD}
+    name: ${CLUSTER_NAME}-cloud-config
+  managedSecurityGroups:
+    allNodesSecurityGroupRules:
+    - description: Created by cluster-api-provider-openstack - BGP (calico)
+      direction: ingress
+      etherType: IPv4
+      name: BGP (Calico)
+      portRangeMax: 179
+      portRangeMin: 179
+      protocol: tcp
+      remoteManagedGroups:
+      - controlplane
+      - worker
+    - description: Created by cluster-api-provider-openstack - IP-in-IP (calico)
+      direction: ingress
+      etherType: IPv4
+      name: IP-in-IP (calico)
+      protocol: "4"
+      remoteManagedGroups:
+      - controlplane
+      - worker
+    - description: Created by cluster-api-provider-openstack - Microcluster
+      direction: ingress
+      etherType: IPv4
+      name: Microcluster
+      portRangeMax: 2380
+      portRangeMin: 2380
+      protocol: tcp
+      remoteManagedGroups:
+      - controlplane
+      - worker
+  managedSubnets:
+  - cidr: 10.6.0.0/24
+    dnsNameservers:
+    - ${OPENSTACK_DNS_NAMESERVERS}
+---
+apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
+kind: OpenStackMachineTemplate
+metadata:
+  name: ${CLUSTER_NAME}-control-plane
+spec:
+  template:
+    spec:
+      flavor: ${OPENSTACK_CONTROL_PLANE_MACHINE_FLAVOR}
+      image:
+        filter:
+          name: ${OPENSTACK_IMAGE_NAME}
+      sshKeyName: ${OPENSTACK_SSH_KEY_NAME}
+---
+apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
+kind: OpenStackMachineTemplate
+metadata:
+  name: ${CLUSTER_NAME}-md-0
+spec:
+  template:
+    spec:
+      flavor: ${OPENSTACK_NODE_MACHINE_FLAVOR}
+      image:
+        filter:
+          name: ${OPENSTACK_IMAGE_NAME}
+      sshKeyName: ${OPENSTACK_SSH_KEY_NAME}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ccm-roles
+data:
+  data: |
+    ---
+    apiVersion: rbac.authorization.k8s.io/v1
+    kind: ClusterRole
+    metadata:
+      name: system:cloud-controller-manager
+    rules:
+    - apiGroups:
+      - coordination.k8s.io
+      resources:
+      - leases
+      verbs:
+      - get
+      - create
+      - update
+    - apiGroups:
+      - ""
+      resources:
+      - events
+      verbs:
+      - create
+      - patch
+      - update
+    - apiGroups:
+      - ""
+      resources:
+      - nodes
+      verbs:
+      - '*'
+    - apiGroups:
+      - ""
+      resources:
+      - nodes/status
+      verbs:
+      - patch
+    - apiGroups:
+      - ""
+      resources:
+      - services
+      verbs:
+      - list
+      - patch
+      - update
+      - watch
+    - apiGroups:
+      - ""
+      resources:
+      - services/status
+      verbs:
+      - patch
+    - apiGroups:
+      - ""
+      resources:
+      - serviceaccounts
+      verbs:
+      - create
+      - get
+    - apiGroups:
+      - ""
+      resources:
+      - serviceaccounts/token
+      verbs:
+      - create
+    - apiGroups:
+      - ""
+      resources:
+      - persistentvolumes
+      verbs:
+      - '*'
+    - apiGroups:
+      - ""
+      resources:
+      - endpoints
+      verbs:
+      - create
+      - get
+      - list
+      - watch
+      - update
+    - apiGroups:
+      - ""
+      resources:
+      - configmaps
+      verbs:
+      - get
+      - list
+      - watch
+    - apiGroups:
+      - ""
+      resources:
+      - secrets
+      verbs:
+      - list
+      - get
+      - watch
+    ---
+    apiVersion: rbac.authorization.k8s.io/v1
+    kind: ClusterRole
+    metadata:
+      name: system:cloud-node-controller
+    rules:
+    - apiGroups:
+      - ""
+      resources:
+      - nodes
+      verbs:
+      - '*'
+    - apiGroups:
+      - ""
+      resources:
+      - nodes/status
+      verbs:
+      - patch
+    - apiGroups:
+      - ""
+      resources:
+      - events
+      verbs:
+      - create
+      - patch
+      - update
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ccm-role-bindings
+data:
+  data: |
+    ---
+    apiVersion: rbac.authorization.k8s.io/v1
+    kind: ClusterRoleBinding
+    metadata:
+      name: system:cloud-node-controller
+    roleRef:
+      apiGroup: rbac.authorization.k8s.io
+      kind: ClusterRole
+      name: system:cloud-node-controller
+    subjects:
+    - kind: ServiceAccount
+      name: cloud-node-controller
+      namespace: kube-system
+    ---
+    apiVersion: rbac.authorization.k8s.io/v1
+    kind: ClusterRoleBinding
+    metadata:
+      name: system:cloud-controller-manager
+    roleRef:
+      apiGroup: rbac.authorization.k8s.io
+      kind: ClusterRole
+      name: system:cloud-controller-manager
+    subjects:
+    - kind: ServiceAccount
+      name: cloud-controller-manager
+      namespace: kube-system
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ccm-ds
+data:
+  data: |
+    ---
+    apiVersion: v1
+    kind: ServiceAccount
+    metadata:
+      name: cloud-controller-manager
+      namespace: kube-system
+    ---
+    apiVersion: apps/v1
+    kind: DaemonSet
+    metadata:
+      name: openstack-cloud-controller-manager
+      namespace: kube-system
+      labels:
+        k8s-app: openstack-cloud-controller-manager
+    spec:
+      selector:
+        matchLabels:
+          k8s-app: openstack-cloud-controller-manager
+      updateStrategy:
+        type: RollingUpdate
+      template:
+        metadata:
+          labels:
+            k8s-app: openstack-cloud-controller-manager
+        spec:
+          nodeSelector:
+            node-role.kubernetes.io/control-plane: ""
+          securityContext:
+            runAsUser: 1001
+          tolerations:
+          - key: node.cloudprovider.kubernetes.io/uninitialized
+            value: "true"
+            effect: NoSchedule
+          - key: node-role.kubernetes.io/master
+            effect: NoSchedule
+          - key: node-role.kubernetes.io/control-plane
+            effect: NoSchedule
+          serviceAccountName: cloud-controller-manager
+          containers:
+            - name: openstack-cloud-controller-manager
+              image: registry.k8s.io/provider-os/openstack-cloud-controller-manager:v1.32.0
+              args:
+                - /bin/openstack-cloud-controller-manager
+                - --v=1
+                - --cluster-name=$(CLUSTER_NAME)
+                - --cloud-config=$(CLOUD_CONFIG)
+                - --cloud-provider=openstack
+                - --use-service-account-credentials=false
+                - --bind-address=127.0.0.1
+              volumeMounts:
+                - mountPath: /etc/kubernetes/pki
+                  name: k8s-certs
+                  readOnly: true
+                - mountPath: /etc/ssl/certs
+                  name: ca-certs
+                  readOnly: true
+                - mountPath: /etc/config
+                  name: cloud-config-volume
+                  readOnly: true
+              resources:
+                requests:
+                  cpu: 200m
+              env:
+                - name: CLOUD_CONFIG
+                  value: /etc/config/cloud.conf
+                - name: CLUSTER_NAME
+                  value: kubernetes
+          dnsPolicy: ClusterFirst
+          hostNetwork: true
+          volumes:
+          - hostPath:
+              path: /etc/kubernetes/pki
+              type: DirectoryOrCreate
+            name: k8s-certs
+          - hostPath:
+              path: /etc/ssl/certs
+              type: DirectoryOrCreate
+            name: ca-certs
+          - name: cloud-config-volume
+            secret:
+              secretName: cloud-config
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: ccm-config-secret
+type: addons.cluster.x-k8s.io/resource-set
+stringData:
+  data: |
+    apiVersion: v1
+    kind: Secret
+    metadata:
+      name: cloud-config
+      namespace: kube-system
+    data:
+      cloud.conf: ${OPENSTACK_CLOUD_CONFIG_B64}
+    type: Opaque
+---
+apiVersion: addons.cluster.x-k8s.io/v1beta1
+kind: ClusterResourceSet
+metadata:
+  labels:
+    cluster.x-k8s.io/cluster-name: ${CLUSTER_NAME}
+  name: ${CLUSTER_NAME}-crs-0
+spec:
+  clusterSelector:
+    matchLabels:
+      cluster.x-k8s.io/cluster-name: ${CLUSTER_NAME}
+  resources:
+    - kind: Secret
+      name: ccm-config-secret
+    - kind: ConfigMap
+      name: ccm-roles
+    - kind: ConfigMap
+      name: ccm-role-bindings
+    - kind: ConfigMap
+      name: ccm-ds
