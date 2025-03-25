@@ -82,7 +82,7 @@ providers:
 # These variables replace the variables in test/e2e/data/infrastructure-aws manifests
 # They are used during clusterctl generate cluster
 variables:
-  KUBERNETES_VERSION_MANAGEMENT: "v1.32.1"
+  KUBERNETES_VERSION_MANAGEMENT: "v1.31.2"
   KUBERNETES_VERSION: "v1.32.1"
   KUBERNETES_VERSION_UPGRADE_TO: "v1.32.2"
   IP_FAMILY: "IPv4"

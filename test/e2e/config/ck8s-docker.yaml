@@ -84,7 +84,7 @@ providers:
         targetName: "metadata.yaml"
 
 variables:
-  KUBERNETES_VERSION_MANAGEMENT: "v1.32.1"
+  KUBERNETES_VERSION_MANAGEMENT: "v1.31.2"
   KUBERNETES_VERSION: "v1.32.1"
   KUBERNETES_VERSION_UPGRADE_TO: "v1.32.2"
   IP_FAMILY: "IPv4"
