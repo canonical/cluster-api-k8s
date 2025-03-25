@@ -30,7 +30,7 @@ The templates use the following variables:
 | OPENSTACK_BASTION_MACHINE_FLAVOR | The Openstack flavor used to deploy the bastion machine. |
 | OPENSTACK_DNS_NAMESERVERS | The list of DNS nameservers to use for Openstack instances. |
 
-Feel free to use the [template-varaibles.rc] template to define the environment variables or
+Feel free to use the [template-variables.rc] template to define the environment variables or
 [template-variables-devstack.rc] for [Devstack] environments.
 
 # Devstack
@@ -68,13 +68,13 @@ cat <<EOF >> local.sh
 
 # Octavia (LoadBalancer-as-a-Service) settings.
 GIT_BASE=https://opendev.org
-enable_plugin neutron $GIT_BASE/openstack/neutron
+enable_plugin neutron \$GIT_BASE/openstack/neutron
 enable_plugin octavia \$GIT_BASE/openstack/octavia master
 enable_plugin ovn-octavia-provider \$GIT_BASE/openstack/ovn-octavia-provider
 enable_service octavia o-api o-cw o-hm o-hk o-da
 ```
 
-Run ``./stack.sh`` to initialize the OpenStack environment using Devstack.
+Run `./stack.sh` to initialize the OpenStack environment using Devstack.
 
 ## CAPI prerequisites
 
@@ -90,7 +90,10 @@ kubectl apply -f https://github.com/k-orc/openstack-resource-controller/releases
 Initialize the CAPI providers:
 
 ```
-clusterctl init -i openstack -b canonical-kubernetes -c canonical-kubernetes
+clusterctl init \
+    --infrastructure openstack \
+    --bootstrap canonical-kubernetes \
+    --control-plane canonical-kubernetes
 ```
 
 ## Define the template variables
@@ -98,16 +101,16 @@ clusterctl init -i openstack -b canonical-kubernetes -c canonical-kubernetes
 For Devstack environments, [template-variables-devstack.rc] can be used to
 automatically set all the variables required by the Openstack template.
 
-First, make sure to source the Devstack ``openrc`` file. For testing purposes,
+First, make sure to source the Devstack `openrc` file. For testing purposes,
 we are going to use admin credentials.
 
 ```
 source $devstackDir/openrc admin admin
 ```
 
-By default, it will create an Openstack image using Ubuntu 24.04 (noble).
-It also creates an Openstack keypair, expecting a ssh public key at ``~/.ssh/id_rsa.pub``,
-use the ``$SSH_PUBKEY`` variable to specify a different path.
+By default, it will upload an Openstack image using Ubuntu 24.04 (noble).
+It also creates an Openstack keypair, expecting a ssh public key at `~/.ssh/id_rsa.pub`,
+use the `$SSH_PUBKEY` variable to specify a different path.
 
 The script checks if Octavia is enabled and sets the corresponding template variables.
 
@@ -212,7 +215,7 @@ c1-md-0-g6nrp-rwghf      Ready    worker                 37m   v1.32.2.2
 [clouds.yaml]: https://docs.openstack.org/python-openstackclient/2024.2/configuration/index.html#clouds-yaml
 [CAPO provider]: https://github.com/kubernetes-sigs/cluster-api-provider-openstack
 [Openstack Cloud Controller Manager]: https://github.com/kubernetes/cloud-provider-openstack/blob/master/docs/openstack-cloud-controller-manager/using-openstack-cloud-controller-manager.md
-[template-varaibles.rc]: ./template-variables.rc
+[template-variables.rc]: ./template-variables.rc
 [template-variables-devstack.rc]: ./template-variables-devstack.rc
 [Devstack]: https://github.com/openstack/devstack
 [Kind]: https://kind.sigs.k8s.io/docs/user/quick-start/#installation

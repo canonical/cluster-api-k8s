@@ -69,7 +69,7 @@ export OPENSTACK_IMAGE_NAME=$IMAGE_NAME
 # We'll use the default public network created by Devstack.
 export OPENSTACK_EXTERNAL_NETWORK_ID=$(openstack network list | grep public | cut -d " " -f 2)
 
-export OPENSTACK_CLOUD_CACERT_B64="Cg=="
+export OPENSTACK_CLOUD_CACERT_B64=""
 
 export OPENSTACK_CONTROL_PLANE_MACHINE_FLAVOR="ds4G"
 export OPENSTACK_NODE_MACHINE_FLAVOR="ds4G"
