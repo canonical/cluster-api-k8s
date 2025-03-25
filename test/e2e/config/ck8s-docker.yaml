@@ -88,7 +88,6 @@ variables:
   KUBERNETES_VERSION: "v1.32.1"
   KUBERNETES_VERSION_UPGRADE_TO: "v1.32.2"
   IP_FAMILY: "IPv4"
-  KIND_IMAGE_VERSION: "v1.32.1"
   IN_PLACE_UPGRADE_OPTION: "localPath=/k8s/upgrade/bin/kubernetes"
 
 intervals:
