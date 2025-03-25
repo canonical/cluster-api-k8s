@@ -54,7 +54,7 @@ GOBIN=$(shell go env GOBIN)
 endif
 
 # Sync to controller-tools version in https://github.com/kubernetes-sigs/cluster-api/blob/v{VERSION}/hack/tools/go.mod
-CONTROLLER_GEN_VER := v0.14.0
+CONTROLLER_GEN_VER := v0.16.1
 CONTROLLER_GEN_BIN := controller-gen
 CONTROLLER_GEN := $(TOOLS_BIN_DIR)/$(CONTROLLER_GEN_BIN)-$(CONTROLLER_GEN_VER)
 
