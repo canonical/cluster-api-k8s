@@ -15,6 +15,7 @@ require (
 	k8s.io/apiserver v0.29.3
 	k8s.io/client-go v0.29.3
 	k8s.io/klog/v2 v2.110.1
+	k8s.io/kubernetes v1.29.3
 	k8s.io/utils v0.0.0-20240102154912-e7106e64919e
 	sigs.k8s.io/cluster-api v1.7.1
 	sigs.k8s.io/cluster-api/test v1.7.1
@@ -30,7 +31,7 @@ require (
 	github.com/Masterminds/goutils v1.1.1 // indirect
 	github.com/Masterminds/semver/v3 v3.2.0 // indirect
 	github.com/Masterminds/sprig/v3 v3.2.3 // indirect
-	github.com/Microsoft/go-winio v0.5.0 // indirect
+	github.com/Microsoft/go-winio v0.6.0 // indirect
 	github.com/ProtonMail/go-crypto v0.0.0-20230217124315-7d5c6f04bbb8 // indirect
 	github.com/adrg/xdg v0.4.0 // indirect
 	github.com/alessio/shellescape v1.4.1 // indirect
@@ -44,7 +45,7 @@ require (
 	github.com/distribution/reference v0.5.0 // indirect
 	github.com/docker/docker v25.0.6+incompatible // indirect
 	github.com/docker/go-connections v0.5.0 // indirect
-	github.com/docker/go-units v0.4.0 // indirect
+	github.com/docker/go-units v0.5.0 // indirect
 	github.com/drone/envsubst/v2 v2.0.0-20210730161058-179042472c46 // indirect
 	github.com/emicklei/go-restful/v3 v3.12.0 // indirect
 	github.com/evanphx/json-patch v5.7.0+incompatible // indirect
