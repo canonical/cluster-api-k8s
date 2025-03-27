@@ -15,8 +15,8 @@ providers:
   - name: cluster-api
     type: CoreProvider
     versions:
-      - name: v1.8.4
-        value: https://github.com/kubernetes-sigs/cluster-api/releases/download/v1.8.4/core-components.yaml
+      - name: v1.9.6
+        value: https://github.com/kubernetes-sigs/cluster-api/releases/download/v1.9.6/core-components.yaml
         type: url
         files:
           - sourcePath: "../data/shared/v1beta1/metadata.yaml"
@@ -28,8 +28,8 @@ providers:
     versions:
       # By default, will use the latest version defined in ../data/shared/v1beta1/metadata.yaml
       # to init the management cluster
-      - name: v1.8.4 # used during e2e-test
-        value: https://github.com/kubernetes-sigs/cluster-api/releases/download/v1.8.4/infrastructure-components-development.yaml
+      - name: v1.9.6 # used during e2e-test
+        value: https://github.com/kubernetes-sigs/cluster-api/releases/download/v1.9.6/infrastructure-components-development.yaml
         type: url
         files:
           - sourcePath: "../data/shared/v1beta1/metadata.yaml"
@@ -37,12 +37,12 @@ providers:
           - old: "imagePullPolicy: Always"
             new: "imagePullPolicy: IfNotPresent"
 
-      # Add v1.7.99 to support tilt (not presented in ../data/shared/v1beta1/metadata.yaml)
+      # Add v1.11.99 to support tilt (not presented in ../data/shared/v1beta1/metadata.yaml)
       # when bootstrapping with tilt, it will use
       # the defaultProviderVersion in https://github.com/kubernetes-sigs/cluster-api/blob/main/hack/tools/internal/tilt-prepare/main.go as
       # default version for docker infrastructure provider
       # name here should match defaultProviderVersion
-      - name: v1.7.99 # next; use manifest from source files
+      - name: v1.11.99 # next; use manifest from source files
         value: https://github.com/kubernetes-sigs/cluster-api/releases/latest/download/infrastructure-components-development.yaml
         type: url
         files:
@@ -84,11 +84,10 @@ providers:
         targetName: "metadata.yaml"
 
 variables:
-  KUBERNETES_VERSION_MANAGEMENT: "v1.28.0"
-  KUBERNETES_VERSION: "v1.29.6"
-  KUBERNETES_VERSION_UPGRADE_TO: "v1.30.3"
+  KUBERNETES_VERSION_MANAGEMENT: "v1.31.2"
+  KUBERNETES_VERSION: "v1.32.1"
+  KUBERNETES_VERSION_UPGRADE_TO: "v1.32.2"
   IP_FAMILY: "IPv4"
-  KIND_IMAGE_VERSION: "v1.28.0"
   IN_PLACE_UPGRADE_OPTION: "localPath=/k8s/upgrade/bin/kubernetes"
 
 intervals:

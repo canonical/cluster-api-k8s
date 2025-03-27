@@ -24,10 +24,12 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
+	"k8s.io/utils/ptr"
 	clusterv1beta1 "sigs.k8s.io/cluster-api/api/v1beta1"
 	expv1beta1 "sigs.k8s.io/cluster-api/exp/api/v1beta1"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/cache"
+	"sigs.k8s.io/controller-runtime/pkg/config"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 	"sigs.k8s.io/controller-runtime/pkg/metrics/server"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
@@ -84,6 +86,10 @@ func main() {
 		LeaderElectionID: "6b2b21b1.k8s.io",
 		Cache: cache.Options{
 			SyncPeriod: &syncPeriod,
+		},
+		Controller: config.Controller{
+			// TODO: avoid duplicate controller names.
+			SkipNameValidation: ptr.To(true),
 		},
 	})
 	if err != nil {

@@ -39,12 +39,12 @@ import (
 	"sigs.k8s.io/cluster-api/util/patch"
 	"sigs.k8s.io/cluster-api/util/predicates"
 	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
-	"sigs.k8s.io/controller-runtime/pkg/source"
 
 	controlplanev1 "github.com/canonical/cluster-api-k8s/controlplane/api/v1beta2"
 	"github.com/canonical/cluster-api-k8s/pkg/ck8s"
@@ -272,18 +272,18 @@ func (r *CK8sControlPlaneReconciler) SetupWithManager(ctx context.Context, mgr c
 		Owns(&clusterv1.Machine{}).
 		//	WithOptions(options).
 		//	WithEventFilter(predicates.ResourceNotPaused(r.Log)).
+		Watches(
+			&clusterv1.Cluster{},
+			handler.EnqueueRequestsFromMapFunc(r.ClusterToCK8sControlPlane),
+			builder.WithPredicates(
+				predicates.All(mgr.GetScheme(), ctrl.LoggerFrom(ctx),
+					predicates.ClusterPausedTransitionsOrInfrastructureReady(mgr.GetScheme(), r.Log),
+				),
+			),
+		).
 		Build(r)
 	if err != nil {
 		return fmt.Errorf("failed setting up with a controller manager: %w", err)
-	}
-
-	err = c.Watch(
-		source.Kind(mgr.GetCache(), &clusterv1.Cluster{}),
-		handler.EnqueueRequestsFromMapFunc(r.ClusterToCK8sControlPlane(ctx, log)),
-		predicates.ClusterUnpausedAndInfrastructureReady(r.Log),
-	)
-	if err != nil {
-		return fmt.Errorf("failed adding Watch for Clusters to controller manager: %w", err)
 	}
 
 	r.Scheme = mgr.GetScheme()
@@ -309,21 +309,18 @@ func (r *CK8sControlPlaneReconciler) SetupWithManager(ctx context.Context, mgr c
 
 // ClusterToCK8sControlPlane is a handler.ToRequestsFunc to be used to enqueue requests for reconciliation
 // for CK8sControlPlane based on updates to a Cluster.
-func (r *CK8sControlPlaneReconciler) ClusterToCK8sControlPlane(ctx context.Context, log *logr.Logger) handler.MapFunc {
-	return func(ctx context.Context, o client.Object) []ctrl.Request {
-		c, ok := o.(*clusterv1.Cluster)
-		if !ok {
-			r.Log.Error(nil, fmt.Sprintf("Expected a Cluster but got a %T", o))
-			return nil
-		}
-
-		controlPlaneRef := c.Spec.ControlPlaneRef
-		if controlPlaneRef != nil && controlPlaneRef.Kind == "CK8sControlPlane" {
-			return []ctrl.Request{{NamespacedName: client.ObjectKey{Namespace: controlPlaneRef.Namespace, Name: controlPlaneRef.Name}}}
-		}
-
-		return nil
+func (r *CK8sControlPlaneReconciler) ClusterToCK8sControlPlane(_ context.Context, o client.Object) []ctrl.Request {
+	c, ok := o.(*clusterv1.Cluster)
+	if !ok {
+		panic(fmt.Sprintf("Expected a Cluster but got a %T", o))
 	}
+
+	controlPlaneRef := c.Spec.ControlPlaneRef
+	if controlPlaneRef != nil && controlPlaneRef.Kind == "CK8sControlPlane" {
+		return []ctrl.Request{{NamespacedName: client.ObjectKey{Namespace: controlPlaneRef.Namespace, Name: controlPlaneRef.Name}}}
+	}
+
+	return nil
 }
 
 // updateStatus is called after every reconcilitation loop in a defer statement to always make sure we have the
@@ -354,6 +351,11 @@ func (r *CK8sControlPlaneReconciler) updateStatus(ctx context.Context, kcp *cont
 	kcp.Status.Replicas = replicas
 	kcp.Status.ReadyReplicas = 0
 	kcp.Status.UnavailableReplicas = replicas
+
+	lowestVersion := ownedMachines.LowestVersion()
+	if lowestVersion != nil {
+		kcp.Status.Version = lowestVersion
+	}
 
 	// Return early if the deletion timestamp is set, because we don't want to try to connect to the workload cluster
 	// and we don't want to report resize condition (because it is set to deleting into reconcile delete).
@@ -564,7 +566,7 @@ func (r *CK8sControlPlaneReconciler) reconcileExternalReference(ctx context.Cont
 		return nil
 	}
 
-	obj, err := external.Get(ctx, r.Client, &ref, cluster.Namespace)
+	obj, err := external.Get(ctx, r.Client, &ref)
 	if err != nil {
 		return err
 	}

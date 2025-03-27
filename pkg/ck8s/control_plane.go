@@ -165,7 +165,7 @@ func (c *ControlPlane) NextFailureDomainForScaleUp(ctx context.Context) *string 
 	if len(c.Cluster.Status.FailureDomains.FilterControlPlane()) == 0 {
 		return nil
 	}
-	return failuredomains.PickFewest(ctx, c.FailureDomains().FilterControlPlane(), c.UpToDateMachines())
+	return failuredomains.PickFewest(ctx, c.FailureDomains().FilterControlPlane(), c.Machines, c.UpToDateMachines())
 }
 
 // InitialControlPlaneConfig returns a new CK8sConfigSpec that is to be used for an initializing control plane.
@@ -281,7 +281,7 @@ func (c *ControlPlane) UpToDateMachines() collections.Machines {
 func getInfraResources(ctx context.Context, cl client.Client, machines collections.Machines) (map[string]*unstructured.Unstructured, error) {
 	result := map[string]*unstructured.Unstructured{}
 	for _, m := range machines {
-		infraObj, err := external.Get(ctx, cl, &m.Spec.InfrastructureRef, m.Namespace)
+		infraObj, err := external.Get(ctx, cl, &m.Spec.InfrastructureRef)
 		if err != nil {
 			if apierrors.IsNotFound(err) {
 				continue
@@ -320,12 +320,12 @@ func (c *ControlPlane) IsEtcdManaged() bool {
 
 // UnhealthyMachines returns the list of control plane machines marked as unhealthy by MHC.
 func (c *ControlPlane) UnhealthyMachines() collections.Machines {
-	return c.Machines.Filter(collections.HasUnhealthyCondition)
+	return c.Machines.Filter(collections.IsUnhealthy)
 }
 
 // HealthyMachines returns the list of control plane machines not marked as unhealthy by MHC.
 func (c *ControlPlane) HealthyMachines() collections.Machines {
-	return c.Machines.Filter(collections.Not(collections.HasUnhealthyCondition))
+	return c.Machines.Filter(collections.Not(collections.IsUnhealthy))
 }
 
 // HasUnhealthyMachine returns true if any machine in the control plane is marked as unhealthy by MHC.

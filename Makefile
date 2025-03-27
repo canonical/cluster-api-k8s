@@ -54,7 +54,7 @@ GOBIN=$(shell go env GOBIN)
 endif
 
 # Sync to controller-tools version in https://github.com/kubernetes-sigs/cluster-api/blob/v{VERSION}/hack/tools/go.mod
-CONTROLLER_GEN_VER := v0.14.0
+CONTROLLER_GEN_VER := v0.16.1
 CONTROLLER_GEN_BIN := controller-gen
 CONTROLLER_GEN := $(TOOLS_BIN_DIR)/$(CONTROLLER_GEN_BIN)-$(CONTROLLER_GEN_VER)
 
@@ -68,10 +68,10 @@ ENVSUBST_VER := v2.0.0-20210730161058-179042472c46
 ENVSUBST_BIN := envsubst
 ENVSUBST := $(TOOLS_BIN_DIR)/$(ENVSUBST_BIN)
 
-ENVTEST_VER := v0.0.0-20231012212722-e25aeebc7846
+ENVTEST_VER := release-0.20
 ENVTEST_BIN := setup-envtest
 ENVTEST := $(TOOLS_BIN_DIR)/$(ENVTEST_BIN)
-ENVTEST_K8S_VERSION = "1.28.0"
+ENVTEST_K8S_VERSION = "1.32.0"
 
 # Sync to github.com/drone/envsubst/v2 in https://github.com/kubernetes-sigs/cluster-api/blob/v{VERSION}/go.mod
 ENVSUBST_VER := v2.0.0-20210730161058-179042472c46

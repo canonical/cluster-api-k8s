@@ -27,7 +27,7 @@ jobs:
           sudo snap install go --classic --channel=1.22/stable
           sudo apt install make
           sudo apt install docker-buildx
-          sudo snap install kubectl --classic --channel=1.30/stable
+          sudo snap install kubectl --classic --channel=1.32/stable
       - name: Build provider images
         run: sudo make docker-build-e2e
       - name: Build k8s-snap images
@@ -86,7 +86,7 @@ jobs:
           sudo snap install go --classic --channel=1.22/stable
           sudo apt install make
           sudo apt install docker-buildx
-          sudo snap install kubectl --classic --channel=1.30/stable
+          sudo snap install kubectl --classic --channel=1.32/stable
       - name: Download artifacts
         uses: actions/download-artifact@v4
         with:

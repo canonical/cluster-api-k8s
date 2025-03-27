@@ -22,17 +22,6 @@ rules:
   - bootstrap.cluster.x-k8s.io
   resources:
   - ck8sconfigs
-  verbs:
-  - create
-  - delete
-  - get
-  - list
-  - patch
-  - update
-  - watch
-- apiGroups:
-  - bootstrap.cluster.x-k8s.io
-  resources:
   - ck8sconfigs/status
   verbs:
   - create
@@ -47,17 +36,8 @@ rules:
   resources:
   - clusters
   - clusters/status
-  verbs:
-  - get
-  - list
-  - watch
-- apiGroups:
-  - cluster.x-k8s.io
-  resources:
-  - clusters
-  - clusters/status
-  - machines
-  - machines/status
+  - machinesets
+  - machinesets/status
   verbs:
   - get
   - list
@@ -67,17 +47,6 @@ rules:
   resources:
   - machinedeployments
   - machinedeployments/status
-  verbs:
-  - create
-  - delete
-  - get
-  - list
-  - patch
-  - update
-  - watch
-- apiGroups:
-  - cluster.x-k8s.io
-  resources:
   - machines
   - machines/status
   verbs:
@@ -87,15 +56,6 @@ rules:
   - list
   - patch
   - update
-  - watch
-- apiGroups:
-  - cluster.x-k8s.io
-  resources:
-  - machinesets
-  - machinesets/status
-  verbs:
-  - get
-  - list
   - watch
 - apiGroups:
   - exp.cluster.x-k8s.io
