@@ -129,6 +129,7 @@ func (r *CK8sControlPlaneReconciler) scaleDownControlPlane(
 
 	if err := workloadCluster.RemoveMachineFromCluster(ctx, machineToDelete); err != nil {
 		logger.Error(err, "failed to remove machine from microcluster")
+		return ctrl.Result{}, fmt.Errorf("failed to remove machine from microcluster: %w", err)
 	}
 
 	logger = logger.WithValues("machine", machineToDelete)
