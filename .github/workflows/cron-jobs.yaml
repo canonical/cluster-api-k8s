@@ -1,9 +1,9 @@
 name: Security and quality nightly scan
 
 on:
-  schedule:
-    # At 00:00 every day
-    - cron: '0 0 * * *'
+  pull_request:
+    branches:
+      - main
 
 permissions:
   contents: read
