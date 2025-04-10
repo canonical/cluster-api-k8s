@@ -93,17 +93,18 @@ func GenerateInitControlPlaneConfig(cfg InitControlPlaneConfig) (apiv1.Bootstrap
 		out.ClusterConfig.Annotations = map[string]string{}
 	}
 
+	trueStr := "true"
 	if _, ok := out.ClusterConfig.Annotations[apiv1_annotations.AnnotationSkipCleanupKubernetesNodeOnRemove]; !ok {
-		out.ClusterConfig.Annotations[apiv1_annotations.AnnotationSkipCleanupKubernetesNodeOnRemove] = "true"
+		out.ClusterConfig.Annotations[apiv1_annotations.AnnotationSkipCleanupKubernetesNodeOnRemove] = trueStr
 	}
 
 	if _, ok := out.ClusterConfig.Annotations[apiv1_annotations.AnnotationSkipStopServicesOnRemove]; !ok {
-		out.ClusterConfig.Annotations[apiv1_annotations.AnnotationSkipStopServicesOnRemove] = "true"
+		out.ClusterConfig.Annotations[apiv1_annotations.AnnotationSkipStopServicesOnRemove] = trueStr
 	}
 
 	// The separate feature upgrade only supports in-place upgrades for now.
 	if _, ok := out.ClusterConfig.Annotations[apiv1_annotations.AnnotationDisableSeparateFeatureUpgrades]; !ok {
-		out.ClusterConfig.Annotations[apiv1_annotations.AnnotationDisableSeparateFeatureUpgrades] = "true"
+		out.ClusterConfig.Annotations[apiv1_annotations.AnnotationDisableSeparateFeatureUpgrades] = trueStr
 	}
 
 	// features
