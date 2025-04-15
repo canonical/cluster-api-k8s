@@ -3,7 +3,7 @@
 # Author: Angelos Kolaitis <angelos.kolaitis@canonical.com>
 #
 # Usage:
-#    $ install-go.sh 1.22.6
+#    $ install-go.sh 1.23.0
 #
 # Description: Download go version and install under /usr/local/go
 
