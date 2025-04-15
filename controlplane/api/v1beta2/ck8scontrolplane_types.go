@@ -22,9 +22,20 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
+	"k8s.io/apimachinery/pkg/util/intstr"
 
 	bootstrapv1 "github.com/canonical/cluster-api-k8s/bootstrap/api/v1beta2"
 	"github.com/canonical/cluster-api-k8s/pkg/errors"
+)
+
+// RolloutStrategyType defines the rollout strategies for a CK8sControlPlane.
+// +kubebuilder:validation:Enum=RollingUpdate
+type RolloutStrategyType string
+
+const (
+	// RollingUpdateStrategyType replaces the old control planes by new one using rolling update
+	// i.e. gradually scale up or down the old control planes and scale up or down the new one.
+	RollingUpdateStrategyType RolloutStrategyType = "RollingUpdate"
 )
 
 const (
@@ -81,6 +92,10 @@ type CK8sControlPlaneSpec struct {
 	// The RemediationStrategy that controls how control plane machine remediation happens.
 	// +optional
 	RemediationStrategy *RemediationStrategy `json:"remediationStrategy,omitempty"`
+
+	// The RolloutStrategy that controls how control plane machine upgrade happens.
+	// +optional
+	RolloutStrategy *RolloutStrategy `json:"rolloutStrategy,omitempty"`
 }
 
 // MachineTemplate contains information about how machines should be shaped
@@ -107,6 +122,33 @@ type CK8sControlPlaneMachineTemplate struct {
 	// If no value is provided, the default value for this property of the Machine resource will be used.
 	// +optional
 	NodeDeletionTimeout *metav1.Duration `json:"nodeDeletionTimeout,omitempty"`
+}
+
+// RolloutStrategy describes how to replace existing machines
+// with new ones.
+type RolloutStrategy struct {
+	// type of rollout. Currently the only supported strategy is
+	// "RollingUpdate".
+	// Default is RollingUpdate.
+	// +optional
+	Type RolloutStrategyType `json:"type,omitempty"`
+
+	// rollingUpdate is the rolling update config params. Present only if
+	// RolloutStrategyType = RollingUpdate.
+	// +optional
+	RollingUpdate *RollingUpdate `json:"rollingUpdate,omitempty"`
+}
+
+// RollingUpdate is used to control the desired behavior of rolling update.
+type RollingUpdate struct {
+	// maxSurge is the maximum number of control planes that can be scheduled above or under the
+	// desired number of control planes.
+	// Value can be an absolute number 1 or 0.
+	// Defaults to 1.
+	// Example: when this is set to 1, the control plane can be scaled
+	// up immediately when the rolling update starts.
+	// +optional
+	MaxSurge *intstr.IntOrString `json:"maxSurge,omitempty"`
 }
 
 // RemediationStrategy allows to define how control plane machine remediation happens.
