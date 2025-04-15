@@ -2,7 +2,7 @@ module github.com/canonical/cluster-api-k8s
 
 go 1.23.0
 
-toolchain go1.24.1
+toolchain go1.23.8
 
 require (
 	github.com/canonical/k8s-snap-api v1.0.25
