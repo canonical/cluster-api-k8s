@@ -37,7 +37,6 @@ metadata:
   namespace: ${NAMESPACE}
 spec:
   rolloutStrategy:
-    type: RollingUpdate
     rollingUpdate:
       maxSurge: 0
   machineTemplate:
