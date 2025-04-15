@@ -24,7 +24,7 @@ jobs:
       - name: Install requirements
         run: |
           sudo apt update
-          sudo snap install go --classic --channel=1.22/stable
+          sudo snap install go --classic --channel=1.23/stable
           sudo apt install make
           sudo apt install docker-buildx
           sudo snap install kubectl --classic --channel=1.32/stable
@@ -83,7 +83,7 @@ jobs:
       - name: Install requirements
         run: |
           sudo apt update
-          sudo snap install go --classic --channel=1.22/stable
+          sudo snap install go --classic --channel=1.23/stable
           sudo apt install make
           sudo apt install docker-buildx
           sudo snap install kubectl --classic --channel=1.32/stable

@@ -1,6 +1,7 @@
 module github.com/canonical/cluster-api-k8s
 
-go 1.22.6
+go 1.23.0
+
 toolchain go1.24.1
 
 require (
