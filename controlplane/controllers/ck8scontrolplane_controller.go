@@ -740,6 +740,11 @@ func (r *CK8sControlPlaneReconciler) upgradeControlPlane(
 	**/
 	logger := r.Log.WithValues("namespace", kcp.Namespace, "CK8sControlPlane", kcp.Name, "cluster", cluster.Name)
 
+	if kcp.Spec.RolloutStrategy == nil {
+		logger.Info("RolloutStrategy is empty, unable to continue")
+		return ctrl.Result{}, nil
+	}
+
 	switch kcp.Spec.RolloutStrategy.Type {
 	case controlplanev1.RollingUpdateStrategyType:
 		// RolloutStrategy is currently defaulted and validated to be RollingUpdate
