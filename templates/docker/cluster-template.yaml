@@ -38,6 +38,10 @@ spec:
       kind: DockerMachineTemplate
       name: ${CLUSTER_NAME}-control-plane
       namespace: default
+  rolloutStrategy:
+    rollingUpdate:
+      maxSurge: 0
+    type: RollingUpdate
   spec:
     airGapped: true
     controlPlane:
