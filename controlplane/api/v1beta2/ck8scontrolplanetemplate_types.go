@@ -55,9 +55,11 @@ type CK8sControlPlaneTemplateResourceSpec struct {
 	// +optional
 	RemediationStrategy *RemediationStrategy `json:"remediationStrategy,omitempty"`
 
-	// The RolloutStrategy that controls how control plane machine upgrade happens.
-	// +optional
-	RolloutStrategy *RolloutStrategy `json:"RolloutStrategy,omitempty"`
+        // rolloutStrategy is the RolloutStrategy to use to replace control plane machines with
+        // new ones.
+        // +optional
+        // +kubebuilder:default={type: "RollingUpdate", rollingUpdate: {maxSurge: 1}}
+        RolloutStrategy *RolloutStrategy `json:"rolloutStrategy,omitempty"`
 }
 
 // +kubebuilder:object:root=true
