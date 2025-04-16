@@ -228,8 +228,13 @@ spec:
                 format: date-time
                 type: string
               rolloutStrategy:
-                description: The RolloutStrategy that controls how control plane machine
-                  upgrade happens.
+                default:
+                  rollingUpdate:
+                    maxSurge: 1
+                  type: RollingUpdate
+                description: |-
+                  rolloutStrategy is the RolloutStrategy to use to replace control plane machines with
+                  new ones.
                 properties:
                   rollingUpdate:
                     description: |-
