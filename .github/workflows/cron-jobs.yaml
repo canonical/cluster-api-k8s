@@ -4,6 +4,9 @@ on:
   schedule:
     # At 00:00 every day
     - cron: '0 0 * * *'
+  pull_request:
+    paths:
+      - .github/workflows/cron-jobs.yaml
 
 permissions:
   contents: read
@@ -15,11 +18,6 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Harden Runner
-        uses: step-security/harden-runner@v2
-        with:
-          egress-policy: audit
-
       - name: Checking out repo
         uses: actions/checkout@v4
 
