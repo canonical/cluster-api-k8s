@@ -21,8 +21,8 @@ import (
 
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
 	"k8s.io/apimachinery/pkg/util/intstr"
+	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
 
 	bootstrapv1 "github.com/canonical/cluster-api-k8s/bootstrap/api/v1beta2"
 	"github.com/canonical/cluster-api-k8s/pkg/errors"
@@ -93,11 +93,11 @@ type CK8sControlPlaneSpec struct {
 	// +optional
 	RemediationStrategy *RemediationStrategy `json:"remediationStrategy,omitempty"`
 
-        // rolloutStrategy is the RolloutStrategy to use to replace control plane machines with
-        // new ones.
-        // +optional
-        // +kubebuilder:default={type: "RollingUpdate", rollingUpdate: {maxSurge: 1}}
-        RolloutStrategy *RolloutStrategy `json:"rolloutStrategy,omitempty"`
+	// rolloutStrategy is the RolloutStrategy to use to replace control plane machines with
+	// new ones.
+	// +optional
+	// +kubebuilder:default={type: "RollingUpdate", rollingUpdate: {maxSurge: 1}}
+	RolloutStrategy *RolloutStrategy `json:"rolloutStrategy,omitempty"`
 }
 
 // MachineTemplate contains information about how machines should be shaped
