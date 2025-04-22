@@ -54,6 +54,7 @@ providers:
       - sourcePath: "../data/infrastructure-docker/cluster-template-kcp-remediation.yaml"
       - sourcePath: "../data/infrastructure-docker/cluster-template-md-remediation.yaml"
       - sourcePath: "../data/infrastructure-docker/cluster-template-upgrades.yaml"
+      - sourcePath: "../data/infrastructure-docker/cluster-template-upgrades-max-surge-0.yaml"
       - sourcePath: "../data/infrastructure-docker/cluster-template.yaml"
   - name: ck8s
     type: BootstrapProvider

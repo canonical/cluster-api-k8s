@@ -34,6 +34,11 @@ import (
 	"sigs.k8s.io/cluster-api/util"
 )
 
+const (
+	flavorUpgrades          = "upgrades"
+	flavorUpgradesMaxSurge0 = "upgrades-max-surge-0"
+)
+
 // ClusterUpgradeSpecInput is the input for ClusterUpgradeConformanceSpec.
 type ClusterUpgradeSpecInput struct {
 	E2EConfig             *clusterctl.E2EConfig
@@ -80,6 +85,9 @@ func ClusterUpgradeSpec(ctx context.Context, inputGetter func() ClusterUpgradeSp
 		result              *ApplyClusterTemplateAndWaitResult
 		clusterName         string
 		clusterctlLogFolder string
+
+		flavor                      string
+		maxControlPlaneMachineCount int64
 	)
 
 	BeforeEach(func() {
@@ -105,6 +113,17 @@ func ClusterUpgradeSpec(ctx context.Context, inputGetter func() ClusterUpgradeSp
 			workerMachineCount = 2
 		} else {
 			workerMachineCount = *input.WorkerMachineCount
+		}
+
+		// Default flavor with the default MaxSurge=1 (we expect to see at most 1 extra Machine).
+		flavor = flavorUpgrades
+		maxControlPlaneMachineCount = controlPlaneMachineCount + 1
+		if input.Flavor != nil {
+			flavor = *input.Flavor
+			if flavor == flavorUpgradesMaxSurge0 {
+				// MaxSurge=0 (we should see no additional Machine).
+				maxControlPlaneMachineCount = controlPlaneMachineCount
+			}
 		}
 
 		// Setup a Namespace where to host objects for this spec and create a watcher for the namespace events.
@@ -139,7 +158,7 @@ func ClusterUpgradeSpec(ctx context.Context, inputGetter func() ClusterUpgradeSp
 				ClusterctlConfigPath:     input.ClusterctlConfigPath,
 				KubeconfigPath:           input.BootstrapClusterProxy.GetKubeconfigPath(),
 				InfrastructureProvider:   *input.InfrastructureProvider,
-				Flavor:                   ptr.Deref(input.Flavor, "upgrades"),
+				Flavor:                   flavor,
 				Namespace:                namespace.Name,
 				ClusterName:              clusterName,
 				KubernetesVersion:        input.E2EConfig.GetVariable(KubernetesVersion),
@@ -157,6 +176,7 @@ func ClusterUpgradeSpec(ctx context.Context, inputGetter func() ClusterUpgradeSp
 			ClusterProxy:                input.BootstrapClusterProxy,
 			Cluster:                     result.Cluster,
 			ControlPlane:                result.ControlPlane,
+			MaxControlPlaneMachineCount: maxControlPlaneMachineCount,
 			KubernetesUpgradeVersion:    input.E2EConfig.GetVariable(KubernetesVersionUpgradeTo),
 			UpgradeMachineTemplate:      ptr.To(fmt.Sprintf("%s-control-plane-old", clusterName)),
 			WaitForMachinesToBeUpgraded: input.E2EConfig.GetIntervals(specName, "wait-machine-upgrade"),
