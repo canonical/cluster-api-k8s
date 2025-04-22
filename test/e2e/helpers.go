@@ -26,6 +26,7 @@ import (
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	"github.com/pkg/errors"
 	"golang.org/x/mod/semver"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -36,6 +37,7 @@ import (
 	expv1 "sigs.k8s.io/cluster-api/exp/api/v1beta1"
 	"sigs.k8s.io/cluster-api/test/framework"
 	"sigs.k8s.io/cluster-api/test/framework/clusterctl"
+	"sigs.k8s.io/cluster-api/util/conditions"
 	"sigs.k8s.io/cluster-api/util/patch"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -978,6 +980,7 @@ type UpgradeControlPlaneAndWaitForUpgradeInput struct {
 	ClusterProxy                framework.ClusterProxy
 	Cluster                     *clusterv1.Cluster
 	ControlPlane                *controlplanev1.CK8sControlPlane
+	MaxControlPlaneMachineCount int64
 	KubernetesUpgradeVersion    string
 	UpgradeMachineTemplate      *string
 	WaitForMachinesToBeUpgraded []interface{}
@@ -1015,12 +1018,61 @@ func UpgradeControlPlaneAndWaitForUpgrade(ctx context.Context, input UpgradeCont
 	}, retryableOperationTimeout, retryableOperationInterval).Should(Succeed(), "Failed to patch the new kubernetes version to KCP %s", klog.KObj(input.ControlPlane))
 
 	Byf("Waiting for control-plane machines to have the upgraded kubernetes version")
-	framework.WaitForControlPlaneMachinesToBeUpgraded(ctx, framework.WaitForControlPlaneMachinesToBeUpgradedInput{
+	WaitForControlPlaneMachinesToBeUpgraded(ctx, WaitForControlPlaneMachinesToBeUpgradedInput{
 		Lister:                   mgmtClient,
 		Cluster:                  input.Cluster,
 		MachineCount:             int(*input.ControlPlane.Spec.Replicas),
+		MaxMachineCount:          int(input.MaxControlPlaneMachineCount),
 		KubernetesUpgradeVersion: input.KubernetesUpgradeVersion,
 	}, input.WaitForMachinesToBeUpgraded...)
+}
+
+// WaitForControlPlaneMachinesToBeUpgradedInput is the input for WaitForControlPlaneMachinesToBeUpgraded.
+// originally from: https://github.com/kubernetes-sigs/cluster-api/blob/cee1200faf24a618bcf44707e7d63eb8f69c19e0/test/framework/machine_helpers.go#L147
+// Changes: Added MaxMachineCount field.
+type WaitForControlPlaneMachinesToBeUpgradedInput struct {
+	Lister                   framework.Lister
+	Cluster                  *clusterv1.Cluster
+	KubernetesUpgradeVersion string
+	MachineCount             int
+	MaxMachineCount          int
+}
+
+// WaitForControlPlaneMachinesToBeUpgraded waits until all machines are upgraded to the correct Kubernetes version.
+// originally from: https://github.com/kubernetes-sigs/cluster-api/blob/cee1200faf24a618bcf44707e7d63eb8f69c19e0/test/framework/machine_helpers.go#L155
+// Changes: Handles MaxMachineCount.
+func WaitForControlPlaneMachinesToBeUpgraded(ctx context.Context, input WaitForControlPlaneMachinesToBeUpgradedInput, intervals ...interface{}) {
+	Expect(ctx).NotTo(BeNil(), "ctx is required for WaitForControlPlaneMachinesToBeUpgraded")
+	Expect(input.Lister).ToNot(BeNil(), "Invalid argument. input.Lister can't be nil when calling WaitForControlPlaneMachinesToBeUpgraded")
+	Expect(input.KubernetesUpgradeVersion).ToNot(BeEmpty(), "Invalid argument. input.KubernetesUpgradeVersion can't be empty when calling WaitForControlPlaneMachinesToBeUpgraded")
+	Expect(input.MachineCount).To(BeNumerically(">", 0), "Invalid argument. input.MachineCount can't be smaller than 1 when calling WaitForControlPlaneMachinesToBeUpgraded")
+	Expect(input.MaxMachineCount).To(BeNumerically(">", 0), "Invalid argument. input.MaxMachineCount can't be smaller than 1 when calling WaitForControlPlaneMachinesToBeUpgraded")
+
+	Byf("Ensuring all control-plane machines have upgraded kubernetes version %s", input.KubernetesUpgradeVersion)
+
+	Eventually(func() (int, error) {
+		machines := framework.GetControlPlaneMachinesByCluster(ctx, framework.GetControlPlaneMachinesByClusterInput{
+			Lister:      input.Lister,
+			ClusterName: input.Cluster.Name,
+			Namespace:   input.Cluster.Namespace,
+		})
+
+		if len(machines) > input.MaxMachineCount {
+			return -1, StopTrying(fmt.Sprintf("more Machines than expected (%d) are present", input.MaxMachineCount))
+		}
+
+		upgraded := 0
+		for _, machine := range machines {
+			m := machine
+			if *m.Spec.Version == input.KubernetesUpgradeVersion && conditions.IsTrue(&m, clusterv1.MachineNodeHealthyCondition) {
+				upgraded++
+			}
+		}
+		if len(machines) > upgraded {
+			return 0, errors.New("old Machines remain")
+		}
+		return upgraded, nil
+	}, intervals...).Should(Equal(input.MachineCount), "Timed out waiting for all control-plane machines in Cluster %s to be upgraded to kubernetes version %s", klog.KObj(input.Cluster), input.KubernetesUpgradeVersion)
 }
 
 // UpgradeMachineDeploymentsAndWait upgrades a machine deployment and waits for its machines to be upgraded.
