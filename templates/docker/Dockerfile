@@ -64,7 +64,7 @@ RUN bash -x /build/static-dqlite-deps/static-dqlite.sh
 ENV DQLITE_BUILD_SCRIPTS_DIR=/build/static-dqlite-deps
 
 ####################################################################################################
-## IMAGE(build-*): Build individual components
+## IMAGE(build-*): Build components
 
 ## k8sd build
 FROM builder-dqlite AS build-k8sd
@@ -72,30 +72,27 @@ WORKDIR /src/k8s-snap/src/k8s
 RUN make static -j
 RUN mkdir -p /out/bin && mv ./bin/static/* /out/bin/
 
-## k8s-dqlite build
-FROM builder-dqlite AS build-k8s-dqlite
-RUN /src/k8s-snap/build-scripts/build-component.sh k8s-dqlite
+## components build
+FROM builder-dqlite AS build-components
+WORKDIR /src/k8s-snap
+RUN ./build-scripts/build-component.sh k8s-dqlite
+RUN ./build-scripts/build-component.sh cni
+RUN ./build-scripts/build-component.sh containerd
+RUN ./build-scripts/build-component.sh helm
+RUN ./build-scripts/build-component.sh runc
+RUN ./build-scripts/build-component.sh pebble
 
-## cni build
-FROM builder AS build-cni
-RUN /src/k8s-snap/build-scripts/build-component.sh cni
-
-## containerd build
-FROM builder AS build-containerd
-RUN /src/k8s-snap/build-scripts/build-component.sh containerd
-
-## helm build
-FROM builder AS build-helm
-RUN /src/k8s-snap/build-scripts/build-component.sh helm
-
-## kubernetes build
-FROM builder AS build-kubernetes
+# build kubernetes
 ENV KUBERNETES_VERSION=${KUBERNETES_VERSION}
 RUN if [ -n "$KUBERNETES_VERSION" ]; then \
       echo "Overwriting Kubernetes version with $KUBERNETES_VERSION"; \
       echo "$KUBERNETES_VERSION" > /src/k8s-snap/build-scripts/components/kubernetes/version; \
     fi
-RUN  /src/k8s-snap/build-scripts/build-component.sh kubernetes
+RUN  ./build-scripts/build-component.sh kubernetes
+
+## generate bom.json file
+RUN apt-get install -y python3-yaml
+RUN bash -c "./build-scripts/generate-bom.py > /bom.json"
 
 ## kubernetes upgrade version build
 FROM builder AS build-kubernetes-upgrade-to
@@ -105,14 +102,6 @@ RUN if [ -n "$KUBERNETES_VERSION_UPGRADE_TO" ]; then \
       echo "$KUBERNETES_VERSION_UPGRADE_TO" > /src/k8s-snap/build-scripts/components/kubernetes/version; \
     fi
 RUN  /src/k8s-snap/build-scripts/build-component.sh kubernetes
-
-## runc build
-FROM builder AS build-runc
-RUN /src/k8s-snap/build-scripts/build-component.sh runc
-
-## pebble build
-FROM builder AS build-pebble
-RUN /src/k8s-snap/build-scripts/build-component.sh pebble
 
 ####################################################################################################
 ## IMAGE(build-preload-images): Fetch OCI images that can be pre-loaded to containerd
@@ -146,15 +135,10 @@ RUN mkdir -p /var/lib/pebble/default/layers /snap/k8s/current /var/snap/k8s/comm
     && ln -sf "$(which true)" "$(which crictl)"
 
 ## NOTE(neoaggelos): Install binaries
-COPY --from=build-k8s-dqlite /out /snap/k8s/current
-COPY --from=build-runc /out /snap/k8s/current
-COPY --from=build-helm /out /snap/k8s/current
-COPY --from=build-containerd /out /snap/k8s/current
-COPY --from=build-cni /out /snap/k8s/current
-COPY --from=build-kubernetes /out /snap/k8s/current
+COPY --from=build-components /out /snap/k8s/current
+COPY --from=build-components /bom.json /snap/k8s/current/
 COPY --from=build-kubernetes-upgrade-to /out /k8s/upgrade
 COPY --from=build-k8sd /out /snap/k8s/current
-COPY --from=build-pebble /out /snap/k8s/current
 COPY --from=build-preload-images /out/images /var/snap/k8s/common/images
 
 ## NOTE(neoaggelos): Install k8s files
