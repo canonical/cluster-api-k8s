@@ -4,7 +4,6 @@ import (
 	"context"
 	"crypto/tls"
 	_ "embed"
-	"errors"
 	"fmt"
 	"net/http"
 	"time"
@@ -13,7 +12,9 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
+	podv1 "k8s.io/kubernetes/pkg/api/v1/pod"
 
+	ck8serrors "github.com/canonical/cluster-api-k8s/pkg/errors"
 	"github.com/canonical/cluster-api-k8s/pkg/proxy"
 )
 
@@ -49,7 +50,12 @@ func (g *k8sdClientGenerator) forNode(ctx context.Context, node *corev1.Node) (*
 
 	pod, ok := podmap[node.Name]
 	if !ok {
-		return nil, fmt.Errorf("missing k8sd proxy pod for node %s", node.Name)
+		return nil, &ck8serrors.K8sdProxyNotFound{NodeName: node.Name}
+	}
+
+	if !podv1.IsPodReady(&pod) {
+		// if the Pod is not Ready, it won't be able to accept any k8sd API calls.
+		return nil, &ck8serrors.K8sdProxyNotReady{PodName: pod.Name}
 	}
 
 	return g.forNodePod(ctx, node, pod.Name)
@@ -76,10 +82,6 @@ func (g *k8sdClientGenerator) getProxyPods(ctx context.Context) (map[string]core
 	pods, err := g.clientset.CoreV1().Pods("kube-system").List(ctx, metav1.ListOptions{LabelSelector: "app=k8sd-proxy"})
 	if err != nil {
 		return nil, fmt.Errorf("unable to list k8sd-proxy pods in target cluster: %w", err)
-	}
-
-	if len(pods.Items) == 0 {
-		return nil, errors.New("there isn't any k8sd-proxy pods in target cluster")
 	}
 
 	podmap := make(map[string]corev1.Pod, len(pods.Items))

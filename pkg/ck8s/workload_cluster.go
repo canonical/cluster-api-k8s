@@ -25,6 +25,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
 	controlplanev1 "github.com/canonical/cluster-api-k8s/controlplane/api/v1beta2"
+	ck8serrors "github.com/canonical/cluster-api-k8s/pkg/errors"
 )
 
 const (
@@ -83,6 +84,23 @@ func (w *Workload) getControlPlaneNodes(ctx context.Context) (*corev1.NodeList, 
 func (w *Workload) ClusterStatus(ctx context.Context) (ClusterStatus, error) {
 	status := ClusterStatus{}
 
+	// NOTE(neoaggelos): Check that the k8sd-config on the kube-system configmap exists.
+	key := ctrlclient.ObjectKey{
+		Name:      k8sdConfigSecretName,
+		Namespace: metav1.NamespaceSystem,
+	}
+
+	err := w.Client.Get(ctx, key, &corev1.ConfigMap{})
+	// In case of error we do assume the control plane is not initialized yet.
+	if err != nil {
+		logger := log.FromContext(ctx)
+		logger.Info("Control Plane does not seem to be initialized yet.", "reason", err.Error())
+		status.HasK8sdConfigMap = false
+		return status, err
+	}
+
+	status.HasK8sdConfigMap = true
+
 	// count the control plane nodes
 	nodes, err := w.getControlPlaneNodes(ctx)
 	if err != nil {
@@ -96,21 +114,6 @@ func (w *Workload) ClusterStatus(ctx context.Context) (ClusterStatus, error) {
 			status.ReadyNodes++
 		}
 	}
-
-	// NOTE(neoaggelos): Check that the k8sd-config on the kube-system configmap exists.
-	key := ctrlclient.ObjectKey{
-		Name:      k8sdConfigSecretName,
-		Namespace: metav1.NamespaceSystem,
-	}
-
-	err = w.Client.Get(ctx, key, &corev1.ConfigMap{})
-	// In case of error we do assume the control plane is not initialized yet.
-	if err != nil {
-		logger := log.FromContext(ctx)
-		logger.Info("Control Plane does not seem to be initialized yet.", "reason", err.Error())
-	}
-
-	status.HasK8sdConfigMap = err == nil
 
 	return status, nil
 }
@@ -165,6 +168,10 @@ func (w *Workload) GetK8sdProxyForControlPlane(ctx context.Context, options k8sd
 		return nil, fmt.Errorf("failed to get proxy pods: %w", err)
 	}
 
+	if len(podmap) == 0 {
+		return nil, &ck8serrors.K8sdProxyNotFound{}
+	}
+
 	var allErrors []error
 	for _, node := range cplaneNodes.Items {
 		if _, ok := options.IgnoreNodes[node.Name]; ok {
@@ -179,7 +186,7 @@ func (w *Workload) GetK8sdProxyForControlPlane(ctx context.Context, options k8sd
 
 		if !podv1.IsPodReady(&pod) {
 			// if the Pod is not Ready, it won't be able to accept any k8sd API calls.
-			allErrors = append(allErrors, fmt.Errorf("pod '%s' is not Ready", pod.Name))
+			allErrors = append(allErrors, &ck8serrors.K8sdProxyNotReady{PodName: pod.Name})
 			continue
 		}
 

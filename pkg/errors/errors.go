@@ -1,5 +1,13 @@
 package errors
 
+import (
+	"errors"
+	"fmt"
+	"time"
+
+	ctrl "sigs.k8s.io/controller-runtime"
+)
+
 type CK8sControlPlaneStatusError string
 
 const (
@@ -24,3 +32,35 @@ const (
 	// when trying to delete the CK8s control plane.
 	DeleteCK8sControlPlaneError CK8sControlPlaneStatusError = "DeleteError"
 )
+
+type K8sdProxyNotFound struct {
+	NodeName string
+}
+
+func (e *K8sdProxyNotFound) Error() string {
+	if e.NodeName == "" {
+		return "missing k8sd proxy pod(s)"
+	}
+	return fmt.Sprintf("missing k8sd proxy pod for node %s", e.NodeName)
+}
+
+type K8sdProxyNotReady struct {
+	PodName string
+}
+
+func (e *K8sdProxyNotReady) Error() string {
+	return fmt.Sprintf("pod '%s' is not Ready", e.PodName)
+}
+
+func RequeueOnK8sdProxyError(err error) (ctrl.Result, error) {
+	var (
+		notFoundErr *K8sdProxyNotFound
+		notReadyErr *K8sdProxyNotReady
+	)
+	if errors.As(err, &notFoundErr) || errors.As(err, &notReadyErr) {
+		return ctrl.Result{RequeueAfter: 30 * time.Second}, nil
+	}
+
+	// Not a k8sd-proxy related error.
+	return ctrl.Result{}, err
+}
