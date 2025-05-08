@@ -166,7 +166,7 @@ func (r *CK8sConfigReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 			patchOpts = append(patchOpts, patch.WithStatusObservedGeneration{})
 		}
 		if err := patchHelper.Patch(ctx, config, patchOpts...); err != nil {
-			log.Error(rerr, "Failed to patch config")
+			log.Error(err, "Failed to patch config", "rerr", rerr)
 			if rerr == nil {
 				rerr = err
 			}

@@ -144,17 +144,17 @@ func (r *CK8sControlPlaneReconciler) Reconcile(ctx context.Context, req ctrl.Req
 	// Always attempt to update status.
 	if updateErr := r.updateStatus(ctx, kcp, cluster); updateErr != nil {
 		var connFailure *ck8s.RemoteClusterConnectionError
-		if errors.As(err, &connFailure) {
-			logger.Info("Could not connect to workload cluster to fetch status", "err", updateErr.Error())
+		if errors.As(updateErr, &connFailure) {
+			logger.Info("Could not connect to workload cluster to fetch status", "updateErr", updateErr.Error())
 		} else {
-			logger.Error(err, "Failed to update CK8sControlPlane Status")
+			logger.Error(updateErr, "Failed to update CK8sControlPlane Status")
 			err = kerrors.NewAggregate([]error{err, updateErr})
 		}
 	}
 
 	// Always attempt to Patch the CK8sControlPlane object and status after each reconciliation.
 	if patchErr := patchCK8sControlPlane(ctx, patchHelper, kcp); patchErr != nil {
-		logger.Error(err, "Failed to patch CK8sControlPlane")
+		logger.Error(patchErr, "Failed to patch CK8sControlPlane")
 		err = kerrors.NewAggregate([]error{err, patchErr})
 	}
 
