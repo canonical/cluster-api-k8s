@@ -102,11 +102,6 @@ func GenerateInitControlPlaneConfig(cfg InitControlPlaneConfig) (apiv1.Bootstrap
 		out.ClusterConfig.Annotations[apiv1_annotations.AnnotationSkipStopServicesOnRemove] = trueStr
 	}
 
-	// The separate feature upgrade only supports in-place upgrades for now.
-	if _, ok := out.ClusterConfig.Annotations[apiv1_annotations.AnnotationDisableSeparateFeatureUpgrades]; !ok {
-		out.ClusterConfig.Annotations[apiv1_annotations.AnnotationDisableSeparateFeatureUpgrades] = trueStr
-	}
-
 	// features
 	out.ClusterConfig.DNS.Enabled = ptr.To(cfg.InitConfig.GetEnableDefaultDNS())
 	out.ClusterConfig.LoadBalancer.Enabled = ptr.To(cfg.InitConfig.GetEnableDefaultLoadBalancer())
