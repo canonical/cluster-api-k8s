@@ -142,7 +142,10 @@ func (r *CK8sControlPlaneReconciler) Reconcile(ctx context.Context, req ctrl.Req
 	}
 
 	// Always attempt to update status.
-	if updateErr := r.updateStatus(ctx, kcp, cluster); updateErr != nil {
+	if requeue, updateErr := r.updateStatus(ctx, kcp, cluster); updateErr != nil {
+		if requeue && res.IsZero() {
+			res.RequeueAfter = 10 * time.Second
+		}
 		var connFailure *ck8s.RemoteClusterConnectionError
 		if errors.As(updateErr, &connFailure) {
 			logger.Info("Could not connect to workload cluster to fetch status", "updateErr", updateErr.Error())
@@ -325,7 +328,7 @@ func (r *CK8sControlPlaneReconciler) ClusterToCK8sControlPlane(_ context.Context
 
 // updateStatus is called after every reconcilitation loop in a defer statement to always make sure we have the
 // resource status subresourcs up-to-date.
-func (r *CK8sControlPlaneReconciler) updateStatus(ctx context.Context, kcp *controlplanev1.CK8sControlPlane, cluster *clusterv1.Cluster) error {
+func (r *CK8sControlPlaneReconciler) updateStatus(ctx context.Context, kcp *controlplanev1.CK8sControlPlane, cluster *clusterv1.Cluster) (bool, error) {
 	selector := collections.ControlPlaneSelectorForCluster(cluster.Name)
 	// Copy label selector to its status counterpart in string format.
 	// This is necessary for CRDs including scale subresources.
@@ -333,14 +336,14 @@ func (r *CK8sControlPlaneReconciler) updateStatus(ctx context.Context, kcp *cont
 
 	ownedMachines, err := r.managementCluster.GetMachinesForCluster(ctx, util.ObjectKey(cluster), collections.OwnedMachines(kcp))
 	if err != nil {
-		return fmt.Errorf("failed to get list of owned machines: %w", err)
+		return false, fmt.Errorf("failed to get list of owned machines: %w", err)
 	}
 
 	logger := r.Log.WithValues("namespace", kcp.Namespace, "CK8sControlPlane", kcp.Name, "cluster", cluster.Name)
 	controlPlane, err := ck8s.NewControlPlane(ctx, r.Client, cluster, kcp, ownedMachines)
 	if err != nil {
 		logger.Error(err, "failed to initialize control plane")
-		return err
+		return false, err
 	}
 	kcp.Status.UpdatedReplicas = int32(len(controlPlane.UpToDateMachines()))
 
@@ -360,7 +363,7 @@ func (r *CK8sControlPlaneReconciler) updateStatus(ctx context.Context, kcp *cont
 	// Return early if the deletion timestamp is set, because we don't want to try to connect to the workload cluster
 	// and we don't want to report resize condition (because it is set to deleting into reconcile delete).
 	if !kcp.DeletionTimestamp.IsZero() {
-		return nil
+		return false, nil
 	}
 
 	switch {
@@ -383,11 +386,12 @@ func (r *CK8sControlPlaneReconciler) updateStatus(ctx context.Context, kcp *cont
 	microclusterPort := kcp.Spec.CK8sConfigSpec.ControlPlaneConfig.GetMicroclusterPort()
 	workloadCluster, err := r.managementCluster.GetWorkloadCluster(ctx, util.ObjectKey(cluster), microclusterPort)
 	if err != nil {
-		return fmt.Errorf("failed to create remote cluster client: %w", err)
+		return false, fmt.Errorf("failed to create remote cluster client: %w", err)
 	}
 	status, err := workloadCluster.ClusterStatus(ctx)
 	if err != nil {
-		return err
+		// we will requeue if HasK8sdConfigMap hasn't been set yet.
+		return !status.HasK8sdConfigMap, err
 	}
 
 	logger.Info("ClusterStatus", "workload", status)
@@ -413,7 +417,7 @@ func (r *CK8sControlPlaneReconciler) updateStatus(ctx context.Context, kcp *cont
 	if v, ok := controlPlane.KCP.Annotations[controlplanev1.RemediationInProgressAnnotation]; ok {
 		remediationData, err := RemediationDataFromAnnotation(v)
 		if err != nil {
-			return err
+			return false, err
 		}
 		lastRemediation = remediationData
 	} else {
@@ -421,7 +425,7 @@ func (r *CK8sControlPlaneReconciler) updateStatus(ctx context.Context, kcp *cont
 			if v, ok := m.Annotations[controlplanev1.RemediationForAnnotation]; ok {
 				remediationData, err := RemediationDataFromAnnotation(v)
 				if err != nil {
-					return err
+					return false, err
 				}
 				if lastRemediation == nil || lastRemediation.Timestamp.Time.Before(remediationData.Timestamp.Time) {
 					lastRemediation = remediationData
@@ -434,7 +438,7 @@ func (r *CK8sControlPlaneReconciler) updateStatus(ctx context.Context, kcp *cont
 		controlPlane.KCP.Status.LastRemediation = lastRemediation.ToStatus()
 	}
 
-	return nil
+	return false, nil
 }
 
 // reconcile handles CK8sControlPlane reconciliation.
