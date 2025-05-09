@@ -11,8 +11,8 @@ export AWS_CREATE_BASTION="true"
 export AWS_PUBLIC_IP="true"
 export AWS_CONTROL_PLANE_INSTANCE_TYPE="t3.large"
 export AWS_NODE_INSTANCE_TYPE="t3.large"
-export AWS_CONTROL_PLANE_ROOT_VOLUME_SIZE=16
-export AWS_NODE_ROOT_VOLUME_SIZE=16
+export AWS_CONTROL_PLANE_ROOT_VOLUME_SIZE=40
+export AWS_NODE_ROOT_VOLUME_SIZE=40
 export AWS_SSH_KEY_NAME="default"
 # List upstream AMIs with clusterawsadm ami list --owner-id 819546954734
 export AWS_AMI_ID="ami-027b534ab5d0b4886"
