@@ -227,6 +227,31 @@ spec:
                   CK8sControlPlane
                 format: date-time
                 type: string
+              rolloutStrategy:
+                default:
+                  rollingUpdate:
+                    maxSurge: 1
+                description: |-
+                  rolloutStrategy is the RolloutStrategy to use to replace control plane machines with
+                  new ones.
+                properties:
+                  rollingUpdate:
+                    description: rollingUpdate is the rolling update config params.
+                    properties:
+                      maxSurge:
+                        anyOf:
+                        - type: integer
+                        - type: string
+                        description: |-
+                          maxSurge is the maximum number of control planes that can be scheduled above or under the
+                          desired number of control planes.
+                          Value can be an absolute number 1 or 0.
+                          Defaults to 1.
+                          Example: when this is set to 1, the control plane can be scaled
+                          up immediately when the rolling update starts.
+                        x-kubernetes-int-or-string: true
+                    type: object
+                type: object
               spec:
                 description: |-
                   CK8sConfigSpec is a CK8sConfigSpec

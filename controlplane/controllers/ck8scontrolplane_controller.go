@@ -738,8 +738,15 @@ func (r *CK8sControlPlaneReconciler) upgradeControlPlane(
 		return reconcile.Result{}, fmt.Errorf("failed to upgrade kubelet config map")
 	}
 	**/
+	logger := r.Log.WithValues("namespace", kcp.Namespace, "CK8sControlPlane", kcp.Name, "cluster", cluster.Name)
 
-	if controlPlane.Machines.Len() <= int(*kcp.Spec.Replicas) {
+	if kcp.Spec.RolloutStrategy == nil {
+		logger.Info("RolloutStrategy is empty, unable to continue")
+		return ctrl.Result{}, nil
+	}
+
+	maxNodes := *kcp.Spec.Replicas + int32(kcp.Spec.RolloutStrategy.RollingUpdate.MaxSurge.IntValue())
+	if int32(controlPlane.Machines.Len()) < maxNodes {
 		// scaleUp ensures that we don't continue scaling up while waiting for Machines to have NodeRefs
 		return r.scaleUpControlPlane(ctx, cluster, kcp, controlPlane)
 	}
