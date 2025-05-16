@@ -20,6 +20,7 @@ import (
 
 	bootstrapv1 "github.com/canonical/cluster-api-k8s/bootstrap/api/v1beta2"
 	"github.com/canonical/cluster-api-k8s/pkg/ck8s"
+	ck8serrors "github.com/canonical/cluster-api-k8s/pkg/errors"
 	utiltime "github.com/canonical/cluster-api-k8s/pkg/time"
 	"github.com/canonical/cluster-api-k8s/pkg/token"
 )
@@ -127,19 +128,28 @@ func (r *CertificatesReconciler) Reconcile(ctx context.Context, req ctrl.Request
 
 	if !hasExpiryDateAnnotation {
 		if err := r.updateExpiryDateAnnotation(ctx, scope); err != nil {
-			return ctrl.Result{}, err
+			log.Error(err, "Encountered error during updateExpiryDateAnnotation")
+			return ck8serrors.RequeueOnK8sdProxyError(err)
 		}
 	}
 
 	if refreshCertificates {
 		if err := r.refreshCertificates(ctx, scope); err != nil {
 			// On error, we requeue the request to retry.
-			mAnnotations[bootstrapv1.CertificatesRefreshStatusAnnotation] = bootstrapv1.CertificatesRefreshFailedStatus
-			m.SetAnnotations(mAnnotations)
-			if err := r.Client.Update(ctx, m); err != nil {
-				return ctrl.Result{}, fmt.Errorf("failed to clear status annotation after error: %w", err)
+			log.Error(err, "Encountered error during refreshCertificates")
+
+			// Only update the machine if this annotation isn't already set to the same value.
+			// Updating it will re-trigger this Reconciler, in which case we'd probably hit the same error.
+			// The request is going to requeued anyways, since we'll be returning an error or a non-zero Result.
+			if annotation, ok := mAnnotations[bootstrapv1.CertificatesRefreshStatusAnnotation]; !ok || annotation != bootstrapv1.CertificatesRefreshFailedStatus {
+				mAnnotations[bootstrapv1.CertificatesRefreshStatusAnnotation] = bootstrapv1.CertificatesRefreshFailedStatus
+				m.SetAnnotations(mAnnotations)
+				if err := r.Client.Update(ctx, m); err != nil {
+					return ctrl.Result{}, fmt.Errorf("failed to clear status annotation after error: %w", err)
+				}
 			}
-			return ctrl.Result{}, err
+
+			return ck8serrors.RequeueOnK8sdProxyError(err)
 		}
 	}
 
