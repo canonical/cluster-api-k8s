@@ -22,6 +22,7 @@ import (
 
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/util/intstr"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 )
@@ -76,4 +77,24 @@ func defaultCK8sControlPlaneSpec(s *CK8sControlPlaneSpec, namespace string) {
 	if s.MachineTemplate.InfrastructureRef.Namespace == "" {
 		s.MachineTemplate.InfrastructureRef.Namespace = namespace
 	}
+
+	s.RolloutStrategy = defaultRolloutStrategy(s.RolloutStrategy)
+}
+
+func defaultRolloutStrategy(rolloutStrategy *RolloutStrategy) *RolloutStrategy {
+	ios1 := intstr.FromInt(1)
+
+	if rolloutStrategy == nil {
+		rolloutStrategy = &RolloutStrategy{}
+	}
+
+	// Enforce RollingUpdate strategy and default MaxSurge if not set.
+	if rolloutStrategy != nil {
+		if rolloutStrategy.RollingUpdate == nil {
+			rolloutStrategy.RollingUpdate = &RollingUpdate{}
+			rolloutStrategy.RollingUpdate.MaxSurge = intstr.ValueOrDefault(rolloutStrategy.RollingUpdate.MaxSurge, ios1)
+		}
+	}
+
+	return rolloutStrategy
 }

@@ -41,3 +41,21 @@ var _ = Describe("Workload cluster upgrade [CK8s-Upgrade]", func() {
 		})
 	})
 })
+
+var _ = Describe("Workload cluster upgrade with MaxSurge=0 [CK8s-Upgrade]", func() {
+	Context("Upgrading a cluster with HA control plane", func() {
+		ClusterUpgradeSpec(ctx, func() ClusterUpgradeSpecInput {
+			return ClusterUpgradeSpecInput{
+				E2EConfig:                e2eConfig,
+				ClusterctlConfigPath:     clusterctlConfigPath,
+				BootstrapClusterProxy:    bootstrapClusterProxy,
+				ArtifactFolder:           artifactFolder,
+				SkipCleanup:              skipCleanup,
+				InfrastructureProvider:   ptr.To(clusterctl.DefaultInfrastructureProvider),
+				ControlPlaneMachineCount: ptr.To[int64](3),
+				WorkerMachineCount:       ptr.To[int64](1),
+				Flavor:                   ptr.To[string](flavorUpgradesMaxSurge0),
+			}
+		})
+	})
+})
