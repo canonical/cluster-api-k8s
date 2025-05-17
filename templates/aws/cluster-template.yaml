@@ -31,7 +31,8 @@ spec:
   bastion:
     enabled: ${AWS_CREATE_BASTION}
   controlPlaneLoadBalancer:
-    healthCheckProtocol: TCP
+    loadBalancerType: nlb
+    healthCheckProtocol: HTTPS
   network:
     cni:
       cniIngressRules:
