@@ -54,12 +54,13 @@ func TestClusterStatus(t *testing.T) {
 	}{
 		{
 			name:            "returns cluster status",
-			objs:            []client.Object{node1, node2},
+			objs:            []client.Object{},
 			expectHasSecret: false,
+			expectErr:       true,
 		},
 		{
 			name:            "returns cluster status with k8sd-config configmap",
-			objs:            []client.Object{node1, node2, servingSecret},
+			objs:            []client.Object{servingSecret, node1, node2},
 			expectHasSecret: true,
 		},
 	}
@@ -72,9 +73,15 @@ func TestClusterStatus(t *testing.T) {
 				Client: fakeClient,
 			}
 			status, err := w.ClusterStatus(context.TODO())
-			g.Expect(err).ToNot(HaveOccurred())
-			g.Expect(status.Nodes).To(BeEquivalentTo(2))
-			g.Expect(status.ReadyNodes).To(BeEquivalentTo(1))
+			if tt.expectErr {
+				g.Expect(err).To(HaveOccurred())
+				g.Expect(status.Nodes).To(BeEquivalentTo(0))
+				g.Expect(status.ReadyNodes).To(BeEquivalentTo(0))
+			} else {
+				g.Expect(err).ToNot(HaveOccurred())
+				g.Expect(status.Nodes).To(BeEquivalentTo(2))
+				g.Expect(status.ReadyNodes).To(BeEquivalentTo(1))
+			}
 			g.Expect(status.HasK8sdConfigMap).To(Equal(tt.expectHasSecret))
 		})
 	}

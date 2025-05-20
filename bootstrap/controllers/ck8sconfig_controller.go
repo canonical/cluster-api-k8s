@@ -45,6 +45,7 @@ import (
 	bootstrapv1 "github.com/canonical/cluster-api-k8s/bootstrap/api/v1beta2"
 	"github.com/canonical/cluster-api-k8s/pkg/ck8s"
 	"github.com/canonical/cluster-api-k8s/pkg/cloudinit"
+	ck8serrors "github.com/canonical/cluster-api-k8s/pkg/errors"
 	"github.com/canonical/cluster-api-k8s/pkg/locking"
 	"github.com/canonical/cluster-api-k8s/pkg/secret"
 	"github.com/canonical/cluster-api-k8s/pkg/token"
@@ -205,11 +206,19 @@ func (r *CK8sConfigReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 
 	// it's a control plane join
 	if configOwner.IsControlPlaneMachine() {
-		return reconcile.Result{}, r.joinControlplane(ctx, scope)
+		if err := r.joinControlplane(ctx, scope); err != nil {
+			log.Error(err, "Encountered error during joinControlplane")
+			return ck8serrors.RequeueOnK8sdProxyError(err)
+		}
+		return reconcile.Result{}, nil
 	}
 
 	// It's a worker join
-	return reconcile.Result{}, r.joinWorker(ctx, scope)
+	if err := r.joinWorker(ctx, scope); err != nil {
+		log.Error(err, "Encountered error during joinWorker")
+		return ck8serrors.RequeueOnK8sdProxyError(err)
+	}
+	return reconcile.Result{}, nil
 }
 
 func (r *CK8sConfigReconciler) joinControlplane(ctx context.Context, scope *Scope) error {
