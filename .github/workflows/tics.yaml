@@ -1,21 +1,25 @@
-name: Security and quality nightly scan
+name: TICS Analysis
 
 on:
+  workflow_dispatch:
   schedule:
-    # At 00:00 every day
-    - cron: '0 0 * * *'
+    - cron: '0 0 * * 0' # runs every sunday at 00:00
   pull_request:
     paths:
-      - .github/workflows/cron-jobs.yaml
+      - .github/workflows/tics.yaml
 
 permissions:
   contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   TICS:
     permissions:
       contents: read
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, linux, amd64, tiobe, jammy]
 
     steps:
       - name: Checking out repo
@@ -24,16 +28,14 @@ jobs:
       - name: Install Go
         uses: actions/setup-go@v5
         with:
-          go-version: "1.23"
+          go-version-file: go.mod
 
       - name: go mod download
         run: |
           go mod download
 
-      - name: TICS scan
+      - name: Prepare Go coverage and build
         run: |
-          export TICSAUTHTOKEN=${{ secrets.TICSAUTHTOKEN }}
-
           set -x
 
           # TICS requires us to have the test results in cobertura xml format under the
@@ -44,13 +46,19 @@ jobs:
           mkdir .coverage
           mv ./coverage.xml ./.coverage/
 
-          # Install the TICS and staticcheck
+          # Install staticcheck
           go install honnef.co/go/tools/cmd/staticcheck@v0.5.1
-          . <(curl --silent --show-error 'https://canonical.tiobe.com/tiobeweb/TICS/api/public/v1/fapi/installtics/Script?cfg=default&platform=linux&url=https://canonical.tiobe.com/tiobeweb/TICS/')
 
           # We need to have our project built
           # We load the dqlite libs here instead of doing through make because TICS
           # will try to build parts of the project itself
           go build -a ./...
-
-          TICSQServer -project  ${{ github.event.repository.name }} -tmpdir /tmp/tics -branchdir $HOME/work/cluster-api-k8s/cluster-api-k8s/
+      
+      - name: Run TICS
+        uses: tiobe/tics-github-action@v3
+        with:
+          mode: qserver
+          project: ${{ github.event.repository.name }}
+          viewerUrl: https://canonical.tiobe.com/tiobeweb/TICS/api/cfg?name=GoProjects
+          ticsAuthToken: ${{ secrets.TICSAUTHTOKEN }}
+          installTics: true
