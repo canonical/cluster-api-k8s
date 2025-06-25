@@ -36,11 +36,11 @@ jobs:
 
       - name: Prepare Go coverage and build
         run: |
-          set -x
+          set -ex
 
           # TICS requires us to have the test results in cobertura xml format under the
           # directory use below
-          sudo make test-unit
+          sudo env "PATH=$PATH" make test-unit
           go install github.com/boumenot/gocover-cobertura@latest
           gocover-cobertura < cover_all.out > coverage.xml
           mkdir .coverage
