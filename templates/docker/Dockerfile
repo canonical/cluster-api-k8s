@@ -48,7 +48,7 @@ RUN apt-get update \
 ## NOTE(neoaggelos): Go version used to build components
 ## !!!IMPORTANT!!! Keep up to date with "snapcraft.yaml:parts.build-deps.build-snaps.go"
 ADD install-go.sh /
-RUN /install-go.sh 1.23.0 && ln -s /usr/local/go/bin/go /usr/local/bin/go
+RUN /install-go.sh 1.24.4 && ln -s /usr/local/go/bin/go /usr/local/bin/go
 
 ## Prepare build environment
 ENV SNAPCRAFT_PART_INSTALL=/out
