@@ -40,7 +40,8 @@ spec:
       name: ${CLUSTER_NAME}-control-plane
   replicas: ${CONTROL_PLANE_MACHINE_COUNT}
   version: ${KUBERNETES_VERSION}
-  channel: ${CHANNEL}
+  spec:
+    channel: ${CHANNEL}
 ---
 apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
 kind: MaasMachineTemplate
