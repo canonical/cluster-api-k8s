@@ -142,6 +142,10 @@ COPY --from=build-kubernetes-upgrade-to /out /k8s/upgrade
 COPY --from=build-k8sd /out /snap/k8s/current
 COPY --from=build-preload-images /out/images /var/snap/k8s/common/images
 
+## NOTE(Reza): Install shared objects
+COPY --from=build-components /build/static-dqlite-deps/.deps/dynamic/lib /usr/lib
+COPY --from=build-components /build/static-dqlite-deps/.deps/dynamic/include /usr/include
+
 ## NOTE(neoaggelos): Install k8s files
 COPY --from=builder /src/k8s-snap/k8s /snap/k8s/current/k8s
 
