@@ -77,6 +77,7 @@ FROM builder-dqlite AS build-components
 WORKDIR /src/k8s-snap
 RUN ./build-scripts/build-component.sh k8s-dqlite
 RUN ./build-scripts/build-component.sh cni
+RUN ./build-scripts/build-component.sh etcd
 RUN ./build-scripts/build-component.sh containerd
 RUN ./build-scripts/build-component.sh helm
 RUN ./build-scripts/build-component.sh runc
