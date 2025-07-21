@@ -48,7 +48,7 @@ RUN apt-get update \
 ## NOTE(neoaggelos): Go version used to build components
 ## !!!IMPORTANT!!! Keep up to date with "snapcraft.yaml:parts.build-deps.build-snaps.go"
 ADD install-go.sh /
-RUN /install-go.sh 1.23.0 && ln -s /usr/local/go/bin/go /usr/local/bin/go
+RUN /install-go.sh 1.24.0 && ln -s /usr/local/go/bin/go /usr/local/bin/go
 
 ## Prepare build environment
 ENV SNAPCRAFT_PART_INSTALL=/out
@@ -77,6 +77,7 @@ FROM builder-dqlite AS build-components
 WORKDIR /src/k8s-snap
 RUN ./build-scripts/build-component.sh k8s-dqlite
 RUN ./build-scripts/build-component.sh cni
+RUN ./build-scripts/build-component.sh etcd
 RUN ./build-scripts/build-component.sh containerd
 RUN ./build-scripts/build-component.sh helm
 RUN ./build-scripts/build-component.sh runc
@@ -140,6 +141,10 @@ COPY --from=build-components /bom.json /snap/k8s/current/
 COPY --from=build-kubernetes-upgrade-to /out /k8s/upgrade
 COPY --from=build-k8sd /out /snap/k8s/current
 COPY --from=build-preload-images /out/images /var/snap/k8s/common/images
+
+## NOTE(Reza): Install shared objects
+COPY --from=build-components /build/static-dqlite-deps/.deps/dynamic/lib /usr/lib
+COPY --from=build-components /build/static-dqlite-deps/.deps/dynamic/include /usr/include
 
 ## NOTE(neoaggelos): Install k8s files
 COPY --from=builder /src/k8s-snap/k8s /snap/k8s/current/k8s
