@@ -2,6 +2,13 @@ name: E2E Tests
 
 on:
   pull_request:
+  workflow_dispatch:
+    inputs:
+      tmate_enabled:
+        type: boolean
+        description: Start a tmate session before running the tests
+        required: false
+        default: false
 
 permissions:
   contents: read
@@ -109,6 +116,9 @@ jobs:
           # Prevents https://cluster-api.sigs.k8s.io/user/troubleshooting#cluster-api-with-docker----too-many-open-files
           sudo sysctl fs.inotify.max_user_watches=1048576
           sudo sysctl fs.inotify.max_user_instances=8192
+      - name: Setup tmate session
+        uses: canonical/action-tmate@main
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.tmate_enabled }}
       - name: Run e2e tests
         run: |
           sudo GINKGO_FOCUS="${{ matrix.ginkgo_focus }}" SKIP_RESOURCE_CLEANUP=true make test-e2e
