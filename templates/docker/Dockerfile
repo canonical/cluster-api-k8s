@@ -6,7 +6,6 @@
 ## # Example usage
 ##
 ## $ docker build -t ghcr.io/canonical/cluster-api-k8s/k8s-snap:v1.32.2
-## $ docker build -t ghcr.io/canonical/cluster-api-k8s/k8s-snap:v1.32.2-moonray --build-arg BRANCH=autoupdate/moonray
 ##
 ## # Notes
 ##

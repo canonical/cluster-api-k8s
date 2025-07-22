@@ -14,7 +14,7 @@ sudo snap install clusterctl --devmode --edge
 # build docker image for k8s-snap
 (
     cd templates/docker
-    sudo docker build . -t k8s-snap:dev --build-arg BRANCH=autoupdate/moonray
+    sudo docker build . -t k8s-snap:dev --build-arg BRANCH=main
 )
 
 # create network 'kind', required by capd
