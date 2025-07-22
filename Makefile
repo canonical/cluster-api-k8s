@@ -79,7 +79,7 @@ ENVSUBST_BIN := envsubst
 ENVSUBST := $(TOOLS_BIN_DIR)/$(ENVSUBST_BIN)
 
 # Bump as necessary/desired to latest that supports our version of go at https://github.com/golangci/golangci-lint/releases
-GOLANGCI_LINT_VER := v1.61.0
+GOLANGCI_LINT_VER := v2.3.0
 GOLANGCI_LINT_BIN := golangci-lint
 GOLANGCI_LINT := $(TOOLS_BIN_DIR)/$(GOLANGCI_LINT_BIN)-$(GOLANGCI_LINT_VER)
 
