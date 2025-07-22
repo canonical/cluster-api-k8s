@@ -90,7 +90,7 @@ func (r *CK8sControlPlaneReconciler) reconcileUnhealthyMachines(ctx context.Cont
 	machineToBeRemediated := getMachineToBeRemediated(unhealthyMachines)
 
 	// Returns if the machine is in the process of being deleted.
-	if !machineToBeRemediated.ObjectMeta.DeletionTimestamp.IsZero() {
+	if !machineToBeRemediated.DeletionTimestamp.IsZero() {
 		return ctrl.Result{}, nil
 	}
 
@@ -187,7 +187,7 @@ func (r *CK8sControlPlaneReconciler) reconcileUnhealthyMachines(ctx context.Cont
 	}
 
 	// Delete the machine
-	if err := r.Client.Delete(ctx, machineToBeRemediated); err != nil {
+	if err := r.Delete(ctx, machineToBeRemediated); err != nil {
 		conditions.MarkFalse(machineToBeRemediated, clusterv1.MachineOwnerRemediatedCondition, clusterv1.RemediationFailedReason, clusterv1.ConditionSeverityError, "%s", err.Error())
 		return ctrl.Result{}, fmt.Errorf("failed to delete unhealthy machine %s: %w", machineToBeRemediated.Name, err)
 	}

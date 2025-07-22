@@ -59,6 +59,9 @@ linters:
             - github.com/google/uuid
             - github.com/pkg/errors
             - sigs.k8s.io/kind/pkg/errors
+            - golang.org/x/sync/errgroup
+            - gopkg.in/yaml.v3
+            - google.golang.org/protobuf/proto
     godot:
       #   declarations - for top level declaration comments (default);
       #   toplevel     - for top level comments;

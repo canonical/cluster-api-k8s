@@ -71,7 +71,7 @@ func (r *InPlaceUpgradeReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 	log := r.Log.WithValues("namespace", req.Namespace, "machine", req.Name)
 
 	m := &clusterv1.Machine{}
-	if err := r.Client.Get(ctx, req.NamespacedName, m); err != nil {
+	if err := r.Get(ctx, req.NamespacedName, m); err != nil {
 		if apierrors.IsNotFound(err) {
 			// Object not found, return.  Created objects are automatically garbage collected.
 			// For additional cleanup logic use finalizers.
@@ -152,7 +152,7 @@ func (r *InPlaceUpgradeReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 func (r *InPlaceUpgradeReconciler) getWorkloadClusterForMachine(ctx context.Context, clusterKey types.NamespacedName, m *clusterv1.Machine) (*ck8s.Workload, error) {
 	// Lookup the ck8s config used by the machine
 	config := &bootstrapv1.CK8sConfig{}
-	if err := r.Client.Get(ctx, types.NamespacedName{Namespace: m.Namespace, Name: m.Spec.Bootstrap.ConfigRef.Name}, config); err != nil {
+	if err := r.Get(ctx, types.NamespacedName{Namespace: m.Namespace, Name: m.Spec.Bootstrap.ConfigRef.Name}, config); err != nil {
 		return nil, err
 	}
 

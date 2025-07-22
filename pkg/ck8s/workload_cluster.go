@@ -577,7 +577,7 @@ func (w *Workload) UpdateAgentConditions(ctx context.Context, controlPlane *Cont
 		}
 
 		// If the machine is deleting, report all the conditions as deleting
-		if !machine.ObjectMeta.DeletionTimestamp.IsZero() {
+		if !machine.DeletionTimestamp.IsZero() {
 			for _, condition := range allMachinePodConditions {
 				conditions.MarkFalse(machine, condition, clusterv1.DeletingReason, clusterv1.ConditionSeverityInfo, "")
 			}
