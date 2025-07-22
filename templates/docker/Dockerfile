@@ -48,12 +48,13 @@ RUN apt-get update \
 ## NOTE(neoaggelos): Go version used to build components
 ## !!!IMPORTANT!!! Keep up to date with "snapcraft.yaml:parts.build-deps.build-snaps.go"
 ADD install-go.sh /
-RUN /install-go.sh 1.24.0 && ln -s /usr/local/go/bin/go /usr/local/bin/go
 
 ## Prepare build environment
 ENV SNAPCRAFT_PART_INSTALL=/out
 RUN mkdir /out /build -p
 RUN git clone ${REPO} /src/k8s-snap -b ${BRANCH}
+
+RUN /install-go.sh $(grep '^go ' /src/k8s-snap/src/k8s/go.mod | cut -d' ' -f2) && ln -s /usr/local/go/bin/go /usr/local/bin/go
 
 ####################################################################################################
 ## IMAGE(builder-dqlite): Used as base image for building components that need dqlite

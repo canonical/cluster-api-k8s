@@ -20,7 +20,7 @@ SHELL:=/usr/bin/env bash
 
 .DEFAULT_GOAL:=help
 
-GO_VERSION ?= 1.23.0
+GO_VERSION ?= $(shell grep '^go ' go.mod | cut -d' ' -f2 | sed 's/\.0$$//')
 GO_CONTAINER_IMAGE ?= docker.io/library/golang:$(GO_VERSION)
 
 ARCH ?= $(shell go env GOARCH)
