@@ -329,6 +329,14 @@ spec:
                                 description: DatastoreType is the type of datastore
                                   to use for the control plane.
                                 type: string
+                              etcdPeerPort:
+                                description: EtcdPeerPort is the port to use for etcd
+                                  peer communication. If unset, 2381 will be used.
+                                type: integer
+                              etcdPort:
+                                description: EtcdPort is the port to use for etcd.
+                                  If unset, 2379 will be used.
+                                type: integer
                               extraKubeAPIServerArgs:
                                 additionalProperties:
                                   type: string
