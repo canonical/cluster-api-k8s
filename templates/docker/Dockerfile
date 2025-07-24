@@ -91,6 +91,9 @@ RUN if [ -n "$KUBERNETES_VERSION" ]; then \
     fi
 RUN  ./build-scripts/build-component.sh kubernetes
 
+## add an empty commit to generate unique bom.json file based on Kubernetes version
+RUN git -c user.name="k8s-team" -c user.email="k8s-team@canonical.com" commit --allow-empty -m "kubernetes-$KUBERNETES_VERSION"
+
 ## generate bom.json file
 RUN apt-get install -y python3-yaml
 RUN bash -c "./build-scripts/generate-bom.py > /bom.json"
