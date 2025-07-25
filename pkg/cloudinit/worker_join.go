@@ -43,7 +43,7 @@ func NewJoinWorker(input JoinWorkerInput) (CloudConfig, error) {
 	// run commands
 	config.RunCommands = append(config.RunCommands, input.PreRunCommands...)
 	if !input.AirGapped {
-		config.RunCommands = append(config.RunCommands, "/capi/scripts/install.sh")
+		config.RunCommands = append(config.RunCommands, "/capi/scripts/ensure-snapd.sh", "/capi/scripts/install.sh")
 	}
 	config.RunCommands = append(config.RunCommands,
 		"/capi/scripts/disable-host-services.sh",

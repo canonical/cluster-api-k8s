@@ -66,6 +66,7 @@ func TestNewInitControlPlane(t *testing.T) {
 		"/capi/scripts/configure-snapstore-proxy.sh",
 		"prerun1",
 		"prerun2",
+		"/capi/scripts/ensure-snapd.sh",
 		"/capi/scripts/install.sh",
 		"/capi/scripts/disable-host-services.sh",
 		"/capi/scripts/bootstrap.sh",
@@ -82,6 +83,7 @@ func TestNewInitControlPlane(t *testing.T) {
 	// NOTE (mateoflorido): Keep this test in sync with the expected paths in the controlplane_init.go file.
 	g.Expect(config.WriteFiles).To(ConsistOf(
 		HaveField("Path", "/capi/scripts/disable-host-services.sh"),
+		HaveField("Path", "/capi/scripts/ensure-snapd.sh"),
 		HaveField("Path", "/capi/scripts/install.sh"),
 		HaveField("Path", "/capi/scripts/bootstrap.sh"),
 		HaveField("Path", "/capi/scripts/load-images.sh"),
@@ -228,6 +230,7 @@ func TestNewInitControlPlaneAirGapped(t *testing.T) {
 	g.Expect(err).NotTo(HaveOccurred())
 
 	// Verify the run commands is missing install.sh script.
+	g.Expect(config.RunCommands).NotTo(ContainElement("/capi/scripts/ensure-snapd.sh"))
 	g.Expect(config.RunCommands).NotTo(ContainElement("/capi/scripts/install.sh"))
 }
 

@@ -15,6 +15,7 @@ type script string
 // NOTE(eac): If you want to use a script from pkg/cloudinit/scripts in your code (for example, you want to include a script in the user-data.txt),
 // you need to add it to the scripts map below.
 var (
+	scriptEnsureSnapd             script = "ensure-snapd.sh"
 	scriptInstall                 script = "install.sh"
 	scriptDisableHostServices     script = "disable-host-services.sh"
 	scriptBootstrap               script = "bootstrap.sh"
@@ -40,6 +41,7 @@ func mustEmbed(s script) string {
 var (
 	// scripts is a map of all embedded bash scripts used in the cloud-init.
 	scripts = map[script]string{
+		scriptEnsureSnapd:             mustEmbed(scriptEnsureSnapd),
 		scriptInstall:                 mustEmbed(scriptInstall),
 		scriptDisableHostServices:     mustEmbed(scriptDisableHostServices),
 		scriptBootstrap:               mustEmbed(scriptBootstrap),

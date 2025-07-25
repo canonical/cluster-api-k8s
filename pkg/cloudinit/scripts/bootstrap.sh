@@ -10,5 +10,5 @@ name="$(cat /capi/etc/node-name)"
 config_file="/capi/etc/config.yaml"
 
 if [ ! -f /etc/kubernetes/pki/ca.crt ]; then
-  k8s bootstrap --name "${name}" --address "${address}" --file "${config_file}"
+  /snap/bin/k8s bootstrap --name "${name}" --address "${address}" --file "${config_file}"
 fi
