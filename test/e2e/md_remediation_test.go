@@ -60,6 +60,9 @@ var _ = Describe("When testing MachineDeployment remediation", func() {
 		// Setup a Namespace where to host objects for this spec and create a watcher for the namespace events.
 		namespace, cancelWatches = setupSpecNamespace(ctx, specName, bootstrapClusterProxy, artifactFolder)
 
+		// Create LXC secret for Incus provider if needed
+		createLXCSecretForIncus(ctx, bootstrapClusterProxy, e2eConfig, namespace.Name)
+
 		result = new(ApplyClusterTemplateAndWaitResult)
 
 		clusterctlLogFolder = filepath.Join(artifactFolder, "clusters", bootstrapClusterProxy.GetName())

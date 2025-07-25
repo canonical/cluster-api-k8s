@@ -129,6 +129,8 @@ func ClusterUpgradeSpec(ctx context.Context, inputGetter func() ClusterUpgradeSp
 		// Setup a Namespace where to host objects for this spec and create a watcher for the namespace events.
 		namespace, cancelWatches = setupSpecNamespace(ctx, specName, input.BootstrapClusterProxy, input.ArtifactFolder)
 
+		createLXCSecretForIncus(ctx, input.BootstrapClusterProxy, input.E2EConfig, namespace.Name)
+
 		result = new(ApplyClusterTemplateAndWaitResult)
 
 		clusterctlLogFolder = filepath.Join(input.ArtifactFolder, "clusters", input.BootstrapClusterProxy.GetName())

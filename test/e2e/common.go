@@ -21,11 +21,14 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
+	"strings"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
 	"sigs.k8s.io/cluster-api/test/framework"
 	"sigs.k8s.io/cluster-api/test/framework/clusterctl"
@@ -132,4 +135,113 @@ func localLoadE2EConfig(configPath string) *clusterctl.E2EConfig {
 	// Expect(config.Validate()).To(Succeed(), "The e2e test config file is not valid")
 
 	return config
+}
+
+// createLXCSecretForIncus creates the LXC secret for Incus provider if needed
+func createLXCSecretForIncus(ctx context.Context, clusterProxy framework.ClusterProxy, e2eConfig *clusterctl.E2EConfig, namespace string) {
+	// Check if using incus provider
+	hasIncusProvider := false
+	for _, provider := range e2eConfig.InfrastructureProviders() {
+		if provider == "incus" {
+			hasIncusProvider = true
+			break
+		}
+	}
+
+	if !hasIncusProvider {
+		return
+	}
+
+	By("Creating LXC secret for Incus provider")
+
+	// Get values from environment variables with defaults
+	homeDir, err := os.UserHomeDir()
+	Expect(err).ToNot(HaveOccurred(), "Failed to get user home directory")
+
+	// Environment variables for LXD configuration
+	lxdAddress, err := getLXDDefaultAddress()
+	Expect(err).ToNot(HaveOccurred(), "Failed to get LXD default address")
+
+	remote := getEnvWithDefault("LXD_REMOTE", lxdAddress)
+	serverCertPath := getEnvWithDefault("LXD_SERVER_CERT", filepath.Join(homeDir, "snap/lxd/common/config/servercerts/local-https.crt"))
+	clientCertPath := getEnvWithDefault("LXD_CLIENT_CERT", filepath.Join(homeDir, "snap/lxd/common/config/client.crt"))
+	clientKeyPath := getEnvWithDefault("LXD_CLIENT_KEY", filepath.Join(homeDir, "snap/lxd/common/config/client.key"))
+	project := getEnvWithDefault("LXD_PROJECT", "default")
+
+	createLXCSecretInNamespace(ctx, clusterProxy, namespace, remote, serverCertPath, clientCertPath, clientKeyPath, project)
+}
+
+func getEnvWithDefault(key, defaultValue string) string {
+	if value := os.Getenv(key); value != "" {
+		return value
+	}
+	return defaultValue
+}
+
+// getLXDDefaultAddress gets the LXD HTTPS address from lxc config
+func getLXDDefaultAddress() (string, error) {
+	cmd := exec.Command("lxc", "config", "get", "core.https_address")
+	output, err := cmd.Output()
+	if err != nil {
+		return "", fmt.Errorf("failed to get LXD address: %w", err)
+	}
+
+	address := strings.TrimSpace(string(output))
+	if address == "" {
+		return "", fmt.Errorf("LXD core.https_address is empty")
+	}
+
+	// Ensure it has https:// prefix
+	if !strings.HasPrefix(address, "https://") {
+		address = "https://" + address
+	}
+
+	return address, nil
+}
+
+func createLXCSecretInNamespace(ctx context.Context, clusterProxy framework.ClusterProxy, namespace, remote, serverCertPath, clientCertPath, clientKeyPath, project string) {
+	clientset := clusterProxy.GetClientSet()
+
+	// Read certificate files
+	serverCrt, err := os.ReadFile(serverCertPath)
+	if err != nil {
+		fmt.Printf("Warning: Failed to read server certificate from %s: %v\n", serverCertPath, err)
+		serverCrt = []byte{}
+	}
+
+	clientCrt, err := os.ReadFile(clientCertPath)
+	if err != nil {
+		fmt.Printf("Warning: Failed to read client certificate from %s: %v\n", clientCertPath, err)
+		clientCrt = []byte{}
+	}
+
+	clientKey, err := os.ReadFile(clientKeyPath)
+	if err != nil {
+		fmt.Printf("Warning: Failed to read client key from %s: %v\n", clientKeyPath, err)
+		clientKey = []byte{}
+	}
+
+	// Create the secret
+	secret := &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "lxc-secret",
+			Namespace: namespace,
+		},
+		StringData: map[string]string{
+			"server":     remote,
+			"server-crt": string(serverCrt),
+			"client-crt": string(clientCrt),
+			"client-key": string(clientKey),
+			"project":    project,
+		},
+	}
+
+	_, err = clientset.CoreV1().Secrets(namespace).Create(ctx, secret, metav1.CreateOptions{})
+	if err != nil {
+		// If secret already exists, update it
+		_, err = clientset.CoreV1().Secrets(namespace).Update(ctx, secret, metav1.UpdateOptions{})
+		Expect(err).ToNot(HaveOccurred(), "Failed to create or update LXC secret")
+	}
+
+	fmt.Printf("Created LXC secret with server: %s in namespace: %s\n", remote, namespace)
 }

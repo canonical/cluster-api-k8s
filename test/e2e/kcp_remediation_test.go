@@ -23,6 +23,7 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	"k8s.io/utils/ptr"
 	capi_e2e "sigs.k8s.io/cluster-api/test/e2e"
+	"sigs.k8s.io/cluster-api/test/framework"
 	"sigs.k8s.io/cluster-api/test/framework/clusterctl"
 )
 
@@ -41,6 +42,9 @@ var _ = Describe("When testing KCP remediation", func() {
 			ArtifactFolder:         artifactFolder,
 			SkipCleanup:            skipCleanup,
 			InfrastructureProvider: ptr.To(clusterctl.DefaultInfrastructureProvider),
+			PostNamespaceCreated: func(managementClusterProxy framework.ClusterProxy, workloadClusterNamespace string) {
+				createLXCSecretForIncus(ctx, bootstrapClusterProxy, e2eConfig, workloadClusterNamespace)
+			},
 		}
 	})
 })

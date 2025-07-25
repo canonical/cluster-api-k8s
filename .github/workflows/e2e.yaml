@@ -18,8 +18,7 @@ jobs:
     name: Build & Run E2E Images
     runs-on: [self-hosted, linux, X64, jammy, xlarge]
     steps:
-      -
-        name: Login to GitHub Container Registry
+      - name: Login to GitHub Container Registry
         uses: docker/login-action@v3
         with:
           # We run into rate limiting issues if we don't authenticate
@@ -37,28 +36,17 @@ jobs:
           sudo snap install kubectl --classic --channel=1.32/stable
       - name: Build provider images
         run: sudo make docker-build-e2e
-      - name: Build k8s-snap images
-        working-directory: hack/
-        run: |
-          ./build-e2e-images.sh
       - name: Save provider image
         run: |
           sudo docker save -o provider-images.tar ghcr.io/canonical/cluster-api-k8s/controlplane-controller:dev ghcr.io/canonical/cluster-api-k8s/bootstrap-controller:dev
           sudo chmod 775 provider-images.tar
-      - name: Save k8s-snap image
-        run: |
-          sudo docker save -o k8s-snap-image-old.tar k8s-snap:dev-old
-          sudo docker save -o k8s-snap-image-new.tar k8s-snap:dev-new
-          sudo chmod 775 k8s-snap-image-old.tar
-          sudo chmod 775 k8s-snap-image-new.tar
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
           name: e2e-images
           path: |
             provider-images.tar
-            k8s-snap-image-old.tar
-            k8s-snap-image-new.tar
+
 
   run-e2e-tests:
     name: Run E2E Tests
@@ -77,8 +65,7 @@ jobs:
       # TODO(ben): Remove once all tests are running stable.
       fail-fast: false
     steps:
-      -
-        name: Login to GitHub Container Registry
+      - name: Login to GitHub Container Registry
         uses: docker/login-action@v3
         with:
           # We run into rate limiting issues if we don't authenticate
@@ -87,6 +74,18 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
       - name: Check out repo
         uses: actions/checkout@v4
+      - name: Setup LXD
+        uses: canonical/setup-lxd@v0.1.3
+        with:
+          bridges: "lxdbr0,dualstack-br0,ipv6-br0"
+      - name: Configure LXD
+        run: |
+          # https://capn.linuxcontainers.org/tutorial/quick-start.html
+          ip_address="$(ip -o route get to 1.1.1.1 | sed -n 's/.*src \([0-9.]\+\).*/\1/p')"
+          sudo lxd config set core.https_address "$ip_address:8443"
+
+          token="$(sudo lxc config trust add --name client | tail -1)"
+          sudo lxc remote add local-https --token "$token" "https://$(sudo lxc config get core.https_address)"
       - name: Install requirements
         run: |
           sudo apt update
@@ -101,13 +100,6 @@ jobs:
           path: .
       - name: Load provider image
         run: sudo docker load -i provider-images.tar
-      - name: Load k8s-snap old image
-        run: |
-          sudo docker load -i k8s-snap-image-old.tar
-      - name: Load k8s-snap new image
-        if: matrix.ginkgo_focus == 'Workload cluster upgrade'
-        run: |
-          sudo docker load -i k8s-snap-image-new.tar
       - name: Create docker network
         run: |
           sudo docker network create kind --driver=bridge -o com.docker.network.bridge.enable_ip_masquerade=true
