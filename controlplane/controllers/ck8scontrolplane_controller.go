@@ -462,10 +462,12 @@ func (r *CK8sControlPlaneReconciler) reconcile(ctx context.Context, cluster *clu
 	}
 	conditions.MarkTrue(kcp, controlplanev1.TokenAvailableCondition)
 
-	// If ControlPlaneEndpoint is not set, return early
+	// If ControlPlaneEndpoint is not set, requeue to wait for it to be set.
+	// (berkayoz): This change to requeue instead of returning is to ensure
+	// intermittent reconcile skips such as the one that happens in `Workload cluster scaling` tests
 	if !cluster.Spec.ControlPlaneEndpoint.IsValid() {
 		logger.Info("Cluster does not yet have a ControlPlaneEndpoint defined")
-		return reconcile.Result{}, nil
+		return reconcile.Result{RequeueAfter: 3 * time.Second}, nil
 	}
 
 	// Generate Cluster Kubeconfig if needed
