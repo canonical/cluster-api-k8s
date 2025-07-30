@@ -144,6 +144,9 @@ var _ = SynchronizedBeforeSuite(func() []byte {
 		clusterctlConfigPath = clusterctlConfig
 	}
 
+	By("Loading LXD profile if using Incus provider")
+	loadLXDProfileForIncus(e2eConfig)
+
 	By("Setting up the bootstrap cluster")
 	bootstrapClusterProvider, bootstrapClusterProxy = setupBootstrapCluster(e2eConfig, scheme, useExistingCluster)
 

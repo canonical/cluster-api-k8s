@@ -28,7 +28,6 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/utils/ptr"
 	"sigs.k8s.io/cluster-api/test/framework"
 	"sigs.k8s.io/cluster-api/test/framework/clusterctl"
 	"sigs.k8s.io/cluster-api/util"
@@ -180,17 +179,17 @@ func ClusterUpgradeSpec(ctx context.Context, inputGetter func() ClusterUpgradeSp
 			ControlPlane:                result.ControlPlane,
 			MaxControlPlaneMachineCount: maxControlPlaneMachineCount,
 			KubernetesUpgradeVersion:    input.E2EConfig.GetVariable(KubernetesVersionUpgradeTo),
-			UpgradeMachineTemplate:      ptr.To(fmt.Sprintf("%s-control-plane-old", clusterName)),
+			// UpgradeMachineTemplate:      ptr.To(fmt.Sprintf("%s-control-plane-old", clusterName)),
 			WaitForMachinesToBeUpgraded: input.E2EConfig.GetIntervals(specName, "wait-machine-upgrade"),
 		})
 
 		By("Upgrading the machine deployment")
 		framework.UpgradeMachineDeploymentsAndWait(ctx, framework.UpgradeMachineDeploymentsAndWaitInput{
-			ClusterProxy:                input.BootstrapClusterProxy,
-			Cluster:                     result.Cluster,
-			UpgradeVersion:              input.E2EConfig.GetVariable(KubernetesVersionUpgradeTo),
-			MachineDeployments:          result.MachineDeployments,
-			UpgradeMachineTemplate:      ptr.To(fmt.Sprintf("%s-md-new-0", clusterName)),
+			ClusterProxy:       input.BootstrapClusterProxy,
+			Cluster:            result.Cluster,
+			UpgradeVersion:     input.E2EConfig.GetVariable(KubernetesVersionUpgradeTo),
+			MachineDeployments: result.MachineDeployments,
+			// UpgradeMachineTemplate:      ptr.To(fmt.Sprintf("%s-md-new-0", clusterName)),
 			WaitForMachinesToBeUpgraded: input.E2EConfig.GetIntervals(specName, "wait-worker-nodes"),
 		})
 

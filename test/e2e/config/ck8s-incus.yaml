@@ -74,10 +74,12 @@ variables:
   # LXD specific variables
   LXC_SECRET_NAME: "lxc-secret"
   LXC_IMAGE_NAME: "ubuntu:24.04"
-  CONTROL_PLANE_MACHINE_TYPE: "virtual-machine"
+  CONTROL_PLANE_MACHINE_TYPE: "container"
   CONTROL_PLANE_MACHINE_FLAVOR: "c2-m4"
-  WORKER_MACHINE_TYPE: "virtual-machine" 
+  CONTROL_PLANE_MACHINE_PROFILES: '["default", "k8s-integration"]'
+  WORKER_MACHINE_TYPE: "container" 
   WORKER_MACHINE_FLAVOR: "c2-m4"
+  WORKER_MACHINE_PROFILES: '["default", "k8s-integration"]'
   LOAD_BALANCER_MACHINE_FLAVOR: "c1-m1"
   # Enabling the feature flags by setting the env variables.
   CLUSTER_TOPOLOGY: "true"

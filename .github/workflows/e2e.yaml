@@ -77,15 +77,10 @@ jobs:
       - name: Setup LXD
         uses: canonical/setup-lxd@v0.1.3
         with:
-          bridges: "lxdbr0,dualstack-br0,ipv6-br0"
+          bridges: "lxdbr0"
       - name: Configure LXD
         run: |
-          # https://capn.linuxcontainers.org/tutorial/quick-start.html
-          ip_address="$(ip -o route get to 1.1.1.1 | sed -n 's/.*src \([0-9.]\+\).*/\1/p')"
-          sudo lxd config set core.https_address "$ip_address:8443"
-
-          token="$(sudo lxc config trust add --name client | tail -1)"
-          sudo lxc remote add local-https --token "$token" "https://$(sudo lxc config get core.https_address)"
+          sudo ./hack/setup-lxd.sh
       - name: Install requirements
         run: |
           sudo apt update

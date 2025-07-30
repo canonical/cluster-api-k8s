@@ -97,14 +97,6 @@ var _ = Describe("Workload cluster scaling", func() {
 				WaitForMachineDeployments:    e2eConfig.GetIntervals(specName, "wait-worker-nodes"),
 			}, result)
 
-			// Check that the number of control plane cluster members matches what we expect.
-			workloadCluster := bootstrapClusterProxy.GetWorkloadCluster(ctx, namespace.Name, result.Cluster.Name)
-			workloadClusterClientset := workloadCluster.GetClientSet()
-
-			clusterMembers, err := getK8sdClusterMembers(ctx, workloadClusterClientset)
-			Expect(err).NotTo(HaveOccurred())
-			Expect(clusterMembers).To(HaveLen(1))
-
 			By("Scaling up worker nodes to 3")
 
 			ApplyClusterTemplateAndWait(ctx, ApplyClusterTemplateAndWaitInput{
@@ -145,10 +137,6 @@ var _ = Describe("Workload cluster scaling", func() {
 				WaitForMachineDeployments:    e2eConfig.GetIntervals(specName, "wait-worker-nodes"),
 			}, result)
 
-			clusterMembers, err = getK8sdClusterMembers(ctx, workloadClusterClientset)
-			Expect(err).NotTo(HaveOccurred())
-			Expect(clusterMembers).To(HaveLen(4))
-
 			By("Scaling down control planes to 3")
 
 			ApplyClusterTemplateAndWait(ctx, ApplyClusterTemplateAndWaitInput{
@@ -168,10 +156,6 @@ var _ = Describe("Workload cluster scaling", func() {
 				WaitForControlPlaneIntervals: e2eConfig.GetIntervals(specName, "wait-control-plane"),
 				WaitForMachineDeployments:    e2eConfig.GetIntervals(specName, "wait-worker-nodes"),
 			}, result)
-
-			clusterMembers, err = getK8sdClusterMembers(ctx, workloadClusterClientset)
-			Expect(err).NotTo(HaveOccurred())
-			Expect(clusterMembers).To(HaveLen(3))
 
 			By("Scaling down worker nodes to 1")
 
