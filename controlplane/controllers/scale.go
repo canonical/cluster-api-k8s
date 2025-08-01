@@ -245,6 +245,12 @@ func (r *CK8sControlPlaneReconciler) cloneConfigsAndGenerateMachine(ctx context.
 		UID:        kcp.UID,
 	}
 
+	// Ensure the ref namespace is populated for objects not yet defaulted by webhook
+	if kcp.Spec.MachineTemplate.InfrastructureRef.Namespace == "" {
+		kcp.Spec.MachineTemplate.InfrastructureRef = *kcp.Spec.MachineTemplate.InfrastructureRef.DeepCopy()
+		kcp.Spec.MachineTemplate.InfrastructureRef.Namespace = cluster.Namespace
+	}
+
 	// Clone the infrastructure template
 	infraRef, err := external.CreateFromTemplate(ctx, &external.CreateFromTemplateInput{
 		Client:      r.Client,

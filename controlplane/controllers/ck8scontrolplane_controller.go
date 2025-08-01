@@ -443,7 +443,7 @@ func (r *CK8sControlPlaneReconciler) reconcile(ctx context.Context, cluster *clu
 	logger.Info("Reconcile CK8sControlPlane")
 
 	// Make sure to reconcile the external infrastructure reference.
-	if err := r.reconcileExternalReference(ctx, cluster, kcp.Spec.MachineTemplate.InfrastructureRef); err != nil {
+	if err := r.reconcileExternalReference(ctx, cluster, &kcp.Spec.MachineTemplate.InfrastructureRef); err != nil {
 		return reconcile.Result{}, err
 	}
 
@@ -462,10 +462,12 @@ func (r *CK8sControlPlaneReconciler) reconcile(ctx context.Context, cluster *clu
 	}
 	conditions.MarkTrue(kcp, controlplanev1.TokenAvailableCondition)
 
-	// If ControlPlaneEndpoint is not set, return early
+	// If ControlPlaneEndpoint is not set, requeue to wait for it to be set.
+	// (berkayoz): This change to requeue instead of returning is to ensure
+	// intermittent reconcile skips such as the one that happens in `Workload cluster scaling` tests
 	if !cluster.Spec.ControlPlaneEndpoint.IsValid() {
 		logger.Info("Cluster does not yet have a ControlPlaneEndpoint defined")
-		return reconcile.Result{}, nil
+		return reconcile.Result{RequeueAfter: 3 * time.Second}, nil
 	}
 
 	// Generate Cluster Kubeconfig if needed
@@ -561,12 +563,22 @@ func (r *CK8sControlPlaneReconciler) reconcile(ctx context.Context, cluster *clu
 	return reconcile.Result{}, nil
 }
 
-func (r *CK8sControlPlaneReconciler) reconcileExternalReference(ctx context.Context, cluster *clusterv1.Cluster, ref corev1.ObjectReference) error {
+func (r *CK8sControlPlaneReconciler) reconcileExternalReference(ctx context.Context, cluster *clusterv1.Cluster, ref *corev1.ObjectReference) error {
 	if !strings.HasSuffix(ref.Kind, clusterv1.TemplateSuffix) {
 		return nil
 	}
 
-	obj, err := external.Get(ctx, r.Client, &ref)
+	logger := r.Log.WithValues("namespace", ref.Namespace, "CK8sControlPlane", ref.Name, "cluster", cluster.Name)
+	logger.Info("Reconciling external template reference", "ref", ref)
+
+	// Ensure the ref namespace is populated for objects not yet defaulted by webhook
+	// https://github.com/kubernetes-sigs/cluster-api/pull/11361
+	if ref.Namespace == "" {
+		ref = ref.DeepCopy()
+		ref.Namespace = cluster.Namespace
+	}
+
+	obj, err := external.Get(ctx, r.Client, ref)
 	if err != nil {
 		return err
 	}
