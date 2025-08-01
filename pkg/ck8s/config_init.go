@@ -70,7 +70,23 @@ func GenerateInitControlPlaneConfig(cfg InitControlPlaneConfig) (apiv1.Bootstrap
 	}
 
 	switch cfg.DatastoreType {
-	case "", "k8s-dqlite":
+	case "", "etcd":
+		out.DatastoreType = ptr.To("etcd")
+
+		etcdPort := cfg.ControlPlaneConfig.EtcdPort
+		if etcdPort == 0 {
+			etcdPort = 2379
+		}
+		out.EtcdPort = ptr.To(etcdPort)
+
+		etcdPeerPort := cfg.ControlPlaneConfig.EtcdPeerPort
+		if etcdPeerPort == 0 {
+			// TODO(berkayoz): This should be 2080 however it clashes with our workaround
+			// for exposing microcluster through 2080 via k8sd-proxy
+			etcdPeerPort = 2381
+		}
+		out.EtcdPeerPort = ptr.To(etcdPeerPort)
+	case "k8s-dqlite":
 		// Set default datastore type to k8s-dqlite
 		out.DatastoreType = ptr.To("k8s-dqlite")
 

@@ -20,12 +20,12 @@
 ## See https://kind.sigs.k8s.io/docs/design/node-image/
 ##
 ## !!!IMPORTANT!!! Keep this up to date with the minor version of k8s-snap.
-ARG BASE=kindest/node:v1.32.2
+ARG BASE=kindest/node:v1.33.2
 
 ## NOTE(neoaggelos): Builder uses the ubuntu:20.04 as base image
 ##
 ## !!!IMPORTANT!!! Keep the base image up to date with the base image from "snapcraft.yaml:base".
-ARG BUILD_BASE=ubuntu:20.04
+ARG BUILD_BASE=ubuntu:22.04
 
 ####################################################################################################
 ## IMAGE(builder): Used as base image for building k8s-snap components
