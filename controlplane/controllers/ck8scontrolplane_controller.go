@@ -79,7 +79,7 @@ func (r *CK8sControlPlaneReconciler) Reconcile(ctx context.Context, req ctrl.Req
 
 	// Fetch the CK8sControlPlane instance.
 	kcp := &controlplanev1.CK8sControlPlane{}
-	if err := r.Client.Get(ctx, req.NamespacedName, kcp); err != nil {
+	if err := r.Get(ctx, req.NamespacedName, kcp); err != nil {
 		if apierrors.IsNotFound(err) {
 			return reconcile.Result{}, nil
 		}
@@ -133,7 +133,7 @@ func (r *CK8sControlPlaneReconciler) Reconcile(ctx context.Context, req ctrl.Req
 	}
 
 	var res ctrl.Result
-	if !kcp.ObjectMeta.DeletionTimestamp.IsZero() {
+	if !kcp.DeletionTimestamp.IsZero() {
 		// Handle deletion reconciliation loop.
 		res, err = r.reconcileDelete(ctx, cluster, kcp)
 	} else {
@@ -161,7 +161,7 @@ func (r *CK8sControlPlaneReconciler) Reconcile(ctx context.Context, req ctrl.Req
 	// TODO: remove this as soon as we have a proper remote cluster cache in place.
 	// Make KCP to requeue in case status is not ready, so we can check for node status without waiting for a full resync (by default 10 minutes).
 	// Only requeue if we are not going in exponential backoff due to error, or if we are not already re-queueing, or if the object has a deletion timestamp.
-	if err == nil && !res.Requeue && !(res.RequeueAfter > 0) && kcp.ObjectMeta.DeletionTimestamp.IsZero() {
+	if err == nil && !res.Requeue && res.RequeueAfter <= 0 && kcp.DeletionTimestamp.IsZero() {
 		if !kcp.Status.Ready {
 			res = ctrl.Result{RequeueAfter: 20 * time.Second}
 		}
@@ -221,7 +221,7 @@ func (r *CK8sControlPlaneReconciler) reconcileDelete(ctx context.Context, cluste
 	for i := range machinesToDelete {
 		m := machinesToDelete[i]
 		logger := logger.WithValues("machine", m)
-		if err := r.Client.Delete(ctx, machinesToDelete[i]); err != nil && !apierrors.IsNotFound(err) {
+		if err := r.Delete(ctx, machinesToDelete[i]); err != nil && !apierrors.IsNotFound(err) {
 			logger.Error(err, "Failed to cleanup owned machine")
 			errs = append(errs, err)
 		}

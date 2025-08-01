@@ -90,7 +90,7 @@ func (r *CK8sConfigReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 
 	// Lookup the ck8s config
 	config := &bootstrapv1.CK8sConfig{}
-	if err := r.Client.Get(ctx, req.NamespacedName, config); err != nil {
+	if err := r.Get(ctx, req.NamespacedName, config); err != nil {
 		if apierrors.IsNotFound(err) {
 			return ctrl.Result{}, nil
 		}
@@ -551,7 +551,7 @@ func (r *CK8sConfigReconciler) getSnapInstallDataFromSpec(spec bootstrapv1.CK8sC
 func (r *CK8sConfigReconciler) resolveSecretFileContent(ctx context.Context, ns string, source bootstrapv1.FileSource) ([]byte, error) {
 	secret := &corev1.Secret{}
 	key := types.NamespacedName{Namespace: ns, Name: source.Secret.Name}
-	if err := r.Client.Get(ctx, key, secret); err != nil {
+	if err := r.Get(ctx, key, secret); err != nil {
 		if apierrors.IsNotFound(err) {
 			return nil, fmt.Errorf("secret not found %s: %w", key, err)
 		}
@@ -568,7 +568,7 @@ func (r *CK8sConfigReconciler) resolveSecretFileContent(ctx context.Context, ns 
 func (r *CK8sConfigReconciler) resolveSecretReference(ctx context.Context, ns string, secretRef bootstrapv1.SecretRef) ([]byte, error) {
 	secret := &corev1.Secret{}
 	key := types.NamespacedName{Namespace: ns, Name: secretRef.Name}
-	if err := r.Client.Get(ctx, key, secret); err != nil {
+	if err := r.Get(ctx, key, secret); err != nil {
 		if apierrors.IsNotFound(err) {
 			return nil, fmt.Errorf("secret not found %s: %w", key, err)
 		}
@@ -792,12 +792,12 @@ func (r *CK8sConfigReconciler) storeBootstrapData(ctx context.Context, scope *Sc
 
 	// as secret creation and scope.Config status patch are not atomic operations
 	// it is possible that secret creation happens but the config.Status patches are not applied
-	if err := r.Client.Create(ctx, secret); err != nil {
+	if err := r.Create(ctx, secret); err != nil {
 		if !apierrors.IsAlreadyExists(err) {
 			return fmt.Errorf("failed to create bootstrap data secret for CK8sConfig %s/%s: %w", scope.Config.Namespace, scope.Config.Name, err)
 		}
 		r.Log.Info("bootstrap data secret for CK8sConfig already exists, updating", "secret", secret.Name, "CK8sConfig", scope.Config.Name)
-		if err := r.Client.Update(ctx, secret); err != nil {
+		if err := r.Update(ctx, secret); err != nil {
 			return fmt.Errorf("failed to update bootstrap data secret for CK8sConfig %s/%s: %w", scope.Config.Namespace, scope.Config.Name, err)
 		}
 	}

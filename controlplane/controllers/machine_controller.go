@@ -51,7 +51,7 @@ func (r *MachineReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 	logger := r.Log.WithValues("namespace", req.Namespace, "machine", req.Name)
 
 	m := &clusterv1.Machine{}
-	if err := r.Client.Get(ctx, req.NamespacedName, m); err != nil {
+	if err := r.Get(ctx, req.NamespacedName, m); err != nil {
 		if apierrors.IsNotFound(err) {
 			// Object not found, return.  Created objects are automatically garbage collected.
 			// For additional cleanup logic use finalizers.
@@ -67,8 +67,8 @@ func (r *MachineReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 	}
 
 	// if machine registered PreTerminate hook, wait for capi asks to resolve PreTerminateDeleteHook
-	if annotations.HasWithPrefix(clusterv1.PreTerminateDeleteHookAnnotationPrefix, m.ObjectMeta.Annotations) &&
-		m.ObjectMeta.Annotations[clusterv1.PreTerminateDeleteHookAnnotationPrefix] == ck8sHookName {
+	if annotations.HasWithPrefix(clusterv1.PreTerminateDeleteHookAnnotationPrefix, m.Annotations) &&
+		m.Annotations[clusterv1.PreTerminateDeleteHookAnnotationPrefix] == ck8sHookName {
 		if !conditions.IsFalse(m, clusterv1.PreTerminateDeleteHookSucceededCondition) {
 			logger.Info("wait for machine drain and detech volume operation complete.")
 			return ctrl.Result{}, nil

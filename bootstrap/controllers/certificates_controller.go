@@ -83,7 +83,7 @@ func (r *CertificatesReconciler) Reconcile(ctx context.Context, req ctrl.Request
 		return ctrl.Result{RequeueAfter: 5 * time.Second}, nil
 	}
 
-	if !m.ObjectMeta.DeletionTimestamp.IsZero() {
+	if !m.DeletionTimestamp.IsZero() {
 		// Machine is being deleted, return early.
 		return ctrl.Result{}, nil
 	}
@@ -103,7 +103,7 @@ func (r *CertificatesReconciler) Reconcile(ctx context.Context, req ctrl.Request
 			// clear the status.
 			delete(mAnnotations, bootstrapv1.CertificatesRefreshStatusAnnotation)
 			m.SetAnnotations(mAnnotations)
-			if err := r.Client.Update(ctx, m); err != nil {
+			if err := r.Update(ctx, m); err != nil {
 				return ctrl.Result{}, fmt.Errorf("failed to clear status annotation: %w", err)
 			}
 			return ctrl.Result{}, nil
@@ -136,7 +136,7 @@ func (r *CertificatesReconciler) Reconcile(ctx context.Context, req ctrl.Request
 			// On error, we requeue the request to retry.
 			mAnnotations[bootstrapv1.CertificatesRefreshStatusAnnotation] = bootstrapv1.CertificatesRefreshFailedStatus
 			m.SetAnnotations(mAnnotations)
-			if err := r.Client.Update(ctx, m); err != nil {
+			if err := r.Update(ctx, m); err != nil {
 				return ctrl.Result{}, fmt.Errorf("failed to clear status annotation after error: %w", err)
 			}
 			return ctrl.Result{}, err
@@ -148,7 +148,7 @@ func (r *CertificatesReconciler) Reconcile(ctx context.Context, req ctrl.Request
 
 func (r *CertificatesReconciler) createScope(ctx context.Context, m *clusterv1.Machine, log logr.Logger) (*CertificatesScope, error) {
 	config := &bootstrapv1.CK8sConfig{}
-	if err := r.Client.Get(ctx, types.NamespacedName{Namespace: m.Namespace, Name: m.Spec.Bootstrap.ConfigRef.Name}, config); err != nil {
+	if err := r.Get(ctx, types.NamespacedName{Namespace: m.Namespace, Name: m.Spec.Bootstrap.ConfigRef.Name}, config); err != nil {
 		return nil, fmt.Errorf("failed to get CK8sConfig: %w", err)
 	}
 

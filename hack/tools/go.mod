@@ -1,6 +1,6 @@
 module github.com/canonical/cluster-api-k8s/tools
 
-go 1.22.4
+go 1.24.0
 
 require github.com/regclient/regclient v0.7.1
 
