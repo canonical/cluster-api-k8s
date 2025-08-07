@@ -6,9 +6,6 @@ on:
   pull_request:
     paths:
       - .github/workflows/prerelease.yaml
-  push:
-    branches:
-      - KU-3928/fix-prereleases-ci
   workflow_dispatch:
     inputs:
       dry_run:
