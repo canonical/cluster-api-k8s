@@ -18,16 +18,12 @@ on:
         description: Promote prereleases without waiting for the standard interval.
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   handle-prereleases:
     runs-on: ubuntu-latest
     steps:
-      - name: Harden Runner
-        uses: step-security/harden-runner@v2
-        with:
-          egress-policy: audit
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
