@@ -118,7 +118,10 @@ func NewBaseCloudConfig(data BaseUserData) (CloudConfig, error) {
 
 	var configFileContents string
 	if data.BootstrapConfig != "" {
-		configFileContents = data.BootstrapConfig
+		configFileContents, err = MergeBootstrapConfigFileContents(data.BootstrapConfig, data.ConfigFileContents)
+		if err != nil {
+			return CloudConfig{}, fmt.Errorf("failed to merge bootstrap config contents: %w", err)
+		}
 	} else {
 		configFileContents = data.ConfigFileContents
 	}
