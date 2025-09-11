@@ -81,11 +81,12 @@ RUN ./build-scripts/build-component.sh cni
 RUN ./build-scripts/build-component.sh etcd
 
 # Change to go 1.23 for containerd and runc
-RUN /install-go.sh 1.23.12-1 && ln -s /usr/local/go/bin/go /usr/local/bin/go
+RUN /install-go.sh 1.23.12-1 && rm /usr/local/bin/go && ln -s /usr/local/go/bin/go /usr/local/bin/go
 RUN ./build-scripts/build-component.sh containerd
 RUN ./build-scripts/build-component.sh runc
 # Switch back go version
-RUN /install-go.sh 1.24.4-1 && ln -s /usr/local/go/bin/go /usr/local/bin/go
+RUN rm /usr/local/bin/go || true
+RUN /install-go.sh 1.24.4-1 && rm /usr/local/bin/go && ln -s /usr/local/go/bin/go /usr/local/bin/go
 
 RUN ./build-scripts/build-component.sh helm
 RUN ./build-scripts/build-component.sh pebble
