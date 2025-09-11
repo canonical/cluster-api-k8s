@@ -85,7 +85,6 @@ RUN /install-go.sh 1.23.12-1 && rm /usr/local/bin/go && ln -s /usr/local/go/bin/
 RUN ./build-scripts/build-component.sh containerd
 RUN ./build-scripts/build-component.sh runc
 # Switch back go version
-RUN rm /usr/local/bin/go || true
 RUN /install-go.sh 1.24.4-1 && rm /usr/local/bin/go && ln -s /usr/local/go/bin/go /usr/local/bin/go
 
 RUN ./build-scripts/build-component.sh helm
