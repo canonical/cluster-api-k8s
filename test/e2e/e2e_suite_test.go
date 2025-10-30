@@ -69,14 +69,6 @@ var (
 	// skipCleanup prevents cleanup of test resources e.g. for debug purposes.
 	skipCleanup bool
 
-	// TODO(Hue): Support initializing bootstrap provider as a test step
-	// // providerImagesTarPath is the path to the tar file containing provider images
-	// // to be loaded into the bootstrap cluster when using the LXD provider.
-	// providerImagesTarPath string
-
-	// // existingClusterKubeconfigPath is the kubeconfig path to be used when using an existing cluster.
-	// existingClusterKubeconfigPath string
-
 	// skipBootstrapClusterInitialization skips the bootstrap cluster initialization step.
 	skipBootstrapClusterInitialization bool
 )
@@ -111,10 +103,6 @@ func init() {
 	flag.StringVar(&clusterctlConfig, "e2e.clusterctl-config", "", "file which tests will use as a clusterctl config. If it is not set, a local clusterctl repository (including a clusterctl config) will be created automatically.")
 	flag.BoolVar(&useExistingCluster, "e2e.use-existing-cluster", false, "if true, the test uses the current cluster instead of creating a new one (default discovery rules apply)")
 	flag.BoolVar(&skipBootstrapClusterInitialization, "e2e.skip-bootstrap-cluster-initialization", false, "if true, the test will skip the bootstrap cluster initialization step")
-	// TODO(Hue): Support initializing bootstrap provider as a test step
-	// flag.StringVar(&existingClusterKubeconfigPath, "e2e.existing-cluster-kubeconfig-path", "", "kubeconfig path to be used when using an existing cluster. Should be set if using an existing cluster.")
-	// flag.StringVar(&providerImagesTarPath, "e2e.provider-images-tar-path", "", "path to the tar file containing provider images to be loaded into the bootstrap cluster when using the LXD provider.")
-
 }
 
 func TestE2E(t *testing.T) {
@@ -164,8 +152,6 @@ var _ = SynchronizedBeforeSuite(func() []byte {
 
 	By("Setting up the bootstrap cluster")
 
-	// TODO(Hue): Support initializing bootstrap provider as a test step
-	// bootstrapClusterProvider, bootstrapClusterProxy = setupBootstrapCluster(e2eConfig, scheme, useExistingCluster, existingClusterKubeconfigPath, providerImagesTarPath)
 	bootstrapClusterProvider, bootstrapClusterProxy = setupBootstrapCluster(e2eConfig, scheme, useExistingCluster)
 
 	if !skipBootstrapClusterInitialization {
@@ -267,14 +253,6 @@ func setupBootstrapCluster(config *clusterctl.E2EConfig, scheme *runtime.Scheme,
 			kubeconfigPath = clusterProvider.GetKubeconfigPath()
 			Expect(kubeconfigPath).To(BeAnExistingFile(), "Failed to get the kubeconfig file for the bootstrap cluster")
 		} else if slices.Contains(config.InfrastructureProviders(), "incus") {
-			// TODO: future work -- support creating bootstrap cluster with LXD provider
-			// By("Creating the bootstrap cluster using LXD")
-			// clusterProvider = createLXDBootstrapCluster(ctx, createLXDBootstrapClusterInput{
-			// 	Name:                  config.ManagementClusterName,
-			// 	KubernetesVersion:     config.GetVariable(KubernetesVersionManagement),
-			// 	ProviderImagesTarPath: providerImagesTarPath,
-			// })
-			// Expect(clusterProvider).ToNot(BeNil(), "Failed to create a bootstrap cluster")
 			Fail("LXD bootstrap cluster creation is not yet implemented")
 		}
 	} else {
@@ -347,113 +325,3 @@ func tearDown(bootstrapClusterProvider bootstrap.ClusterProvider, bootstrapClust
 		bootstrapClusterProvider.Dispose(ctx)
 	}
 }
-
-// TODO: future work -- support creating bootstrap cluster with LXD provider
-// type createLXDBootstrapClusterInput struct {
-// 	// Name is the name of the LXD container.
-// 	Name              string
-// 	KubernetesVersion string
-// 	// ProviderImagesTarPath is the path to the tar file containing
-// 	// provider images to be loaded into the bootstrap cluster.
-// 	ProviderImagesTarPath string
-// }
-
-// func createLXDBootstrapCluster(ctx context.Context, input createLXDBootstrapClusterInput) bootstrap.ClusterProvider {
-// 	By("Creating LXD profile for LXD provider")
-// 	loadLXDProfile()
-
-// 	// create lxd container
-// 	cmd := exec.CommandContext(ctx, "lxc", "-p", "default", "-p", "k8s-integration", "launch", "ubuntu:24.04", input.Name)
-// 	output, err := cmd.CombinedOutput()
-// 	if err != nil {
-// 		fmt.Printf("Failed to create LXD container: %s\n%s\n", err, string(output))
-// 		return nil
-// 	}
-
-// 	// install k8s
-// 	k8sTrack := "1.32-classic" // TODO: Change with e2eConfig variable
-// 	cmd = exec.CommandContext(ctx, "lxc", "exec", input.Name, "--", "snap", "install", "k8s", "--classic", fmt.Sprintf("--channel=%s-classic/stable", k8sTrack))
-// 	output, err = cmd.CombinedOutput()
-// 	if err != nil {
-// 		fmt.Printf("Failed to install k8s: %s\n%s\n", err, string(output))
-// 		return nil
-// 	}
-
-// 	// bootstrap k8s
-// 	cmd = exec.CommandContext(ctx, "lxc", "exec", input.Name, "--", "k8s", "bootstrap")
-// 	output, err = cmd.CombinedOutput()
-// 	if err != nil {
-// 		fmt.Printf("Failed to bootstrap k8s: %s\n%s\n", err, string(output))
-// 		return nil
-// 	}
-
-// 	// load images
-// 	destinationTarPath := "/root/provider-images.tar"
-// 	cmd = exec.CommandContext(ctx, "lxc", "file", "push", input.ProviderImagesTarPath, fmt.Sprintf("%s%s", input.Name, destinationTarPath))
-// 	output, err = cmd.CombinedOutput()
-// 	if err != nil {
-// 		fmt.Printf("Failed to push images %s: %s\n%s\n", input.ProviderImagesTarPath, err, string(output))
-// 		return nil
-// 	}
-
-// 	cmd = exec.CommandContext(ctx, "lxc", "exec", input.Name, "--", "/snap/k8s/current/bin/ctr", "images", "load", destinationTarPath)
-// 	output, err = cmd.CombinedOutput()
-// 	if err != nil {
-// 		fmt.Printf("Failed to load image %s: %s\n%s\n", input.ProviderImagesTarPath, err, string(output))
-// 		return nil
-// 	}
-
-// 	// // create cluster-config configmap
-// 	// cfg := api.Config{
-// 	// 	Clusters: map[string]*api.Cluster{
-// 	// 		"": {
-// 	// 			Server: "https://10.88.119.7:6443",
-// 	// 		},
-// 	// 	},
-// 	// }
-
-// 	// buf := &bytes.Buffer{}
-// 	// if err := clientcmdlatest.Codec.Encode(&cfg, buf); err != nil {
-// 	// 	fmt.Printf("Failed to encode kubeconfig: %s\n", err)
-// 	// 	return nil
-// 	// }
-// 	// data := buf.Bytes()
-
-// 	cmd = exec.CommandContext(ctx, "lxc", "exec", "management", "--", "bash", "-c", `"ip -4 addr show eth0 | grep -oP '(?<=inet\s)\d+(\.\d+){3}'"`)
-// 	managementIP, err := cmd.CombinedOutput()
-// 	if err != nil {
-// 		fmt.Printf("Failed to get management IP: %s\n%s\n", err, string(managementIP))
-// 		return nil
-// 	}
-
-// 	// NOTE(Hue): This is a minimal kubeconfig that is sufficient for the tests to run.
-// 	// So far, only KCP remediation depends on it.
-// 	kubeconfig := fmt.Sprintf(`apiVersion: v1
-// clusters:
-// - cluster:
-//     server: https://%s:6443
-//   name: ""
-// contexts: null
-// current-context: ""
-// kind: Config
-// users: null
-// `, managementIP)
-
-// 	cmd = exec.CommandContext(ctx, "lxc", "exec", "management", "--", "k8s", "kubectl", "create", "configmap", "cluster-info", "--from-literal=kubeconfig="+kubeconfig, "-n", "kube-public")
-// 	output, err = cmd.CombinedOutput()
-// 	if err != nil {
-// 		fmt.Printf("Failed to get management IP: %s\n%s\n", err, string(output))
-// 		return nil
-// 	}
-
-// 	// get kubeconfig
-// 	kubeconfigPath := filepath.Join(os.TempDir(), fmt.Sprintf("%s.kubeconfig", input.Name))
-// 	cmd = exec.CommandContext(ctx, "lxc", "exec", input.Name, "--", "k8s", "config", ">", kubeconfigPath)
-// 	output, err = cmd.CombinedOutput()
-// 	if err != nil {
-// 		fmt.Printf("Failed to get kubeconfig: %s\n%s\n", err, string(output))
-// 		return nil
-// 	}
-
-// 	return nil
-// }
