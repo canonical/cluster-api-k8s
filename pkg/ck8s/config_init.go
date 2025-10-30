@@ -114,10 +114,6 @@ func GenerateInitControlPlaneConfig(cfg InitControlPlaneConfig) (apiv1.Bootstrap
 		out.ClusterConfig.Annotations[apiv1_annotations.AnnotationSkipCleanupKubernetesNodeOnRemove] = trueStr
 	}
 
-	if _, ok := out.ClusterConfig.Annotations[apiv1_annotations.AnnotationSkipStopServicesOnRemove]; !ok {
-		out.ClusterConfig.Annotations[apiv1_annotations.AnnotationSkipStopServicesOnRemove] = trueStr
-	}
-
 	// features
 	out.ClusterConfig.DNS.Enabled = ptr.To(cfg.InitConfig.GetEnableDefaultDNS())
 	out.ClusterConfig.LoadBalancer.Enabled = ptr.To(cfg.InitConfig.GetEnableDefaultLoadBalancer())
