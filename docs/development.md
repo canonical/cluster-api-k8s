@@ -153,3 +153,61 @@ kubectl delete cluster c1
 ```bash
 sudo docker rm -fv management-cluster
 ```
+
+## Develop with LXD
+
+The following setup might disrupt your existing LXD containers and profiles. It's recommended to use a fresh LXD installation,
+preferably inside a VM or container (both can be provided by LXD).
+
+### Prepare
+
+Install the requirements.
+
+```bash
+sudo apt update
+sudo apt install -y make
+sudo snap install go --classic --channel 1.24/stable # version from go.mod
+sudo snap install kubectl --classic
+sudo snap install clusterctl --devmode --edge
+```
+
+Setup the LXD environment
+
+```bash
+sudo snap install lxd
+./hack/setup-lxd.sh
+```
+
+### Ensure provider images
+
+This step can be skipped if you want to run the controllers manually using `make dev-bootstrap` and `make dev-controlplane`.
+
+```bash
+sudo env "PATH=$PATH" make docker-build-e2e
+sudo docker save -o provider-images.tar ghcr.io/canonical/cluster-api-k8s/controlplane-controller:dev ghcr.io/canonical/cluster-api-k8s/bootstrap-controller:dev
+```
+
+### Create management cluster
+
+The `./provider-images.tar` is optional. If not provided, the bootstrap cluster will not have the provider images loaded.
+This is useful if you want to run the controllers manually using `make dev-bootstrap` and `make dev-controlplane`.
+
+```bash
+sudo ./hack/setup-bootstrap-cluster.sh bootstrap-cluster 1.32 ./provider-images.tar
+```
+
+### Run tests
+
+```bash
+sudo env "PATH=$PATH" GINKGO_FOCUS="<FOCUS>" \
+           SKIP_RESOURCE_CLEANUP=true \
+           USE_EXISTING_CLUSTER=true \
+           make test-e2e
+```
+
+Additionally you can provide `SKIP_BOOTSTRAP_CLUSTER_INITIALIZATION=true` if you're running the providers manually using the following commands:
+
+```bash
+make dev-bootstrap &
+make dev-controlplane &
+```

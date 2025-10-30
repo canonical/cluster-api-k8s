@@ -982,8 +982,7 @@ type UpgradeControlPlaneAndWaitForUpgradeInput struct {
 	ControlPlane                *controlplanev1.CK8sControlPlane
 	MaxControlPlaneMachineCount int64
 	KubernetesUpgradeVersion    string
-	UpgradeMachineTemplate      *string
-	WaitForMachinesToBeUpgraded []interface{}
+	WaitForMachinesToBeUpgraded []any
 }
 
 // UpgradeControlPlaneAndWaitForUpgrade upgrades a KubeadmControlPlane and waits for it to be upgraded.
@@ -1001,17 +1000,6 @@ func UpgradeControlPlaneAndWaitForUpgrade(ctx context.Context, input UpgradeCont
 	Expect(err).ToNot(HaveOccurred())
 
 	input.ControlPlane.Spec.Version = input.KubernetesUpgradeVersion
-
-	// Create a new ObjectReference for the infrastructure provider
-	newInfrastructureRef := corev1.ObjectReference{
-		APIVersion: "infrastructure.cluster.x-k8s.io/v1beta1",
-		Kind:       "DockerMachineTemplate",
-		Name:       fmt.Sprintf("%s-control-plane-new", input.Cluster.Name),
-		Namespace:  input.ControlPlane.Spec.MachineTemplate.InfrastructureRef.Namespace,
-	}
-
-	// Update the infrastructureRef
-	input.ControlPlane.Spec.MachineTemplate.InfrastructureRef = newInfrastructureRef
 
 	Eventually(func() error {
 		return patchHelper.Patch(ctx, input.ControlPlane)

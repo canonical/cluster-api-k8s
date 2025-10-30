@@ -1,0 +1,116 @@
+---
+# E2E test scenario using local dev images and manifests built from the source tree for following providers:
+# - cluster-api
+# - bootstrap ck8s
+# - control-plane ck8s
+# - incus
+images:
+  # Use local dev images built source tree;
+  - name: ghcr.io/canonical/cluster-api-k8s/controlplane-controller:dev
+    loadBehavior: mustLoad
+  - name: ghcr.io/canonical/cluster-api-k8s/bootstrap-controller:dev
+    loadBehavior: mustLoad
+
+providers:
+  - name: cluster-api
+    type: CoreProvider
+    versions:
+      - name: v1.9.6
+        value: https://github.com/kubernetes-sigs/cluster-api/releases/download/v1.9.6/core-components.yaml
+        type: url
+        files:
+          - sourcePath: "../data/shared/v1beta1/metadata.yaml"
+        replacements:
+          - old: "imagePullPolicy: Always"
+            new: "imagePullPolicy: IfNotPresent"
+  - name: incus
+    type: InfrastructureProvider
+    versions:
+      # Latest stable version
+      - name: v0.7.0
+        value: https://github.com/lxc/cluster-api-provider-incus/releases/download/v0.7.0/infrastructure-components.yaml
+        type: url
+        files:
+          - sourcePath: "../data/shared/v1beta1_incus/metadata.yaml"
+        replacements:
+          - old: "imagePullPolicy: Always"
+            new: "imagePullPolicy: IfNotPresent"
+    files:
+      - sourcePath: "../data/infrastructure-incus/cluster-template-kcp-remediation.yaml"
+      - sourcePath: "../data/infrastructure-incus/cluster-template-md-remediation.yaml"
+      - sourcePath: "../data/infrastructure-incus/cluster-template-upgrades.yaml"
+      - sourcePath: "../data/infrastructure-incus/cluster-template-upgrades-max-surge-0.yaml"
+      - sourcePath: "../data/infrastructure-incus/cluster-template.yaml"
+  - name: ck8s
+    type: BootstrapProvider
+    versions:
+      # Could add older release version for upgrading test, but
+      # by default, will only use the latest version defined in
+      # ${ProjectRoot}/metadata.yaml to init the management cluster
+      # this version should be updated when ${ProjectRoot}/metadata.yaml
+      # is modified
+      - name: v0.4.99 # next; use manifest from source files
+        value: "../../../bootstrap/config/default"
+        replacements:
+          - old: "ghcr.io/canonical/cluster-api-k8s/bootstrap-controller:latest"
+            new: "ghcr.io/canonical/cluster-api-k8s/bootstrap-controller:dev"
+    files:
+      - sourcePath: "../../../metadata.yaml"
+        targetName: "metadata.yaml"
+  - name: ck8s
+    type: ControlPlaneProvider
+    versions:
+      - name: v0.4.99 # next; use manifest from source files
+        value: "../../../controlplane/config/default"
+        replacements:
+          - old: "ghcr.io/canonical/cluster-api-k8s/controlplane-controller:latest"
+            new: "ghcr.io/canonical/cluster-api-k8s/controlplane-controller:dev"
+    files:
+      - sourcePath: "../../../metadata.yaml"
+        targetName: "metadata.yaml"
+
+variables:
+  KUBERNETES_VERSION_MANAGEMENT: "v1.32.9"
+  KUBERNETES_VERSION: "v1.33.5"
+  KUBERNETES_VERSION_UPGRADE_TO: "v1.34.0"
+  IP_FAMILY: "IPv4"
+  IN_PLACE_UPGRADE_OPTION: "channel=1.34-classic/stable"
+  
+  # LXD specific variables
+  LXC_SECRET_NAME: "lxc-secret"
+  LXC_IMAGE_NAME: "ubuntu:24.04"
+  CONTROL_PLANE_MACHINE_TYPE: "container"
+  CONTROL_PLANE_MACHINE_FLAVOR: "c2-m4"
+  CONTROL_PLANE_MACHINE_PROFILES: '["default", "k8s-integration"]'
+  WORKER_MACHINE_TYPE: "container" 
+  WORKER_MACHINE_FLAVOR: "c2-m4"
+  WORKER_MACHINE_PROFILES: '["default", "k8s-integration"]'
+  LOAD_BALANCER_MACHINE_FLAVOR: "c1-m1"
+  # Enabling the feature flags by setting the env variables.
+  CLUSTER_TOPOLOGY: "true"
+
+intervals:
+  # The array is defined as [timeout, polling interval]
+  # copied from https://github.com/kubernetes-sigs/cluster-api/blob/main/test/e2e/config/docker.yaml
+  default/wait-controllers: ["3m", "10s"]
+  default/wait-cluster: ["5m", "10s"]
+  default/wait-control-plane: ["10m", "10s"]
+  default/wait-worker-nodes: ["10m", "10s"]
+  default/wait-machine-pool-nodes: ["5m", "10s"]
+  default/wait-delete-cluster: ["3m", "10s"]
+  default/wait-machine-upgrade: ["30m", "10s"]
+  default/wait-machine-pool-upgrade: ["5m", "10s"]
+  default/wait-nodes-ready: ["10m", "10s"]
+  default/wait-machine-remediation: ["5m", "10s"]
+  default/wait-autoscaler: ["5m", "10s"]
+  default/wait-machine-refresh: ["5m", "10s"]
+  node-drain/wait-deployment-available: ["3m", "10s"]
+  node-drain/wait-control-plane: ["15m", "10s"]
+  node-drain/wait-machine-deleted: ["2m", "10s"]
+  kcp-remediation/wait-machines: ["5m", "10s"]
+  kcp-remediation/check-machines-stable: ["30s", "5s"]
+  kcp-remediation/wait-machine-provisioned: ["5m", "10s"]
+  #  Giving a bit more time during scale tests, we analyze independently if everything works quickly enough.
+  scale/wait-cluster: ["10m", "10s"]
+  scale/wait-control-plane: ["20m", "10s"]
+  scale/wait-worker-nodes: ["20m", "10s"]
