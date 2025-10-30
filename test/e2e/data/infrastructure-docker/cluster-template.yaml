@@ -99,6 +99,9 @@ spec:
       apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
       kind: DockerMachineTemplate
       name: ${CLUSTER_NAME}-control-plane
+    nodeDrainTimeout: 30s
+    nodeVolumeDetachTimeout: 30s
+    nodeDeletionTimeout: 30s
   spec:
     airGapped: true
     controlPlane:

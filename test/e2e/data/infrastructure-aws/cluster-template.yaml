@@ -51,6 +51,9 @@ spec:
       apiVersion: infrastructure.cluster.x-k8s.io/v1beta2
       kind: AWSMachineTemplate
       name: ${CLUSTER_NAME}-control-plane
+    nodeDrainTimeout: 30s
+    nodeVolumeDetachTimeout: 30s
+    nodeDeletionTimeout: 30s
   spec:
     nodeName: "{{ ds.meta_data.local_hostname }}"
     channel: "${KUBERNETES_VERSION}-classic/edge"
