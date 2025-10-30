@@ -33,7 +33,7 @@ func TestLookup(t *testing.T) {
 
 	// Test case: Secret exists
 	secret := &corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{Name: name(clusterKey.Name), Namespace: clusterKey.Namespace},
+		ObjectMeta: metav1.ObjectMeta{Name: secretName(clusterKey.Name), Namespace: clusterKey.Namespace},
 		Data:       map[string][]byte{"value": []byte(testToken)},
 		Type:       clusterv1.ClusterSecretType,
 	}
@@ -89,7 +89,7 @@ func TestReconcile(t *testing.T) {
 
 	// Verify that the secret has been created
 	secret := &corev1.Secret{}
-	key := client.ObjectKey{Name: name(clusterKey.Name), Namespace: clusterKey.Namespace}
+	key := client.ObjectKey{Name: secretName(clusterKey.Name), Namespace: clusterKey.Namespace}
 	if err := ctrlClient.Get(context.Background(), key, secret); err != nil {
 		t.Errorf("Failed to get secret: %v", err)
 	}

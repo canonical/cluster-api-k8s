@@ -225,7 +225,7 @@ func (r *CertificatesReconciler) refreshCertificates(ctx context.Context, scope 
 		expirySecondsUnix, err = scope.Workload.RefreshControlPlaneCertificates(
 			ctx,
 			scope.Machine,
-			*nodeToken,
+			nodeToken,
 			seconds,
 			extraSANs,
 		)
@@ -233,7 +233,7 @@ func (r *CertificatesReconciler) refreshCertificates(ctx context.Context, scope 
 		expirySecondsUnix, err = scope.Workload.RefreshWorkerCertificates(
 			ctx,
 			scope.Machine,
-			*nodeToken,
+			nodeToken,
 			seconds,
 		)
 	}
@@ -280,7 +280,7 @@ func (r *CertificatesReconciler) updateExpiryDateAnnotation(ctx context.Context,
 		return fmt.Errorf("failed to lookup node token: %w", err)
 	}
 
-	expiryDateString, err := scope.Workload.GetCertificatesExpiryDate(ctx, scope.Machine, *nodeToken)
+	expiryDateString, err := scope.Workload.GetCertificatesExpiryDate(ctx, scope.Machine, nodeToken)
 	if err != nil {
 		return fmt.Errorf("failed to get certificates expiry date: %w", err)
 	}

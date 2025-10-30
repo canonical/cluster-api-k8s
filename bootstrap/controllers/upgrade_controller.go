@@ -221,7 +221,7 @@ func (r *InPlaceUpgradeReconciler) handleUpgradeRequest(ctx context.Context, sco
 	}
 
 	// Perform the in-place upgrade through snap refresh
-	changeID, err := scope.WorkloadCluster.RefreshMachine(ctx, scope.Machine, *nodeToken, scope.UpgradeOption)
+	changeID, err := scope.WorkloadCluster.RefreshMachine(ctx, scope.Machine, nodeToken, scope.UpgradeOption)
 	if err != nil {
 		return ctrl.Result{}, fmt.Errorf("failed to refresh machine: %w", err)
 	}
@@ -241,7 +241,7 @@ func (r *InPlaceUpgradeReconciler) handleUpgradeInProgress(ctx context.Context, 
 		return ctrl.Result{}, fmt.Errorf("failed to lookup node token: %w", err)
 	}
 
-	status, err := scope.WorkloadCluster.GetRefreshStatusForMachine(ctx, scope.Machine, *nodeToken, changeID)
+	status, err := scope.WorkloadCluster.GetRefreshStatusForMachine(ctx, scope.Machine, nodeToken, changeID)
 	if err != nil {
 		scope.Log.Info("Failed to get refresh status for machine", "error", err)
 		return ctrl.Result{}, fmt.Errorf("failed to get refresh status for machine: %w", err)

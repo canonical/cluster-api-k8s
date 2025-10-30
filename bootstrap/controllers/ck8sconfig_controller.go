@@ -221,7 +221,7 @@ func (r *CK8sConfigReconciler) joinControlplane(ctx context.Context, scope *Scop
 	// injects into config.Version values from top level object
 	r.reconcileTopLevelObjectSettings(scope.Cluster, machine, scope.Config)
 
-	nodeToken, err := token.GenerateAndStoreNodeToken(ctx, r.Client, client.ObjectKeyFromObject(scope.Cluster), machine.Name)
+	nodeToken, err := token.EnsureNodeToken(ctx, r.Client, client.ObjectKeyFromObject(scope.Cluster), machine.Name)
 	if err != nil {
 		return fmt.Errorf("failed to generate node token: %w", err)
 	}
@@ -270,11 +270,12 @@ func (r *CK8sConfigReconciler) joinControlplane(ctx context.Context, scope *Scop
 	// If the machine has an in-place upgrade annotation, use it to set the snap install data
 	inPlaceInstallData := r.resolveInPlaceUpgradeRelease(machine)
 	if inPlaceInstallData != nil {
+		scope.Info("Using in-place upgrade snap install data from machine annotation")
 		snapInstallData = inPlaceInstallData
 	}
 
 	// log snapinstalldata
-	scope.Info("SnapInstallData Spec", "Option", scope.Config.Spec.Channel, "Value", scope.Config.Spec.Revision, "LocalPath", scope.Config.Spec.LocalPath)
+	scope.Info("Snap install options from spec", "Channel", scope.Config.Spec.Channel, "Revision", scope.Config.Spec.Revision, "LocalPath", scope.Config.Spec.LocalPath)
 	scope.Info("SnapInstallData", "Option", snapInstallData.Option, "Value", snapInstallData.Value)
 
 	input := cloudinit.JoinControlPlaneInput{
@@ -336,7 +337,7 @@ func (r *CK8sConfigReconciler) joinWorker(ctx context.Context, scope *Scope) err
 		return fmt.Errorf("auth token not yet generated")
 	}
 
-	nodeToken, err := token.GenerateAndStoreNodeToken(ctx, r.Client, client.ObjectKeyFromObject(scope.Cluster), machine.Name)
+	nodeToken, err := token.EnsureNodeToken(ctx, r.Client, client.ObjectKeyFromObject(scope.Cluster), machine.Name)
 	if err != nil {
 		return fmt.Errorf("failed to generate node token: %w", err)
 	}
@@ -377,8 +378,13 @@ func (r *CK8sConfigReconciler) joinWorker(ctx context.Context, scope *Scope) err
 	// If the machine has an in-place upgrade annotation, use it to set the snap install data
 	inPlaceInstallData := r.resolveInPlaceUpgradeRelease(machine)
 	if inPlaceInstallData != nil {
+		scope.Info("Using in-place upgrade snap install data from machine annotation")
 		snapInstallData = inPlaceInstallData
 	}
+
+	// log snapinstalldata
+	scope.Info("Snap install options from spec", "Channel", scope.Config.Spec.Channel, "Revision", scope.Config.Spec.Revision, "LocalPath", scope.Config.Spec.LocalPath)
+	scope.Info("SnapInstallData", "Option", snapInstallData.Option, "Value", snapInstallData.Value)
 
 	input := cloudinit.JoinWorkerInput{
 		BaseUserData: cloudinit.BaseUserData{
@@ -639,7 +645,7 @@ func (r *CK8sConfigReconciler) handleClusterNotInitialized(ctx context.Context, 
 		return ctrl.Result{}, err
 	}
 
-	nodeToken, err := token.GenerateAndStoreNodeToken(ctx, r.Client, client.ObjectKeyFromObject(scope.Cluster), machine.Name)
+	nodeToken, err := token.EnsureNodeToken(ctx, r.Client, client.ObjectKeyFromObject(scope.Cluster), machine.Name)
 	if err != nil {
 		return ctrl.Result{}, fmt.Errorf("failed to generate node token: %w", err)
 	}
@@ -701,6 +707,10 @@ func (r *CK8sConfigReconciler) handleClusterNotInitialized(ctx context.Context, 
 		conditions.MarkFalse(scope.Config, bootstrapv1.SnapInstallDataValidatedCondition, bootstrapv1.SnapInstallValidationFailedReason, clusterv1.ConditionSeverityError, "%s", err.Error())
 		return ctrl.Result{Requeue: true}, fmt.Errorf("failed to get snap install data from spec: %w", err)
 	}
+
+	// log snapinstalldata
+	scope.Info("Snap install options from spec", "Channel", scope.Config.Spec.Channel, "Revision", scope.Config.Spec.Revision, "LocalPath", scope.Config.Spec.LocalPath)
+	scope.Info("SnapInstallData", "Option", snapInstallData.Option, "Value", snapInstallData.Value)
 
 	cpinput := cloudinit.InitControlPlaneInput{
 		BaseUserData: cloudinit.BaseUserData{
@@ -780,7 +790,7 @@ func (r *CK8sConfigReconciler) storeBootstrapData(ctx context.Context, scope *Sc
 					Kind:       "CK8sConfig",
 					Name:       scope.Config.Name,
 					UID:        scope.Config.UID,
-					Controller: ptr.To[bool](true),
+					Controller: ptr.To(true),
 				},
 			},
 		},
@@ -802,7 +812,7 @@ func (r *CK8sConfigReconciler) storeBootstrapData(ctx context.Context, scope *Sc
 		}
 	}
 
-	scope.Config.Status.DataSecretName = ptr.To[string](secret.Name)
+	scope.Config.Status.DataSecretName = ptr.To(secret.Name)
 	scope.Config.Status.Ready = true
 	conditions.MarkTrue(scope.Config, bootstrapv1.DataSecretAvailableCondition)
 	return nil
