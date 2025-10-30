@@ -21,11 +21,15 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
+	"slices"
+	"strings"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
 	"sigs.k8s.io/cluster-api/test/framework"
 	"sigs.k8s.io/cluster-api/test/framework/clusterctl"
@@ -133,3 +137,160 @@ func localLoadE2EConfig(configPath string) *clusterctl.E2EConfig {
 
 	return config
 }
+
+// createLXCSecret creates the LXC secret for LXD provider if needed
+func createLXCSecret(ctx context.Context, clusterProxy framework.ClusterProxy, e2eConfig *clusterctl.E2EConfig, namespace string) {
+	if !slices.Contains(e2eConfig.InfrastructureProviders(), "incus") {
+		return
+	}
+
+	By("Creating LXC secret for LXD provider")
+
+	// Get values from environment variables with defaults
+	homeDir, err := os.UserHomeDir()
+	Expect(err).ToNot(HaveOccurred(), "Failed to get user home directory")
+
+	// Environment variables for LXD configuration
+	lxdAddress, err := getLXDDefaultAddress()
+	Expect(err).ToNot(HaveOccurred(), "Failed to get LXD default address")
+
+	remote := getEnvWithDefault("LXD_REMOTE", lxdAddress)
+	serverCertPath := getEnvWithDefault("LXD_SERVER_CERT", filepath.Join(homeDir, "snap/lxd/common/config/servercerts/local-https.crt"))
+	clientCertPath := getEnvWithDefault("LXD_CLIENT_CERT", filepath.Join(homeDir, "snap/lxd/common/config/client.crt"))
+	clientKeyPath := getEnvWithDefault("LXD_CLIENT_KEY", filepath.Join(homeDir, "snap/lxd/common/config/client.key"))
+	project := getEnvWithDefault("LXD_PROJECT", "default")
+
+	createLXCSecretInNamespace(ctx, clusterProxy, namespace, remote, serverCertPath, clientCertPath, clientKeyPath, project)
+}
+
+func getEnvWithDefault(key, defaultValue string) string {
+	if value := os.Getenv(key); value != "" {
+		return value
+	}
+	return defaultValue
+}
+
+// getLXDDefaultAddress gets the LXD HTTPS address from lxc config
+func getLXDDefaultAddress() (string, error) {
+	cmd := exec.Command("lxc", "config", "get", "core.https_address")
+	output, err := cmd.Output()
+	if err != nil {
+		return "", fmt.Errorf("failed to get LXD address: %w", err)
+	}
+
+	address := strings.TrimSpace(string(output))
+	if address == "" {
+		return "", fmt.Errorf("LXD core.https_address is empty")
+	}
+
+	// Ensure it has https:// prefix
+	if !strings.HasPrefix(address, "https://") {
+		address = "https://" + address
+	}
+
+	return address, nil
+}
+
+func createLXCSecretInNamespace(ctx context.Context, clusterProxy framework.ClusterProxy, namespace, remote, serverCertPath, clientCertPath, clientKeyPath, project string) {
+	clientset := clusterProxy.GetClientSet()
+
+	// Read certificate files
+	serverCrt, err := os.ReadFile(serverCertPath)
+	if err != nil {
+		fmt.Printf("Warning: Failed to read server certificate from %s: %v\n", serverCertPath, err)
+		serverCrt = []byte{}
+	}
+
+	clientCrt, err := os.ReadFile(clientCertPath)
+	if err != nil {
+		fmt.Printf("Warning: Failed to read client certificate from %s: %v\n", clientCertPath, err)
+		clientCrt = []byte{}
+	}
+
+	clientKey, err := os.ReadFile(clientKeyPath)
+	if err != nil {
+		fmt.Printf("Warning: Failed to read client key from %s: %v\n", clientKeyPath, err)
+		clientKey = []byte{}
+	}
+
+	// Create the secret
+	secret := &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "lxc-secret",
+			Namespace: namespace,
+		},
+		StringData: map[string]string{
+			"server":     remote,
+			"server-crt": string(serverCrt),
+			"client-crt": string(clientCrt),
+			"client-key": string(clientKey),
+			"project":    project,
+		},
+	}
+
+	_, err = clientset.CoreV1().Secrets(namespace).Create(ctx, secret, metav1.CreateOptions{})
+	if err != nil {
+		// If secret already exists, update it
+		_, err = clientset.CoreV1().Secrets(namespace).Update(ctx, secret, metav1.UpdateOptions{})
+		Expect(err).ToNot(HaveOccurred(), "Failed to create or update LXC secret")
+	}
+
+	fmt.Printf("Created LXC secret with server: %s in namespace: %s\n", remote, namespace)
+}
+
+// TODO: future work -- support creating bootstrap cluster with LXD provider
+// // loadLXDProfile loads the LXD profile from k8s-snap if LXD provider is used
+// func loadLXDProfile() {
+// 	// Define the profile URL
+// 	profileURL := "https://raw.githubusercontent.com/canonical/k8s-snap/refs/heads/main/tests/integration/lxd-profile.yaml"
+
+// 	// Fetch the profile content
+// 	resp, err := http.Get(profileURL)
+// 	Expect(err).ToNot(HaveOccurred(), "Failed to fetch LXD profile from URL")
+// 	defer resp.Body.Close()
+
+// 	Expect(resp.StatusCode).To(Equal(http.StatusOK), "Failed to fetch LXD profile: HTTP %d", resp.StatusCode)
+
+// 	profileContent, err := io.ReadAll(resp.Body)
+// 	Expect(err).ToNot(HaveOccurred(), "Failed to read LXD profile content")
+
+// 	// Create a temporary file to store the profile
+// 	tmpFile, err := os.CreateTemp("", "lxd-profile-*.yaml")
+// 	Expect(err).ToNot(HaveOccurred(), "Failed to create temporary file for LXD profile")
+// 	defer os.Remove(tmpFile.Name())
+// 	defer tmpFile.Close()
+
+// 	// Write the profile content to the temporary file
+// 	_, err = tmpFile.Write(profileContent)
+// 	Expect(err).ToNot(HaveOccurred(), "Failed to write LXD profile to temporary file")
+
+// 	// Close the file before using it with lxc commands
+// 	tmpFile.Close()
+
+// 	// // Check if profile already exists
+// 	checkCmd := exec.Command("lxc", "profile", "show", "k8s-integration")
+// 	if err := checkCmd.Run(); err == nil {
+// 		By("LXD profile 'k8s-integration' already exists, updating it")
+// 		// Profile exists, edit it
+// 		editCmd := exec.Command("lxc", "profile", "edit", "k8s-integration")
+// 		editCmd.Stdin, err = os.Open(tmpFile.Name())
+// 		Expect(err).ToNot(HaveOccurred(), "Failed to open profile file")
+// 		output, err := editCmd.CombinedOutput()
+// 		Expect(err).ToNot(HaveOccurred(), "Failed to update LXD profile: %s", string(output))
+// 	} else {
+// 		By("Creating new LXD profile 'k8s-integration'")
+// 		// Profile doesn't exist, create it
+// 		createCmd := exec.Command("lxc", "profile", "create", "k8s-integration")
+// 		output, err := createCmd.CombinedOutput()
+// 		Expect(err).ToNot(HaveOccurred(), "Failed to create LXD profile: %s", string(output))
+
+// 		// Edit the created profile
+// 		editCmd := exec.Command("lxc", "profile", "edit", "k8s-integration")
+// 		editCmd.Stdin, err = os.Open(tmpFile.Name())
+// 		Expect(err).ToNot(HaveOccurred(), "Failed to open profile file")
+// 		output, err = editCmd.CombinedOutput()
+// 		Expect(err).ToNot(HaveOccurred(), "Failed to edit LXD profile: %s", string(output))
+// 	}
+
+// 	fmt.Println("Successfully loaded LXD profile 'k8s-integration' for LXD provider")
+// }

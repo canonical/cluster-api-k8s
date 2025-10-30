@@ -18,8 +18,7 @@ jobs:
     name: Build & Run E2E Images
     runs-on: [self-hosted, linux, X64, jammy, xlarge]
     steps:
-      -
-        name: Login to GitHub Container Registry
+      - name: Login to GitHub Container Registry
         uses: docker/login-action@v3
         with:
           # We run into rate limiting issues if we don't authenticate
@@ -40,28 +39,16 @@ jobs:
           sudo snap install kubectl --classic --channel=1.32/stable
       - name: Build provider images
         run: sudo env "PATH=$PATH" make docker-build-e2e
-      - name: Build k8s-snap images
-        working-directory: hack/
-        run: |
-          ./build-e2e-images.sh
       - name: Save provider image
         run: |
           sudo docker save -o provider-images.tar ghcr.io/canonical/cluster-api-k8s/controlplane-controller:dev ghcr.io/canonical/cluster-api-k8s/bootstrap-controller:dev
           sudo chmod 775 provider-images.tar
-      - name: Save k8s-snap image
-        run: |
-          sudo docker save -o k8s-snap-image-old.tar k8s-snap:dev-old
-          sudo docker save -o k8s-snap-image-new.tar k8s-snap:dev-new
-          sudo chmod 775 k8s-snap-image-old.tar
-          sudo chmod 775 k8s-snap-image-new.tar
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
           name: e2e-images
           path: |
             provider-images.tar
-            k8s-snap-image-old.tar
-            k8s-snap-image-new.tar
 
   run-e2e-tests:
     name: Run E2E Tests
@@ -80,8 +67,7 @@ jobs:
       # TODO(ben): Remove once all tests are running stable.
       fail-fast: false
     steps:
-      -
-        name: Login to GitHub Container Registry
+      - name: Login to GitHub Container Registry
         uses: docker/login-action@v3
         with:
           # We run into rate limiting issues if we don't authenticate
@@ -94,34 +80,26 @@ jobs:
         uses: actions/setup-go@v5
         with:
           go-version-file: go.mod
+      - name: Setup LXD
+        uses: canonical/setup-lxd@v0.1.3
+        with:
+          bridges: "lxdbr0"
+      - name: Configure LXD
+        run: |
+          sudo ./hack/setup-lxd.sh
       - name: Install requirements
         run: |
           sudo apt update
           sudo apt install make
-          sudo apt install docker-buildx
           sudo snap install kubectl --classic --channel=1.32/stable
       - name: Download artifacts
         uses: actions/download-artifact@v4
         with:
           name: e2e-images
           path: .
-      - name: Load provider image
-        run: sudo docker load -i provider-images.tar
-      - name: Load k8s-snap old image
+      - name: Setup bootstrap cluster
         run: |
-          sudo docker load -i k8s-snap-image-old.tar
-      - name: Load k8s-snap new image
-        if: matrix.ginkgo_focus == 'Workload cluster upgrade'
-        run: |
-          sudo docker load -i k8s-snap-image-new.tar
-      - name: Create docker network
-        run: |
-          sudo docker network create kind --driver=bridge -o com.docker.network.bridge.enable_ip_masquerade=true
-      - name: Increase inotify watches
-        run: |
-          # Prevents https://cluster-api.sigs.k8s.io/user/troubleshooting#cluster-api-with-docker----too-many-open-files
-          sudo sysctl fs.inotify.max_user_watches=1048576
-          sudo sysctl fs.inotify.max_user_instances=8192
+          sudo ./hack/setup-bootstrap-cluster.sh bootstrap-cluster 1.32 ./provider-images.tar
       - name: Setup tmate session
         uses: canonical/action-tmate@main
         if: ${{ github.event_name == 'workflow_dispatch' && inputs.tmate_enabled }}
@@ -129,7 +107,10 @@ jobs:
           detached: true
       - name: Run e2e tests
         run: |
-          sudo env "PATH=$PATH" GINKGO_FOCUS="${{ matrix.ginkgo_focus }}" SKIP_RESOURCE_CLEANUP=true make test-e2e
+          sudo env "PATH=$PATH" GINKGO_FOCUS="${{ matrix.ginkgo_focus }}" \
+           SKIP_RESOURCE_CLEANUP=true \
+           USE_EXISTING_CLUSTER=true \
+           make test-e2e
       - name: Change artifact permissions
         if: always()
         run: |

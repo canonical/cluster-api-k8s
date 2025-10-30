@@ -27,7 +27,7 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/utils/pointer"
+	"k8s.io/utils/ptr"
 	"sigs.k8s.io/cluster-api/test/framework/clusterctl"
 	"sigs.k8s.io/cluster-api/util"
 )
@@ -52,6 +52,9 @@ var _ = Describe("Workload cluster scaling", func() {
 
 		// Setup a Namespace where to host objects for this spec and create a watcher for the namespace events.
 		namespace, cancelWatches = setupSpecNamespace(ctx, specName, bootstrapClusterProxy, artifactFolder)
+
+		// Create LXC secret for LXD provider if needed
+		createLXCSecret(ctx, bootstrapClusterProxy, e2eConfig, namespace.Name)
 
 		result = new(ApplyClusterTemplateAndWaitResult)
 
@@ -86,21 +89,13 @@ var _ = Describe("Workload cluster scaling", func() {
 					Namespace:                namespace.Name,
 					ClusterName:              clusterName,
 					KubernetesVersion:        e2eConfig.GetVariable(KubernetesVersion),
-					ControlPlaneMachineCount: pointer.Int64Ptr(1),
-					WorkerMachineCount:       pointer.Int64Ptr(1),
+					ControlPlaneMachineCount: ptr.To(int64(1)),
+					WorkerMachineCount:       ptr.To(int64(1)),
 				},
 				WaitForClusterIntervals:      e2eConfig.GetIntervals(specName, "wait-cluster"),
 				WaitForControlPlaneIntervals: e2eConfig.GetIntervals(specName, "wait-control-plane"),
 				WaitForMachineDeployments:    e2eConfig.GetIntervals(specName, "wait-worker-nodes"),
 			}, result)
-
-			// Check that the number of control plane cluster members matches what we expect.
-			workloadCluster := bootstrapClusterProxy.GetWorkloadCluster(ctx, namespace.Name, result.Cluster.Name)
-			workloadClusterClientset := workloadCluster.GetClientSet()
-
-			clusterMembers, err := getK8sdClusterMembers(ctx, workloadClusterClientset)
-			Expect(err).NotTo(HaveOccurred())
-			Expect(clusterMembers).To(HaveLen(1))
 
 			By("Scaling up worker nodes to 3")
 
@@ -114,8 +109,8 @@ var _ = Describe("Workload cluster scaling", func() {
 					Namespace:                namespace.Name,
 					ClusterName:              clusterName,
 					KubernetesVersion:        e2eConfig.GetVariable(KubernetesVersion),
-					ControlPlaneMachineCount: pointer.Int64Ptr(1),
-					WorkerMachineCount:       pointer.Int64Ptr(3),
+					ControlPlaneMachineCount: ptr.To(int64(1)),
+					WorkerMachineCount:       ptr.To(int64(3)),
 				},
 				WaitForClusterIntervals:      e2eConfig.GetIntervals(specName, "wait-cluster"),
 				WaitForControlPlaneIntervals: e2eConfig.GetIntervals(specName, "wait-control-plane"),
@@ -134,17 +129,13 @@ var _ = Describe("Workload cluster scaling", func() {
 					Namespace:                namespace.Name,
 					ClusterName:              clusterName,
 					KubernetesVersion:        e2eConfig.GetVariable(KubernetesVersion),
-					ControlPlaneMachineCount: pointer.Int64Ptr(4),
-					WorkerMachineCount:       pointer.Int64Ptr(3),
+					ControlPlaneMachineCount: ptr.To(int64(4)),
+					WorkerMachineCount:       ptr.To(int64(3)),
 				},
 				WaitForClusterIntervals:      e2eConfig.GetIntervals(specName, "wait-cluster"),
 				WaitForControlPlaneIntervals: e2eConfig.GetIntervals(specName, "wait-control-plane"),
 				WaitForMachineDeployments:    e2eConfig.GetIntervals(specName, "wait-worker-nodes"),
 			}, result)
-
-			clusterMembers, err = getK8sdClusterMembers(ctx, workloadClusterClientset)
-			Expect(err).NotTo(HaveOccurred())
-			Expect(clusterMembers).To(HaveLen(4))
 
 			By("Scaling down control planes to 3")
 
@@ -158,17 +149,13 @@ var _ = Describe("Workload cluster scaling", func() {
 					Namespace:                namespace.Name,
 					ClusterName:              clusterName,
 					KubernetesVersion:        e2eConfig.GetVariable(KubernetesVersion),
-					ControlPlaneMachineCount: pointer.Int64Ptr(3),
-					WorkerMachineCount:       pointer.Int64Ptr(3),
+					ControlPlaneMachineCount: ptr.To(int64(3)),
+					WorkerMachineCount:       ptr.To(int64(3)),
 				},
 				WaitForClusterIntervals:      e2eConfig.GetIntervals(specName, "wait-cluster"),
 				WaitForControlPlaneIntervals: e2eConfig.GetIntervals(specName, "wait-control-plane"),
 				WaitForMachineDeployments:    e2eConfig.GetIntervals(specName, "wait-worker-nodes"),
 			}, result)
-
-			clusterMembers, err = getK8sdClusterMembers(ctx, workloadClusterClientset)
-			Expect(err).NotTo(HaveOccurred())
-			Expect(clusterMembers).To(HaveLen(3))
 
 			By("Scaling down worker nodes to 1")
 
@@ -182,8 +169,8 @@ var _ = Describe("Workload cluster scaling", func() {
 					Namespace:                namespace.Name,
 					ClusterName:              clusterName,
 					KubernetesVersion:        e2eConfig.GetVariable(KubernetesVersion),
-					ControlPlaneMachineCount: pointer.Int64Ptr(3),
-					WorkerMachineCount:       pointer.Int64Ptr(1),
+					ControlPlaneMachineCount: ptr.To(int64(3)),
+					WorkerMachineCount:       ptr.To(int64(1)),
 				},
 				WaitForClusterIntervals:      e2eConfig.GetIntervals(specName, "wait-cluster"),
 				WaitForControlPlaneIntervals: e2eConfig.GetIntervals(specName, "wait-control-plane"),

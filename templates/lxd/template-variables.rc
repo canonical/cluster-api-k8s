@@ -1,0 +1,45 @@
+## Cluster version and size
+export KUBERNETES_VERSION=v1.34.0
+export CONTROL_PLANE_MACHINE_COUNT=1
+export WORKER_MACHINE_COUNT=1
+
+## [required] Name of secret with server credentials
+export LXC_SECRET_NAME=lxc-secret
+
+## [required] Load Balancer configuration
+export LOAD_BALANCER="lxc: {profiles: [default,k8s-integration], flavor: c1-m1}"
+#export LOAD_BALANCER="oci: {profiles: [default], flavor: c1-m1}"
+#export LOAD_BALANCER="kube-vip: {host: 10.0.42.1}"
+#export LOAD_BALANCER="ovn: {host: 10.100.42.1, networkName: default}"
+
+## [optional] Deploy kube-flannel on the cluster.
+#export DEPLOY_KUBE_FLANNEL=true
+
+## [optional] Use unprivileged containers.
+#export PRIVILEGED=false
+
+## [optional] Base image to use. This must be set if there are no base images for the target Kubernetes version.
+##
+## See [1] for a list of pre-built kubeadm images that are available.
+## See [2] for a list of well-known image prefixes that are supported, e.g. "ubuntu:24.04" or "debian:13"
+##
+## Set INSTALL_KUBEADM=true to inject preKubeadmCommands to install kubeadm for the target Kubernetes version.
+##
+## [1]: https://capn.linuxcontainers.org/reference/default-simplestreams-server.html#provided-images
+## [2]: https://capn.linuxcontainers.org/reference/templates/default.html#lxc_image_name-and-install_kubeadm
+export LXC_IMAGE_NAME="ubuntu:24.04"
+#export INSTALL_KUBEADM="true"
+
+# Control plane machine configuration
+export CONTROL_PLANE_MACHINE_TYPE=container     # 'container' or 'virtual-machine'
+export CONTROL_PLANE_MACHINE_FLAVOR=c2-m4       # instance type for control plane nodes
+export CONTROL_PLANE_MACHINE_PROFILES=[default,k8s-integration] # profiles for control plane nodes
+export CONTROL_PLANE_MACHINE_DEVICES=[]         # override devices for control plane nodes
+export CONTROL_PLANE_MACHINE_TARGET=""          # override target for control plane nodes (e.g. "@default")
+
+# Worker machine configuration
+export WORKER_MACHINE_TYPE=container            # 'container' or 'virtual-machine'
+export WORKER_MACHINE_FLAVOR=c2-m4              # instance type for worker nodes
+export WORKER_MACHINE_PROFILES=[default,k8s-integration]        # profiles for worker nodes
+export WORKER_MACHINE_DEVICES=[]                # override devices for worker nodes
+export WORKER_MACHINE_TARGET=""                 # override target for worker nodes (e.g. "@default")

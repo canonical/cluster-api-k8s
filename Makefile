@@ -99,10 +99,14 @@ GINKGO_NODES ?= 1 # GINKGO_NODES is the number of parallel nodes to run
 GINKGO_TIMEOUT ?= 2h
 GINKGO_POLL_PROGRESS_AFTER ?= 60m
 GINKGO_POLL_PROGRESS_INTERVAL ?= 5m
-E2E_INFRA ?= docker
+E2E_INFRA ?= incus
 E2E_CONF_FILE ?= $(TEST_DIR)/e2e/config/ck8s-$(E2E_INFRA).yaml
 SKIP_RESOURCE_CLEANUP ?= false
+SKIP_BOOTSTRAP_CLUSTER_INITIALIZATION ?= false
 USE_EXISTING_CLUSTER ?= false
+# TODO(Hue): Support initializing bootstrap provider as a test step
+# EXISTING_CLUSTER_KUBECONFIG_PATH ?= $(HOME)/.kube/config
+# PROVIDER_IMAGES_TAR_PATH ?= $(shell pwd)/provider-images.tar
 GINKGO_NOCOLOR ?= false
 
 # to set multiple ginkgo skip flags, if any
@@ -287,7 +291,11 @@ test-e2e: $(GINKGO) $(KUSTOMIZE) ## Run the end-to-end tests
 		--output-dir="$(ARTIFACTS)" --junit-report="junit.e2e_suite.1.xml" $(GINKGO_ARGS) $(TEST_DIR)/e2e -- \
 	    -e2e.artifacts-folder="$(ARTIFACTS)" \
 	    -e2e.config="$(E2E_CONF_FILE)" \
-	    -e2e.skip-resource-cleanup=$(SKIP_RESOURCE_CLEANUP) -e2e.use-existing-cluster=$(USE_EXISTING_CLUSTER)
+	    -e2e.skip-resource-cleanup=$(SKIP_RESOURCE_CLEANUP) \
+		-e2e.use-existing-cluster=$(USE_EXISTING_CLUSTER) \
+		-e2e.skip-bootstrap-cluster-initialization=$(SKIP_BOOTSTRAP_CLUSTER_INITIALIZATION)
+# 		-e2e.existing-cluster-kubeconfig-path=$(EXISTING_CLUSTER_KUBECONFIG_PATH) \
+# 		-e2e.provider-images-tar-path=$(PROVIDER_IMAGES_TAR_PATH)
 
 # Build manager binary
 manager-controlplane: generate-controlplane
