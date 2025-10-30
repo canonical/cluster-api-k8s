@@ -64,15 +64,20 @@ func randomB64(size int) (string, error) {
 	return hex.EncodeToString(token), err
 }
 
-// name returns the name of the token secret, computed by convention using the name of the cluster.
-func name(clusterName string) string {
+// secretName returns the name of the token secret, computed by convention using the name of the cluster.
+func secretName(clusterName string) string {
 	return fmt.Sprintf("%s-token", clusterName)
+}
+
+// machineNodeTokenEntry returns the key used to store the node token for a specific machine in the secret data.
+func machineNodeTokenEntry(machineName string) string {
+	return fmt.Sprintf("node-token-%s", machineName)
 }
 
 func getSecret(ctx context.Context, ctrlclient client.Client, clusterKey client.ObjectKey) (*corev1.Secret, error) {
 	s := &corev1.Secret{}
 	key := client.ObjectKey{
-		Name:      name(clusterKey.Name),
+		Name:      secretName(clusterKey.Name),
 		Namespace: clusterKey.Namespace,
 	}
 	if err := ctrlclient.Get(ctx, key, s); err != nil {
@@ -90,7 +95,7 @@ func generateAndStore(ctx context.Context, ctrlclient client.Client, clusterKey 
 
 	secret := &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      name(clusterKey.Name),
+			Name:      secretName(clusterKey.Name),
 			Namespace: clusterKey.Namespace,
 			Labels: map[string]string{
 				clusterv1.ClusterNameLabel: clusterKey.Name,
