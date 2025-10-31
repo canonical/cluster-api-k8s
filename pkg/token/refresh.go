@@ -37,7 +37,7 @@ func EnsureNodeToken(ctx context.Context, ctrlclient client.Client, clusterKey c
 	patch := client.StrategicMergeFrom(secret, client.MergeFromWithOptimisticLock{})
 
 	newSecret := secret.DeepCopy()
-	newSecret.Data[machineNodeTokenEntry(machineName)] = []byte(token)
+	newSecret.Data[machineNodeTokenKey(machineName)] = []byte(token)
 
 	// as secret creation and scope.Config status patch are not atomic operations
 	// it is possible that secret creation happens but the config.Status patches are not applied
@@ -56,7 +56,7 @@ func LookupNodeToken(ctx context.Context, ctrlclient client.Client, clusterKey c
 		return "", fmt.Errorf("failed to get token secret: %v", err)
 	}
 
-	if val, ok := s.Data[machineNodeTokenEntry(machineName)]; ok {
+	if val, ok := s.Data[machineNodeTokenKey(machineName)]; ok {
 		return string(val), nil
 	}
 
