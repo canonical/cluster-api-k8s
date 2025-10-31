@@ -69,8 +69,8 @@ func secretName(clusterName string) string {
 	return fmt.Sprintf("%s-token", clusterName)
 }
 
-// machineNodeTokenEntry returns the key used to store the node token for a specific machine in the secret data.
-func machineNodeTokenEntry(machineName string) string {
+// machineNodeTokenKey returns the key used to store the node token for a specific machine in the secret data.
+func machineNodeTokenKey(machineName string) string {
 	return fmt.Sprintf("node-token-%s", machineName)
 }
 
