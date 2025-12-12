@@ -47,7 +47,7 @@ jobs:
           mv ./coverage.xml ./.coverage/
 
           # Install staticcheck
-          go install honnef.co/go/tools/cmd/staticcheck@v0.5.1
+          go install honnef.co/go/tools/cmd/staticcheck@v0.6.1
 
           # We need to have our project built
           # We load the dqlite libs here instead of doing through make because TICS
