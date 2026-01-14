@@ -453,7 +453,7 @@ func (w *Workload) RemoveMachineFromCluster(ctx context.Context, machine *cluste
 	}
 
 	nodeName := machine.Status.NodeRef.Name
-	request := &apiv1.RemoveNodeRequest{Name: nodeName, Force: true}
+	request := &apiv1.RemoveNodeRequest{Name: nodeName}
 
 	// If we see that ignoring control-planes is causing issues, let's consider removing it.
 	// It *should* not be necessary as a machine should be able to remove itself from the cluster.
