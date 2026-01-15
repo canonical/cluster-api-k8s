@@ -27,8 +27,8 @@ providers:
     type: InfrastructureProvider
     versions:
       # Latest stable version
-      - name: v0.7.0
-        value: https://github.com/lxc/cluster-api-provider-incus/releases/download/v0.7.0/infrastructure-components.yaml
+      - name: v0.8.3
+        value: https://github.com/lxc/cluster-api-provider-incus/releases/download/v0.8.3/infrastructure-components.yaml
         type: url
         files:
           - sourcePath: "../data/shared/v1beta1_incus/metadata.yaml"
@@ -103,7 +103,7 @@ intervals:
   default/wait-nodes-ready: ["10m", "10s"]
   default/wait-machine-remediation: ["5m", "10s"]
   default/wait-autoscaler: ["5m", "10s"]
-  default/wait-machine-refresh: ["5m", "10s"]
+  default/wait-machine-refresh: ["30m", "10s"]
   node-drain/wait-deployment-available: ["3m", "10s"]
   node-drain/wait-control-plane: ["15m", "10s"]
   node-drain/wait-machine-deleted: ["2m", "10s"]

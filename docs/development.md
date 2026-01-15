@@ -183,6 +183,7 @@ sudo snap install lxd
 This step can be skipped if you want to run the controllers manually using `make dev-bootstrap` and `make dev-controlplane`.
 
 ```bash
+curl get.docker.io -fsSL | bash
 sudo env "PATH=$PATH" make docker-build-e2e
 sudo docker save -o provider-images.tar ghcr.io/canonical/cluster-api-k8s/controlplane-controller:dev ghcr.io/canonical/cluster-api-k8s/bootstrap-controller:dev
 ```
