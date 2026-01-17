@@ -3,13 +3,14 @@
 # Author: Angelos Kolaitis <angelos.kolaitis@canonical.com>
 #
 # Usage:
-#    $ install-go.sh 1.22.6
+#    $ install-go.sh 1.24.4-1
 #
-# Description: Download go version and install under /usr/local/go
+# Description: Download microsoft go version and install under /usr/local/go
 
+# This version should come from https://github.com/microsoft/go/releases
 VERSION="$1"
 
-fname="go${VERSION}.linux-amd64.tar.gz"
-wget "https://go.dev/dl/${fname}"
-tar -C /usr/local -xvzf "${fname}"
-rm "${fname}"
+wget https://aka.ms/golang/release/latest/go$VERSION.linux-amd64.tar.gz
+rm -rf /usr/local/go || true
+tar -C /usr/local -xzvf go$VERSION.linux-amd64.tar.gz
+rm go$VERSION.linux-amd64.tar.gz

@@ -179,23 +179,106 @@ func TestUserSuppliedBootstrapConfig(t *testing.T) {
 
 	config, err := cloudinit.NewInitControlPlane(cloudinit.InitControlPlaneInput{
 		BaseUserData: cloudinit.BaseUserData{
-			KubernetesVersion:  "v1.30.0",
-			BootstrapConfig:    "### bootstrap config ###",
-			ConfigFileContents: "### config file ###",
+			KubernetesVersion: "v1.30.0",
+			BootstrapConfig: `cluster-config:
+  annotations:
+    k8sd/v1alpha/lifecycle/skip-cleanup-kubernetes-node-on-remove: "true"
+  network:
+    enabled: true
+  dns:
+    enabled: true
+    cluster-domain: cluster.local
+    upstream-nameservers:
+    - 8.8.8.8
+  local-storage:
+    enabled: true
+    reclaim-policy: Retain
+  metrics-server:
+    enabled: false
+  load-balancer:
+    enabled: true
+    l2-mode: false
+  ingress:
+    enabled: false
+`,
+			ConfigFileContents: `ca-crt: ca-crt
+ca-key: ca-key
+client-ca-crt: client-ca-crt
+client-ca-key: client-ca-key
+cluster-config:
+  annotations:
+    k8sd/v1alpha/lifecycle/skip-cleanup-kubernetes-node-on-remove: "true"
+    k8sd/v1alpha/lifecycle/skip-stop-services-on-remove: "true"
+  cloud-provider: external
+  dns:
+    cluster-domain: cluster.local
+    enabled: true
+  gateway:
+    enabled: true
+  ingress:
+    enabled: true
+    service-type: NodePort
+  load-balancer:
+    enabled: false
+  local-storage:
+    enabled: true
+  metrics-server:
+    enabled: true
+  network:
+    enabled: true
+datastore-type: k8s-dqlite
+extra-node-kubelet-args:
+  --provider-id: openstack:///34a19eef-f39f-44c1-96eb-80e3cd0ec641
+extra-sans:
+  - 172.16.2.205
+k8s-dqlite-port: 2379
+pod-cidr: 10.1.0.0/16
+service-cidr: 10.152.183.0/24`,
 		},
 	})
 
 	g.Expect(err).ToNot(HaveOccurred())
 
-	// Test that user-supplied bootstrap configuration takes precedence over ConfigFileContents.
+	// Test that user-supplied bootstrap configuration is merged with and takes precedence over ConfigFileContents.
 	g.Expect(config.WriteFiles).To(ContainElement(gstruct.MatchFields(gstruct.IgnoreExtras, gstruct.Fields{
-		"Path":    Equal("/capi/etc/config.yaml"),
-		"Content": Equal("### bootstrap config ###"),
-	})))
-
-	g.Expect(config.WriteFiles).NotTo(ContainElement(gstruct.MatchFields(gstruct.IgnoreExtras, gstruct.Fields{
-		"Path":    Equal("/capi/etc/config.yaml"),
-		"Content": Equal("### config file ###"),
+		"Path": Equal("/capi/etc/config.yaml"),
+		"Content": Equal(`ca-crt: ca-crt
+ca-key: ca-key
+client-ca-crt: client-ca-crt
+client-ca-key: client-ca-key
+cluster-config:
+  annotations:
+    k8sd/v1alpha/lifecycle/skip-cleanup-kubernetes-node-on-remove: "true"
+    k8sd/v1alpha/lifecycle/skip-stop-services-on-remove: "true"
+  cloud-provider: external
+  dns:
+    cluster-domain: cluster.local
+    enabled: true
+    upstream-nameservers:
+    - 8.8.8.8
+  gateway:
+    enabled: true
+  ingress:
+    enabled: false
+  load-balancer:
+    enabled: true
+    l2-mode: false
+  local-storage:
+    enabled: true
+    reclaim-policy: Retain
+  metrics-server:
+    enabled: false
+  network:
+    enabled: true
+datastore-type: k8s-dqlite
+extra-node-kubelet-args:
+  --provider-id: openstack:///34a19eef-f39f-44c1-96eb-80e3cd0ec641
+extra-sans:
+- 172.16.2.205
+k8s-dqlite-port: 2379
+pod-cidr: 10.1.0.0/16
+service-cidr: 10.152.183.0/24
+`),
 	})))
 }
 
