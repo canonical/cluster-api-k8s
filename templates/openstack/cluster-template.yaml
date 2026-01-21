@@ -17,7 +17,7 @@ spec:
     controlPlane:
       cloudProvider: external
     extraKubeletArgs:
-      --provider-id: openstack:///'{{ instance_id }}'
+      --provider-id: openstack:///{{ instance_id }}
   machineTemplate:
     infrastructureTemplate:
       apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
@@ -60,7 +60,7 @@ spec:
       controlPlane:
         cloudProvider: external
       extraKubeletArgs:
-        --provider-id: openstack:///'{{ instance_id }}'
+        --provider-id: openstack:///{{ instance_id }}
 ---
 apiVersion: cluster.x-k8s.io/v1beta1
 kind: Cluster
