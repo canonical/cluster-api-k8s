@@ -22,7 +22,6 @@ func GenerateJoinControlPlaneConfig(cfg JoinControlPlaneConfig) apiv1.ControlPla
 		ExtraNodeKubeAPIServerArgs:         cfg.ControlPlaneConfig.ExtraKubeAPIServerArgs,
 		ExtraNodeKubeControllerManagerArgs: cfg.ControlPlaneConfig.ExtraKubeControllerManagerArgs,
 		ExtraNodeKubeSchedulerArgs:         cfg.ControlPlaneConfig.ExtraKubeSchedulerArgs,
-		ExtraNodeK8sDqliteArgs:             cfg.ControlPlaneConfig.ExtraK8sDqliteArgs,
 
 		ExtraNodeKubeProxyArgs:  cfg.ExtraKubeProxyArgs,
 		ExtraNodeKubeletArgs:    cfg.ExtraKubeletArgs,

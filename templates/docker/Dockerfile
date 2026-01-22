@@ -75,7 +75,6 @@ RUN mkdir -p /out/bin && mv ./bin/static/* /out/bin/
 ## components build
 FROM builder-dqlite AS build-components
 WORKDIR /src/k8s-snap
-RUN ./build-scripts/build-component.sh k8s-dqlite
 RUN ./build-scripts/build-component.sh cni
 RUN ./build-scripts/build-component.sh etcd
 RUN ./build-scripts/build-component.sh containerd

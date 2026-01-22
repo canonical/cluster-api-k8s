@@ -85,15 +85,6 @@ func GenerateInitControlPlaneConfig(cfg InitControlPlaneConfig) (apiv1.Bootstrap
 			etcdPeerPort = 2381
 		}
 		out.EtcdPeerPort = ptr.To(etcdPeerPort)
-	case "k8s-dqlite":
-		// Set default datastore type to k8s-dqlite
-		out.DatastoreType = ptr.To("k8s-dqlite")
-
-		k8sDqlitePort := cfg.ControlPlaneConfig.K8sDqlitePort
-		if k8sDqlitePort == 0 {
-			k8sDqlitePort = 2379
-		}
-		out.K8sDqlitePort = ptr.To(k8sDqlitePort)
 	default:
 		out.DatastoreType = ptr.To("external")
 		out.DatastoreServers = cfg.DatastoreServers
@@ -148,7 +139,6 @@ func GenerateInitControlPlaneConfig(cfg InitControlPlaneConfig) (apiv1.Bootstrap
 	out.ExtraNodeKubeAPIServerArgs = cfg.ControlPlaneConfig.ExtraKubeAPIServerArgs
 	out.ExtraNodeKubeControllerManagerArgs = cfg.ControlPlaneConfig.ExtraKubeControllerManagerArgs
 	out.ExtraNodeKubeSchedulerArgs = cfg.ControlPlaneConfig.ExtraKubeSchedulerArgs
-	out.ExtraNodeK8sDqliteArgs = cfg.ControlPlaneConfig.ExtraK8sDqliteArgs
 
 	out.ExtraNodeKubeProxyArgs = cfg.ExtraKubeProxyArgs
 	out.ExtraNodeKubeletArgs = cfg.ExtraKubeletArgs

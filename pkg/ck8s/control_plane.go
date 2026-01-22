@@ -313,7 +313,7 @@ func getCK8sConfigs(ctx context.Context, cl client.Client, machines collections.
 	return result, nil
 }
 
-// IsEtcdManaged returns true if the control plane relies on a managed k8s-dqlite.
+// IsEtcdManaged returns true if the control plane relies on a managed etcd.
 func (c *ControlPlane) IsEtcdManaged() bool {
 	return c.KCP.Spec.CK8sConfigSpec.IsEtcdManaged()
 }
