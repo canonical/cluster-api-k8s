@@ -19,7 +19,7 @@
 ## See https://kind.sigs.k8s.io/docs/design/node-image/
 ##
 ## !!!IMPORTANT!!! Keep this up to date with the minor version of k8s-snap.
-ARG BASE=kindest/node:v1.33.2
+ARG BASE=kindest/node:v1.34.0
 
 ## NOTE(neoaggelos): Builder uses the ubuntu:20.04 as base image
 ##
@@ -53,7 +53,8 @@ ENV SNAPCRAFT_PART_INSTALL=/out
 RUN mkdir /out /build -p
 RUN git clone ${REPO} /src/k8s-snap -b ${BRANCH}
 
-RUN /install-go.sh $(grep '^go ' /src/k8s-snap/src/k8s/go.mod | cut -d' ' -f2) && ln -s /usr/local/go/bin/go /usr/local/bin/go
+## !!!IMPORTANT!!! Keep up to date with k8s-snap go version
+RUN /install-go.sh 1.24.4-1 && ln -s /usr/local/go/bin/go /usr/local/bin/go
 
 ####################################################################################################
 ## IMAGE(builder-dqlite): Used as base image for building components that need dqlite
@@ -77,9 +78,15 @@ FROM builder-dqlite AS build-components
 WORKDIR /src/k8s-snap
 RUN ./build-scripts/build-component.sh cni
 RUN ./build-scripts/build-component.sh etcd
+
+# Change to go 1.23 for containerd and runc
+RUN /install-go.sh 1.23.12-1 && rm /usr/local/bin/go && ln -s /usr/local/go/bin/go /usr/local/bin/go
 RUN ./build-scripts/build-component.sh containerd
-RUN ./build-scripts/build-component.sh helm
 RUN ./build-scripts/build-component.sh runc
+# Switch back go version
+RUN /install-go.sh 1.24.4-1 && rm /usr/local/bin/go && ln -s /usr/local/go/bin/go /usr/local/bin/go
+
+RUN ./build-scripts/build-component.sh helm
 RUN ./build-scripts/build-component.sh pebble
 
 # build kubernetes
