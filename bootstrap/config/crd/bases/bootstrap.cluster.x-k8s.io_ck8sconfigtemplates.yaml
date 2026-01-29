@@ -113,12 +113,6 @@ spec:
                         description: CK8sControlPlaneConfig is configuration for the
                           control plane node.
                         properties:
-                          ExtraK8sDqliteArgs:
-                            additionalProperties:
-                              type: string
-                            description: ExtraK8sDqliteArgs - extra arguments to add
-                              to k8s-dqlite.
-                            type: object
                           cloudProvider:
                             description: CloudProvider is the cloud-provider configuration
                               option to set.
@@ -174,10 +168,6 @@ spec:
                             items:
                               type: string
                             type: array
-                          k8sDqlitePort:
-                            description: K8sDqlitePort is the port to use for k8s-dqlite.
-                              If unset, 2379 (etcd) will be used.
-                            type: integer
                           microclusterAddress:
                             description: MicroclusterAddress is the address (or CIDR)
                               to use for microcluster. If unset, the default node
