@@ -49,7 +49,7 @@ providers:
       # ${ProjectRoot}/metadata.yaml to init the management cluster
       # this version should be updated when ${ProjectRoot}/metadata.yaml
       # is modified
-      - name: v0.5.99 # next; use manifest from source files
+      - name: v0.6.99 # next; use manifest from source files
         value: "../../../bootstrap/config/default"
         replacements:
           - old: "ghcr.io/canonical/cluster-api-k8s/bootstrap-controller:latest"
@@ -60,7 +60,7 @@ providers:
   - name: ck8s
     type: ControlPlaneProvider
     versions:
-      - name: v0.5.99 # next; use manifest from source files
+      - name: v0.6.99 # next; use manifest from source files
         value: "../../../controlplane/config/default"
         replacements:
           - old: "ghcr.io/canonical/cluster-api-k8s/controlplane-controller:latest"
