@@ -23,14 +23,14 @@ jobs:
           echo "VERSION=${VERSION}" >> $GITHUB_ENV
 
       - name: Log in to the Container registry
-        uses: docker/login-action@v3.2.0
+        uses: docker/login-action@0d4c9c5ea7693da7b068278f7b52bda2a190a446 # v3.2.0
         with:
           registry: https://ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Check out code
-        uses: actions/checkout@v4
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
 
       - name: Build bootstrap provider image
         run: make BOOTSTRAP_IMG_TAG=${{ env.VERSION }} docker-build-bootstrap
@@ -55,7 +55,7 @@ jobs:
           sed -i "s,ghcr.io/canonical/cluster-api-k8s/controlplane-controller:latest,ghcr.io/canonical/cluster-api-k8s/controlplane-controller:${{ env.VERSION }}," out/control-plane-components.yaml
 
       - name: Create GitHub Release
-        uses: softprops/action-gh-release@v2.0.6
+        uses: softprops/action-gh-release@a74c6b72af54cfa997e81df42d94703d6313a2d0 # v2.0.6
         with:
           name: 'Release ${{ env.VERSION }}'
           tag_name: ${{ env.VERSION }}
