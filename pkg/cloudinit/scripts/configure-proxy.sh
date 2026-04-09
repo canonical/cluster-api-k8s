@@ -25,3 +25,7 @@ if [ -f ${NO_PROXY_FILE} ]; then
   echo "no_proxy=${NO_PROXY}" >> "${ENVIRONMENT_FILE}"
   echo "NO_PROXY=${NO_PROXY}" >> "${ENVIRONMENT_FILE}"
 fi
+
+# Note(ader1990): snapd services needs to be restarted
+#   to use the new proxy settings.
+systemctl restart snapd
