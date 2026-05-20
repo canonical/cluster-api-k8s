@@ -29,6 +29,12 @@ spec:
       - key: node-role.kubernetes.io/master
         operator: Exists
         effect: NoSchedule
+      - key: node.kubernetes.io/not-ready
+        operator: Exists
+        effect: NoExecute
+      - key: node.kubernetes.io/unreachable
+        operator: Exists
+        effect: NoExecute
       containers:
       - name: k8sd-proxy
         image: ghcr.io/canonical/cluster-api-k8s/socat:1.8.0.0

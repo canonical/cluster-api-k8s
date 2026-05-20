@@ -395,12 +395,24 @@ func (r *CK8sControlPlaneReconciler) updateStatus(ctx context.Context, kcp *cont
 	kcp.Status.ReadyReplicas = status.ReadyNodes
 	kcp.Status.UnavailableReplicas = replicas - status.ReadyNodes
 
-	// NOTE(neoaggelos): We consider the control plane to be initialized iff the k8sd-config exists
-	if status.HasK8sdConfigMap {
+	enableDefaultNetwork := kcp.Spec.CK8sConfigSpec.InitConfig.GetEnableDefaultNetwork()
+
+	// NOTE(neoaggelos): We consider the control plane to be initialized iff the k8sd-config exists.
+	// When enableDefaultNetwork is false (user-managed CNI), k8sd-config may not appear until CNI
+	// is installed, so we fall back to API-server accessibility (ClusterStatus succeeded + replicas
+	// exist) to break the initialization deadlock and allow the MAAS controller to proceed.
+	if status.HasK8sdConfigMap || (!enableDefaultNetwork && replicas > 0) {
 		kcp.Status.Initialized = true
 	}
 
-	if kcp.Status.ReadyReplicas > 0 {
+	// When default network is disabled, nodes remain NotReady until the external CNI is
+	// installed by user. Mark the control plane Ready/Available as soon as
+	// it is initialized so that ControlPlaneInitializedCondition propagates to the Cluster object
+	// and the CAPI ClusterCacheTracker can establish a remote connection.
+	// Nodes will transition to Ready once CNI is applied, at which point ReadyReplicas > 0 and
+	// the normal path also satisfies this condition.
+	if kcp.Status.ReadyReplicas > 0 ||
+		(!enableDefaultNetwork && kcp.Status.Initialized && replicas > 0) {
 		kcp.Status.Ready = true
 		conditions.MarkTrue(kcp, controlplanev1.AvailableCondition)
 	}
