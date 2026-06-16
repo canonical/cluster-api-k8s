@@ -163,7 +163,7 @@ func ClusterUpgradeSpec(ctx context.Context, inputGetter func() ClusterUpgradeSp
 				Flavor:                   flavor,
 				Namespace:                namespace.Name,
 				ClusterName:              clusterName,
-				KubernetesVersion:        input.E2EConfig.GetVariable(KubernetesVersion),
+				KubernetesVersion:        input.E2EConfig.MustGetVariable(KubernetesVersion),
 				ControlPlaneMachineCount: &controlPlaneMachineCount,
 				WorkerMachineCount:       &workerMachineCount,
 			},
@@ -179,7 +179,7 @@ func ClusterUpgradeSpec(ctx context.Context, inputGetter func() ClusterUpgradeSp
 			Cluster:                     result.Cluster,
 			ControlPlane:                result.ControlPlane,
 			MaxControlPlaneMachineCount: maxControlPlaneMachineCount,
-			KubernetesUpgradeVersion:    input.E2EConfig.GetVariable(KubernetesVersionUpgradeTo),
+			KubernetesUpgradeVersion:    input.E2EConfig.MustGetVariable(KubernetesVersionUpgradeTo),
 			WaitForMachinesToBeUpgraded: input.E2EConfig.GetIntervals(specName, "wait-machine-upgrade"),
 		})
 
@@ -187,7 +187,7 @@ func ClusterUpgradeSpec(ctx context.Context, inputGetter func() ClusterUpgradeSp
 		framework.UpgradeMachineDeploymentsAndWait(ctx, framework.UpgradeMachineDeploymentsAndWaitInput{
 			ClusterProxy:                input.BootstrapClusterProxy,
 			Cluster:                     result.Cluster,
-			UpgradeVersion:              input.E2EConfig.GetVariable(KubernetesVersionUpgradeTo),
+			UpgradeVersion:              input.E2EConfig.MustGetVariable(KubernetesVersionUpgradeTo),
 			MachineDeployments:          result.MachineDeployments,
 			WaitForMachinesToBeUpgraded: input.E2EConfig.GetIntervals(specName, "wait-worker-nodes"),
 		})
@@ -197,7 +197,7 @@ func ClusterUpgradeSpec(ctx context.Context, inputGetter func() ClusterUpgradeSp
 		workloadClient := workloadProxy.GetClient()
 		WaitForNodesReady(ctx, WaitForNodesReadyInput{
 			Lister:            workloadClient,
-			KubernetesVersion: input.E2EConfig.GetVariable(KubernetesVersionUpgradeTo),
+			KubernetesVersion: input.E2EConfig.MustGetVariable(KubernetesVersionUpgradeTo),
 			Count:             int(result.ExpectedTotalNodes()),
 			WaitForNodesReady: input.E2EConfig.GetIntervals(specName, "wait-nodes-ready"),
 		})

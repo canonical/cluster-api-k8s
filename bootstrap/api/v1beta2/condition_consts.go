@@ -16,7 +16,7 @@ limitations under the License.
 
 package v1beta2
 
-import clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
+import clusterv1 "sigs.k8s.io/cluster-api/api/core/v1beta2"
 
 // Conditions and condition Reasons for the CK8sConfig object.
 
@@ -43,7 +43,7 @@ const (
 	// Deprecated: This has been deprecated in v1beta1 and will be removed in a future version.
 	// Switch to WaitingForControlPlaneAvailableReason constant from the `sigs.k8s.io/cluster-api/api/v1beta1`
 	// package.
-	WaitingForControlPlaneAvailableReason = clusterv1.WaitingForControlPlaneAvailableReason
+	WaitingForControlPlaneAvailableReason = clusterv1.WaitingForControlPlaneAvailableV1Beta1Reason
 
 	// DataSecretGenerationFailedReason (Severity=Warning) documents a CK8sConfig controller detecting
 	// an error while generating a data secret; those kind of errors are usually due to misconfigurations

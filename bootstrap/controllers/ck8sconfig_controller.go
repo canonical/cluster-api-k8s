@@ -31,11 +31,11 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	kerrors "k8s.io/apimachinery/pkg/util/errors"
 	"k8s.io/utils/ptr"
-	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
+	clusterv1 "sigs.k8s.io/cluster-api/api/core/v1beta2"
 	bsutil "sigs.k8s.io/cluster-api/bootstrap/util"
 	"sigs.k8s.io/cluster-api/util"
 	"sigs.k8s.io/cluster-api/util/annotations"
-	"sigs.k8s.io/cluster-api/util/conditions"
+	conditions "sigs.k8s.io/cluster-api/util/conditions/deprecated/v1beta1"
 	"sigs.k8s.io/cluster-api/util/patch"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -175,7 +175,7 @@ func (r *CK8sConfigReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 
 	switch {
 	// Wait for the infrastructure to be ready.
-	case !cluster.Status.InfrastructureReady:
+	case cluster.Status.Initialization.InfrastructureProvisioned == nil || !*cluster.Status.Initialization.InfrastructureProvisioned:
 		log.Info("Cluster infrastructure is not ready, waiting")
 		conditions.MarkFalse(config, bootstrapv1.DataSecretAvailableCondition, bootstrapv1.WaitingForClusterInfrastructureReason, clusterv1.ConditionSeverityInfo, "")
 		return ctrl.Result{RequeueAfter: 1 * time.Minute}, nil
@@ -193,7 +193,7 @@ func (r *CK8sConfigReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 	}
 
 	// Note: can't use IsFalse here because we need to handle the absence of the condition as well as false.
-	if !conditions.IsTrue(cluster, clusterv1.ControlPlaneInitializedCondition) {
+	if !conditions.IsTrue(cluster, clusterv1.ControlPlaneInitializedV1Beta1Condition) {
 		return r.handleClusterNotInitialized(ctx, scope)
 	}
 
@@ -592,7 +592,7 @@ func (r *CK8sConfigReconciler) handleClusterNotInitialized(ctx context.Context, 
 	// this is required in order to avoid the condition's LastTransitionTime to flicker in case of errors surfacing
 	// using the DataSecretGeneratedFailedReason
 	if conditions.GetReason(scope.Config, bootstrapv1.DataSecretAvailableCondition) != bootstrapv1.DataSecretGenerationFailedReason {
-		conditions.MarkFalse(scope.Config, bootstrapv1.DataSecretAvailableCondition, clusterv1.WaitingForControlPlaneAvailableReason, clusterv1.ConditionSeverityInfo, "")
+		conditions.MarkFalse(scope.Config, bootstrapv1.DataSecretAvailableCondition, clusterv1.WaitingForControlPlaneAvailableV1Beta1Reason, clusterv1.ConditionSeverityInfo, "")
 	}
 
 	// if it's NOT a control plane machine, requeue
@@ -656,7 +656,7 @@ func (r *CK8sConfigReconciler) handleClusterNotInitialized(ctx context.Context, 
 		PopulatedCertificates: certificates,
 		InitConfig:            scope.Config.Spec.InitConfig,
 
-		ClusterNetwork: scope.Cluster.Spec.ClusterNetwork,
+		ClusterNetwork: &scope.Cluster.Spec.ClusterNetwork,
 
 		ExtraKubeProxyArgs:         scope.Config.Spec.ExtraKubeProxyArgs,
 		ExtraKubeletArgs:           scope.Config.Spec.ExtraKubeletArgs,
@@ -822,8 +822,8 @@ func (r *CK8sConfigReconciler) reconcileTopLevelObjectSettings(_ *clusterv1.Clus
 	log := r.Log.WithValues("ck8sconfig", fmt.Sprintf("%s/%s", config.Namespace, config.Name))
 
 	// If there are no Version settings defined in Config, use Version from machine, if defined
-	if config.Spec.Version == "" && machine.Spec.Version != nil {
-		config.Spec.Version = *machine.Spec.Version
+	if config.Spec.Version == "" && machine.Spec.Version != "" {
+		config.Spec.Version = machine.Spec.Version
 		log.Info("Altering Config", "Version", config.Spec.Version)
 	}
 }

@@ -96,7 +96,7 @@ var _ = Describe("When testing MachineDeployment remediation", func() {
 					Flavor:                   "md-remediation",
 					Namespace:                namespace.Name,
 					ClusterName:              clusterName,
-					KubernetesVersion:        e2eConfig.GetVariable(KubernetesVersion),
+					KubernetesVersion:        e2eConfig.MustGetVariable(KubernetesVersion),
 					ControlPlaneMachineCount: pointer.Int64Ptr(1),
 					WorkerMachineCount:       pointer.Int64Ptr(1),
 				},
@@ -120,7 +120,7 @@ var _ = Describe("When testing MachineDeployment remediation", func() {
 
 			WaitForNodesReady(ctx, WaitForNodesReadyInput{
 				Lister:            workloadClient,
-				KubernetesVersion: e2eConfig.GetVariable(KubernetesVersion),
+				KubernetesVersion: e2eConfig.MustGetVariable(KubernetesVersion),
 				Count:             int(result.ExpectedTotalNodes()),
 				WaitForNodesReady: e2eConfig.GetIntervals(specName, "wait-nodes-ready"),
 			})

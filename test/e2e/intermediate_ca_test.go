@@ -148,7 +148,7 @@ var _ = Describe("Intermediate CA", func() {
 					InfrastructureProvider:   infrastructureProvider,
 					Namespace:                namespace.Name,
 					ClusterName:              clusterName,
-					KubernetesVersion:        e2eConfig.GetVariable(KubernetesVersion),
+					KubernetesVersion:        e2eConfig.MustGetVariable(KubernetesVersion),
 					ControlPlaneMachineCount: pointer.Int64Ptr(3),
 					WorkerMachineCount:       pointer.Int64Ptr(3),
 				},
