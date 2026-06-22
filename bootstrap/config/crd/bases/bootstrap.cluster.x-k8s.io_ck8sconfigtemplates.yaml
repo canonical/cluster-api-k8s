@@ -183,6 +183,11 @@ spec:
                             items:
                               type: string
                             type: array
+                          removalCooldownPeriodSeconds:
+                            description: RemovalCooldownPeriodSeconds is the period
+                              in seconds to wait to remove a Control Plane after a
+                              new Control Plane just showed up
+                            type: integer
                         type: object
                       extraContainerdArgs:
                         additionalProperties:
