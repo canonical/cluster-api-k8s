@@ -9,9 +9,15 @@ Refer to the [Testing Cluster API](https://cluster-api.sigs.k8s.io/developer/tes
 The e2e image will be built with tag `dev`. You should build the image first before running the test.
 
 ```shell
-make docker-build-e2e   # should be run everytime you change the controller code
-make test-e2e   # run all e2e tests
+make docker-build-e2e        # build the controller images; run after any controller code change
+./hack/build-e2e-images.sh   # build the k8s-snap node images (k8s-snap:dev-old / dev-new)
+make test-e2e                # run all e2e tests
 ```
+
+> The workload nodes run `k8s-snap` from the `k8s-snap:dev-old` / `dev-new` images,
+> which `make docker-build-e2e` does **not** produce. Build them with
+> `hack/build-e2e-images.sh` or the suite will fail with `pull access denied for k8s-snap`.
+> See [docs/e2e-node-images.md](../../docs/e2e-node-images.md) for details.
 
 ### Run a specific e2e test
 
