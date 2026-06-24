@@ -42,8 +42,9 @@ type WorkloadCluster interface {
 	UpdateAgentConditions(ctx context.Context, controlPlane *ControlPlane)
 	NewControlPlaneJoinToken(ctx context.Context, name string) (string, error)
 	NewWorkerJoinToken(ctx context.Context) (string, error)
+	GetControlPlaneNodes(ctx context.Context) (*corev1.NodeList, error)
 
-	RemoveMachineFromCluster(ctx context.Context, machine *clusterv1.Machine) error
+	RemoveMachineFromCluster(ctx context.Context, orphanNode string, force bool) error
 }
 
 // Workload defines operations on workload clusters.
@@ -55,6 +56,7 @@ type Workload struct {
 	ClientRestConfig    *rest.Config
 	K8sdClientGenerator *k8sdClientGenerator
 	microclusterPort    int
+	drainer             Drainer
 }
 
 // ClusterStatus holds stats information about the cluster.
@@ -67,7 +69,7 @@ type ClusterStatus struct {
 	HasK8sdConfigMap bool
 }
 
-func (w *Workload) getControlPlaneNodes(ctx context.Context) (*corev1.NodeList, error) {
+func (w *Workload) GetControlPlaneNodes(ctx context.Context) (*corev1.NodeList, error) {
 	nodes := &corev1.NodeList{}
 	labels := map[string]string{
 		// NOTE(neoaggelos): Canonical Kubernetes uses node-role.kubernetes.io/control-plane="" as a label for control plane nodes.
@@ -84,7 +86,7 @@ func (w *Workload) ClusterStatus(ctx context.Context) (ClusterStatus, error) {
 	status := ClusterStatus{}
 
 	// count the control plane nodes
-	nodes, err := w.getControlPlaneNodes(ctx)
+	nodes, err := w.GetControlPlaneNodes(ctx)
 	if err != nil {
 		return status, err
 	}
@@ -154,7 +156,7 @@ type k8sdProxyOptions struct {
 
 // GetK8sdProxyForControlPlane returns a k8sd proxy client for the control plane.
 func (w *Workload) GetK8sdProxyForControlPlane(ctx context.Context, options k8sdProxyOptions) (*K8sdClient, error) {
-	cplaneNodes, err := w.getControlPlaneNodes(ctx)
+	cplaneNodes, err := w.GetControlPlaneNodes(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get control plane nodes: %w", err)
 	}
@@ -444,20 +446,12 @@ func (w *Workload) requestJoinToken(ctx context.Context, name string, worker boo
 	return response.EncodedToken, nil
 }
 
-func (w *Workload) RemoveMachineFromCluster(ctx context.Context, machine *clusterv1.Machine) error {
-	if machine == nil {
-		return fmt.Errorf("machine object is not set")
-	}
-	if machine.Status.NodeRef == nil {
-		return fmt.Errorf("machine %s has no node reference", machine.Name)
-	}
-
-	nodeName := machine.Status.NodeRef.Name
-	request := &apiv1.RemoveNodeRequest{Name: nodeName, Force: true}
+func (w *Workload) RemoveMachineFromCluster(ctx context.Context, orphanNode string, force bool) (err error) {
+	request := &apiv1.RemoveNodeRequest{Name: orphanNode, Force: force}
 
 	// If we see that ignoring control-planes is causing issues, let's consider removing it.
 	// It *should* not be necessary as a machine should be able to remove itself from the cluster.
-	k8sdProxy, err := w.GetK8sdProxyForControlPlane(ctx, k8sdProxyOptions{IgnoreNodes: map[string]struct{}{nodeName: {}}})
+	k8sdProxy, err := w.GetK8sdProxyForControlPlane(ctx, k8sdProxyOptions{IgnoreNodes: map[string]struct{}{orphanNode: {}}})
 	if err != nil {
 		return fmt.Errorf("failed to create k8sd proxy: %w", err)
 	}
@@ -465,7 +459,7 @@ func (w *Workload) RemoveMachineFromCluster(ctx context.Context, machine *cluste
 	header := w.newHeaderWithCAPIAuthToken()
 
 	if err := w.doK8sdRequest(ctx, k8sdProxy, http.MethodPost, fmt.Sprintf("%s/%s", apiv1.K8sdAPIVersion, apiv1.ClusterAPIRemoveNodeRPC), header, request, nil); err != nil {
-		return fmt.Errorf("failed to remove %s from cluster: %w", machine.Name, err)
+		return fmt.Errorf("failed to remove %s from cluster: %w", orphanNode, err)
 	}
 	return nil
 }
@@ -540,7 +534,7 @@ func (w *Workload) UpdateAgentConditions(ctx context.Context, controlPlane *Cont
 	}
 
 	// NOTE: this fun uses control plane nodes from the workload cluster as a source of truth for the current state.
-	controlPlaneNodes, err := w.getControlPlaneNodes(ctx)
+	controlPlaneNodes, err := w.GetControlPlaneNodes(ctx)
 	if err != nil {
 		for i := range controlPlane.Machines {
 			machine := controlPlane.Machines[i]

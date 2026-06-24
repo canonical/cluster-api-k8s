@@ -1,0 +1,1682 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  labels:
+    cluster.x-k8s.io/provider: control-plane-ck8s
+    control-plane: controller-manager
+  name: cacpck-system
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  annotations:
+    cert-manager.io/inject-ca-from: cacpck-system/cacpck-serving-cert
+    controller-gen.kubebuilder.io/version: v0.16.1
+  labels:
+    cluster.x-k8s.io/provider: control-plane-ck8s
+    cluster.x-k8s.io/v1beta1: v1beta1_v1beta2
+    clusterctl.cluster.x-k8s.io: ""
+  name: ck8scontrolplanes.controlplane.cluster.x-k8s.io
+spec:
+  conversion:
+    strategy: Webhook
+    webhook:
+      clientConfig:
+        service:
+          name: cacpck-webhook-service
+          namespace: cacpck-system
+          path: /convert
+      conversionReviewVersions:
+      - v1beta1
+      - v1beta2
+  group: controlplane.cluster.x-k8s.io
+  names:
+    kind: CK8sControlPlane
+    listKind: CK8sControlPlaneList
+    plural: ck8scontrolplanes
+    singular: ck8scontrolplane
+  scope: Namespaced
+  versions:
+  - additionalPrinterColumns:
+    - description: This denotes whether or not the control plane has completed the
+        initialization
+      jsonPath: .status.initialized
+      name: Initialized
+      type: boolean
+    - description: CK8sControlPlane API Server is ready to receive requests
+      jsonPath: .status.ready
+      name: API Server Available
+      type: boolean
+    - description: Kubernetes version associated with this control plane
+      jsonPath: .spec.version
+      name: Version
+      type: string
+    - description: Total number of non-terminated machines targeted by this control
+        plane
+      jsonPath: .status.replicas
+      name: Replicas
+      type: integer
+    - description: Total number of fully running and ready control plane machines
+      jsonPath: .status.readyReplicas
+      name: Ready
+      type: integer
+    - description: Total number of non-terminated machines targeted by this control
+        plane that have the desired template spec
+      jsonPath: .status.updatedReplicas
+      name: Updated
+      type: integer
+    - description: Total number of unavailable machines targeted by this control plane
+      jsonPath: .status.unavailableReplicas
+      name: Unavailable
+      type: integer
+    name: v1beta2
+    schema:
+      openAPIV3Schema:
+        description: CK8sControlPlane is the Schema for the ck8scontrolplanes API.
+        properties:
+          apiVersion:
+            description: |-
+              APIVersion defines the versioned schema of this representation of an object.
+              Servers should convert recognized schemas to the latest internal value, and
+              may reject unrecognized values.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
+            type: string
+          kind:
+            description: |-
+              Kind is a string value representing the REST resource this object represents.
+              Servers may infer this from the endpoint the client submits requests to.
+              Cannot be updated.
+              In CamelCase.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
+            type: string
+          metadata:
+            type: object
+          spec:
+            description: CK8sControlPlaneSpec defines the desired state of CK8sControlPlane.
+            properties:
+              machineTemplate:
+                description: |-
+                  MachineTemplate contains information about how machines should be shaped
+                  when creating or updating a control plane.
+                properties:
+                  infrastructureTemplate:
+                    description: |-
+                      InfrastructureRef is a required reference to a custom resource
+                      offered by an infrastructure provider.
+                    properties:
+                      apiVersion:
+                        description: API version of the referent.
+                        type: string
+                      fieldPath:
+                        description: |-
+                          If referring to a piece of an object instead of an entire object, this string
+                          should contain a valid JSON/Go field access statement, such as desiredState.manifest.containers[2].
+                          For example, if the object reference is to a container within a pod, this would take on a value like:
+                          "spec.containers{name}" (where "name" refers to the name of the container that triggered
+                          the event) or if no container name is specified "spec.containers[2]" (container with
+                          index 2 in this pod). This syntax is chosen only to have some well-defined way of
+                          referencing a part of an object.
+                        type: string
+                      kind:
+                        description: |-
+                          Kind of the referent.
+                          More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
+                        type: string
+                      name:
+                        description: |-
+                          Name of the referent.
+                          More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                        type: string
+                      namespace:
+                        description: |-
+                          Namespace of the referent.
+                          More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/namespaces/
+                        type: string
+                      resourceVersion:
+                        description: |-
+                          Specific resourceVersion to which this reference is made, if any.
+                          More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#concurrency-control-and-consistency
+                        type: string
+                      uid:
+                        description: |-
+                          UID of the referent.
+                          More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#uids
+                        type: string
+                    type: object
+                    x-kubernetes-map-type: atomic
+                  metadata:
+                    description: |-
+                      Standard object's metadata.
+                      More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#metadata
+                    properties:
+                      annotations:
+                        additionalProperties:
+                          type: string
+                        description: |-
+                          annotations is an unstructured key value map stored with a resource that may be
+                          set by external tools to store and retrieve arbitrary metadata. They are not
+                          queryable and should be preserved when modifying objects.
+                          More info: http://kubernetes.io/docs/user-guide/annotations
+                        type: object
+                      labels:
+                        additionalProperties:
+                          type: string
+                        description: |-
+                          Map of string keys and values that can be used to organize and categorize
+                          (scope and select) objects. May match selectors of replication controllers
+                          and services.
+                          More info: http://kubernetes.io/docs/user-guide/labels
+                        type: object
+                    type: object
+                  nodeDeletionTimeout:
+                    description: |-
+                      NodeDeletionTimeout defines how long the machine controller will attempt to delete the Node that the Machine
+                      hosts after the Machine is marked for deletion. A duration of 0 will retry deletion indefinitely.
+                      If no value is provided, the default value for this property of the Machine resource will be used.
+                    type: string
+                  nodeDrainTimeout:
+                    description: |-
+                      NodeDrainTimeout is the total amount of time that the controller will spend on draining a controlplane node
+                      The default value is 0, meaning that the node can be drained without any time limitations.
+                      NOTE: NodeDrainTimeout is different from `kubectl drain --timeout`
+                    type: string
+                  nodeVolumeDetachTimeout:
+                    description: |-
+                      NodeVolumeDetachTimeout is the total amount of time that the controller will spend on waiting for all volumes
+                      to be detached. The default value is 0, meaning that the volumes can be detached without any time limitations.
+                    type: string
+                required:
+                - infrastructureTemplate
+                type: object
+              remediationStrategy:
+                description: The RemediationStrategy that controls how control plane
+                  machine remediation happens.
+                properties:
+                  maxRetry:
+                    description: "MaxRetry is the Max number of retries while attempting
+                      to remediate an unhealthy machine.\nA retry happens when a machine
+                      that was created as a replacement for an unhealthy machine also
+                      fails.\nFor example, given a control plane with three machines
+                      M1, M2, M3:\n\n\tM1 become unhealthy; remediation happens, and
+                      M1-1 is created as a replacement.\n\tIf M1-1 (replacement of
+                      M1) has problems while bootstrapping it will become unhealthy,
+                      and then be\n\tremediated; such operation is considered a retry,
+                      remediation-retry #1.\n\tIf M1-2 (replacement of M1-1) becomes
+                      unhealthy, remediation-retry #2 will happen, etc.\n\nA retry
+                      could happen only after RetryPeriod from the previous retry.\nIf
+                      a machine is marked as unhealthy after MinHealthyPeriod from
+                      the previous remediation expired,\nthis is not considered a
+                      retry anymore because the new issue is assumed unrelated from
+                      the previous one.\n\nIf not set, the remedation will be retried
+                      infinitely."
+                    format: int32
+                    type: integer
+                  minHealthyPeriod:
+                    description: "MinHealthyPeriod defines the duration after which
+                      KCP will consider any failure to a machine unrelated\nfrom the
+                      previous one. In this case the remediation is not considered
+                      a retry anymore, and thus the retry\ncounter restarts from 0.
+                      For example, assuming MinHealthyPeriod is set to 1h (default)\n\n\tM1
+                      become unhealthy; remediation happens, and M1-1 is created as
+                      a replacement.\n\tIf M1-1 (replacement of M1) has problems within
+                      the 1hr after the creation, also\n\tthis machine will be remediated
+                      and this operation is considered a retry - a problem related\n\tto
+                      the original issue happened to M1 -.\n\n\tIf instead the problem
+                      on M1-1 is happening after MinHealthyPeriod expired, e.g. four
+                      days after\n\tm1-1 has been created as a remediation of M1,
+                      the problem on M1-1 is considered unrelated to\n\tthe original
+                      issue happened to M1.\n\nIf not set, this value is defaulted
+                      to 1h."
+                    type: string
+                  retryPeriod:
+                    description: |-
+                      RetryPeriod is the duration that KCP should wait before remediating a machine being created as a replacement
+                      for an unhealthy machine (a retry).
+
+                      If not set, a retry will happen immediately.
+                    type: string
+                type: object
+              replicas:
+                description: |-
+                  Number of desired machines. Defaults to 1. When stacked etcd is used only
+                  odd numbers are permitted, as per [etcd best practice](https://etcd.io/docs/v3.3.12/faq/#why-an-odd-number-of-cluster-members).
+                  This is a pointer to distinguish between explicit zero and not specified.
+                format: int32
+                type: integer
+              rolloutAfter:
+                description: |-
+                  RolloutAfter is a field to indicate a rollout should be performed
+                  after the specified time even if no changes have been made to the
+                  CK8sControlPlane
+                format: date-time
+                type: string
+              rolloutStrategy:
+                default:
+                  rollingUpdate:
+                    maxSurge: 1
+                description: |-
+                  rolloutStrategy is the RolloutStrategy to use to replace control plane machines with
+                  new ones.
+                properties:
+                  rollingUpdate:
+                    description: rollingUpdate is the rolling update config params.
+                    properties:
+                      maxSurge:
+                        anyOf:
+                        - type: integer
+                        - type: string
+                        description: |-
+                          maxSurge is the maximum number of control planes that can be scheduled above or under the
+                          desired number of control planes.
+                          Value can be an absolute number 1 or 0.
+                          Defaults to 1.
+                          Example: when this is set to 1, the control plane can be scaled
+                          up immediately when the rolling update starts.
+                        x-kubernetes-int-or-string: true
+                    type: object
+                type: object
+              spec:
+                description: |-
+                  CK8sConfigSpec is a CK8sConfigSpec
+                  to use for initializing and joining machines to the control plane.
+                properties:
+                  ExtraK8sAPIServerProxyArgs:
+                    additionalProperties:
+                      type: string
+                    description: ExtraK8sAPIServerProxyArgs - extra arguments to add
+                      to k8s-api-server-proxy.
+                    type: object
+                  additionalUserData:
+                    additionalProperties:
+                      type: string
+                    description: |-
+                      AdditionalUserData is a field that allows users to specify additional cloud-init configuration inside the script.
+                      Th key/value pairs must adhere to
+                      https://cloudinit.readthedocs.io/en/latest/reference/modules.html
+                      to extend existing cloud-init configuration
+                    type: object
+                  airGapped:
+                    description: |-
+                      AirGapped is used to signal that we are deploying to an airgap environment. In this case,
+                      the provider will not attempt to install k8s-snap on the machine. The user is expected to
+                      install k8s-snap manually with preRunCommands, or provide an image with k8s-snap pre-installed.
+                    type: boolean
+                  bootCommands:
+                    description: BootCommands specifies extra commands to run in cloud-init
+                      early in the boot process.
+                    items:
+                      type: string
+                    type: array
+                  bootstrapConfig:
+                    description: BootstrapConfig is the data to be passed to the bootstrap
+                      script.
+                    properties:
+                      content:
+                        description: |-
+                          Content is the actual content of the file.
+                          If this is set, ContentFrom is ignored.
+                        type: string
+                      contentFrom:
+                        description: ContentFrom is a referenced source of content
+                          to populate the file.
+                        properties:
+                          secret:
+                            description: Secret represents a secret that should populate
+                              this file.
+                            properties:
+                              key:
+                                description: Key is the key in the secret's data map
+                                  for this value.
+                                type: string
+                              name:
+                                description: Name of the secret in the CK8sBootstrapConfig's
+                                  namespace to use.
+                                type: string
+                            required:
+                            - key
+                            - name
+                            type: object
+                        required:
+                        - secret
+                        type: object
+                    type: object
+                  channel:
+                    description: Channel is the channel to use for the snap install.
+                    type: string
+                  controlPlane:
+                    description: CK8sControlPlaneConfig is configuration for the control
+                      plane node.
+                    properties:
+                      cloudProvider:
+                        description: CloudProvider is the cloud-provider configuration
+                          option to set.
+                        type: string
+                      datastoreServersSecretRef:
+                        description: DatastoreServersSecretRef is a reference to a
+                          secret containing the datastore servers.
+                        properties:
+                          key:
+                            description: Key is the key in the secret's data map for
+                              this value.
+                            type: string
+                          name:
+                            description: Name of the secret in the CK8sBootstrapConfig's
+                              namespace to use.
+                            type: string
+                        required:
+                        - name
+                        type: object
+                      datastoreType:
+                        description: DatastoreType is the type of datastore to use
+                          for the control plane.
+                        type: string
+                      etcdPeerPort:
+                        description: EtcdPeerPort is the port to use for etcd peer
+                          communication. If unset, 2381 will be used.
+                        type: integer
+                      etcdPort:
+                        description: EtcdPort is the port to use for etcd. If unset,
+                          2379 will be used.
+                        type: integer
+                      extraKubeAPIServerArgs:
+                        additionalProperties:
+                          type: string
+                        description: ExtraKubeAPIServerArgs - extra arguments to add
+                          to kube-apiserver.
+                        type: object
+                      extraKubeControllerManagerArgs:
+                        additionalProperties:
+                          type: string
+                        description: ExtraKubeControllerManagerArgs - extra arguments
+                          to add to kube-controller-manager.
+                        type: object
+                      extraKubeSchedulerArgs:
+                        additionalProperties:
+                          type: string
+                        description: ExtraKubeSchedulerArgs - extra arguments to add
+                          to kube-scheduler.
+                        type: object
+                      extraSANs:
+                        description: ExtraSANs is a list of SANs to include in the
+                          server certificates.
+                        items:
+                          type: string
+                        type: array
+                      microclusterAddress:
+                        description: MicroclusterAddress is the address (or CIDR)
+                          to use for microcluster. If unset, the default node interface
+                          is chosen.
+                        type: string
+                      microclusterPort:
+                        description: MicroclusterPort is the port to use for microcluster.
+                          If unset, ":2380" (etcd peer) will be used.
+                        type: integer
+                      nodeTaints:
+                        description: NodeTaints is taints to add to the control plane
+                          kubelet nodes.
+                        items:
+                          type: string
+                        type: array
+                    type: object
+                  extraContainerdArgs:
+                    additionalProperties:
+                      type: string
+                    description: ExtraContainerdArgs - extra arguments to add to containerd.
+                    type: object
+                  extraKubeProxyArgs:
+                    additionalProperties:
+                      type: string
+                    description: ExtraKubeProxyArgs - extra arguments to add to kube-proxy.
+                    type: object
+                  extraKubeletArgs:
+                    additionalProperties:
+                      type: string
+                    description: ExtraKubeletArgs - extra arguments to add to kubelet.
+                    type: object
+                  files:
+                    description: Files specifies extra files to be passed to user_data
+                      upon creation.
+                    items:
+                      description: File defines the input for generating write_files
+                        in cloud-init.
+                      properties:
+                        content:
+                          description: Content is the actual content of the file.
+                          type: string
+                        contentFrom:
+                          description: ContentFrom is a referenced source of content
+                            to populate the file.
+                          properties:
+                            secret:
+                              description: Secret represents a secret that should
+                                populate this file.
+                              properties:
+                                key:
+                                  description: Key is the key in the secret's data
+                                    map for this value.
+                                  type: string
+                                name:
+                                  description: Name of the secret in the CK8sBootstrapConfig's
+                                    namespace to use.
+                                  type: string
+                              required:
+                              - key
+                              - name
+                              type: object
+                          required:
+                          - secret
+                          type: object
+                        encoding:
+                          description: Encoding specifies the encoding of the file
+                            contents.
+                          enum:
+                          - base64
+                          - gzip
+                          - gzip+base64
+                          type: string
+                        owner:
+                          description: Owner specifies the ownership of the file,
+                            e.g. "root:root".
+                          type: string
+                        path:
+                          description: Path specifies the full path on disk where
+                            to store the file.
+                          type: string
+                        permissions:
+                          description: Permissions specifies the permissions to assign
+                            to the file, e.g. "0640".
+                          type: string
+                      required:
+                      - path
+                      type: object
+                    type: array
+                  httpProxy:
+                    description: HTTPProxy is optional http proxy configuration
+                    type: string
+                  httpsProxy:
+                    description: HTTPSProxy is optional https proxy configuration
+                    type: string
+                  initConfig:
+                    description: CK8sInitConfig is configuration for the initializing
+                      the cluster features.
+                    properties:
+                      annotations:
+                        additionalProperties:
+                          type: string
+                        description: Annotations are used to configure the behaviour
+                          of the built-in features.
+                        type: object
+                      enableDefaultDNS:
+                        description: EnableDefaultDNS specifies whether to enable
+                          the default DNS configuration.
+                        type: boolean
+                      enableDefaultGateway:
+                        description: EnableDefaultGateway specifies whether to enable
+                          the default Gateway configuration.
+                        type: boolean
+                      enableDefaultIngress:
+                        description: EnableDefaultIngress specifies whether to enable
+                          the default Ingress configuration.
+                        type: boolean
+                      enableDefaultLoadBalancer:
+                        description: EnableDefaultLoadBalancer specifies whether to
+                          enable the default LoadBalancer configuration.
+                        type: boolean
+                      enableDefaultLocalStorage:
+                        description: EnableDefaultLocalStorage specifies whether to
+                          enable the default local storage.
+                        type: boolean
+                      enableDefaultMetricsServer:
+                        description: EnableDefaultMetricsServer specifies whether
+                          to enable the default metrics server.
+                        type: boolean
+                      enableDefaultNetwork:
+                        description: EnableDefaultNetwork specifies whether to enable
+                          the default CNI.
+                        type: boolean
+                    type: object
+                  localPath:
+                    description: |-
+                      LocalPath is the path of a local snap file (or a folder containing local snap files) in the workload cluster to use for the snap install.
+                      If Channel or Revision are set, this will be ignored.
+                    type: string
+                  noProxy:
+                    description: NoProxy is optional no proxy configuration
+                    type: string
+                  nodeName:
+                    description: |-
+                      NodeName is the name to use for the kubelet of this node. It is needed for clouds
+                      where the cloud-provider has specific pre-requisites about the node names. It is
+                      typically set in Jinja template form, e.g."{{ ds.meta_data.local_hostname }}".
+                    type: string
+                  postRunCommands:
+                    description: PostRunCommands specifies extra commands to run in
+                      cloud-init after k8s-snap setup runs.
+                    items:
+                      type: string
+                    type: array
+                  preRunCommands:
+                    description: PreRunCommands specifies extra commands to run in
+                      cloud-init before k8s-snap setup runs.
+                    items:
+                      type: string
+                    type: array
+                  revision:
+                    description: |-
+                      Revision is the revision to use for the snap install.
+                      If Channel is set, this will be ignored.
+                    type: string
+                  snapstoreProxyDomain:
+                    description: The snap store proxy domain
+                    type: string
+                  snapstoreProxyId:
+                    description: The snap store proxy ID
+                    type: string
+                  snapstoreProxyScheme:
+                    default: http
+                    description: |-
+                      The snap store proxy domain's scheme, e.g. "http" or "https" without "://"
+                      Defaults to "http".
+                    enum:
+                    - http
+                    - https
+                    type: string
+                  version:
+                    description: Version specifies the Kubernetes version.
+                    type: string
+                type: object
+              version:
+                description: Version defines the desired Kubernetes version.
+                type: string
+            required:
+            - version
+            type: object
+          status:
+            description: CK8sControlPlaneStatus defines the observed state of CK8sControlPlane.
+            properties:
+              conditions:
+                description: Conditions defines current service state of the CK8sControlPlane.
+                items:
+                  description: Condition defines an observation of a Cluster API resource
+                    operational state.
+                  properties:
+                    lastTransitionTime:
+                      description: |-
+                        Last time the condition transitioned from one status to another.
+                        This should be when the underlying condition changed. If that is not known, then using the time when
+                        the API field changed is acceptable.
+                      format: date-time
+                      type: string
+                    message:
+                      description: |-
+                        A human readable message indicating details about the transition.
+                        This field may be empty.
+                      type: string
+                    reason:
+                      description: |-
+                        The reason for the condition's last transition in CamelCase.
+                        The specific API may choose whether or not this field is considered a guaranteed API.
+                        This field may be empty.
+                      type: string
+                    severity:
+                      description: |-
+                        severity provides an explicit classification of Reason code, so the users or machines can immediately
+                        understand the current situation and act accordingly.
+                        The Severity field MUST be set only when Status=False.
+                      type: string
+                    status:
+                      description: status of the condition, one of True, False, Unknown.
+                      type: string
+                    type:
+                      description: |-
+                        type of condition in CamelCase or in foo.example.com/CamelCase.
+                        Many .condition.type values are consistent across resources like Available, but because arbitrary conditions
+                        can be useful (see .node.status.conditions), the ability to deconflict is important.
+                      type: string
+                  required:
+                  - lastTransitionTime
+                  - status
+                  - type
+                  type: object
+                type: array
+              failureMessage:
+                description: |-
+                  ErrorMessage indicates that there is a terminal problem reconciling the
+                  state, and will be set to a descriptive error message.
+                type: string
+              failureReason:
+                description: |-
+                  FailureReason indicates that there is a terminal problem reconciling the
+                  state, and will be set to a token value suitable for
+                  programmatic interpretation.
+                type: string
+              initialized:
+                description: Initialized denotes whether or not the control plane
+                  is initialized.
+                type: boolean
+              lastRemediation:
+                description: LastRemediation stores info about last remediation performed.
+                properties:
+                  machine:
+                    description: Machine is the machine name of the latest machine
+                      being remediated.
+                    type: string
+                  retryCount:
+                    description: |-
+                      RetryCount used to keep track of remediation retry for the last remediated machine.
+                      A retry happens when a machine that was created as a replacement for an unhealthy machine also fails.
+                    format: int32
+                    type: integer
+                  timestamp:
+                    description: Timestamp is when last remediation happened. It is
+                      represented in RFC3339 form and is in UTC.
+                    format: date-time
+                    type: string
+                required:
+                - machine
+                - retryCount
+                - timestamp
+                type: object
+              observedGeneration:
+                description: ObservedGeneration is the latest generation observed
+                  by the controller.
+                format: int64
+                type: integer
+              ready:
+                description: |-
+                  Ready denotes that the CK8sControlPlane API Server is ready to
+                  receive requests.
+                type: boolean
+              readyReplicas:
+                description: Total number of fully running and ready control plane
+                  machines.
+                format: int32
+                type: integer
+              replicas:
+                description: |-
+                  Total number of non-terminated machines targeted by this control plane
+                  (their labels match the selector).
+                format: int32
+                type: integer
+              selector:
+                description: |-
+                  Selector is the label selector in string format to avoid introspection
+                  by clients, and is used to provide the CRD-based integration for the
+                  scale subresource and additional integrations for things like kubectl
+                  describe.. The string will be in the same format as the query-param syntax.
+                  More info about label selectors: http://kubernetes.io/docs/user-guide/labels#label-selectors
+                type: string
+              unavailableReplicas:
+                description: |-
+                  Total number of unavailable machines targeted by this control plane.
+                  This is the total number of machines that are still required for
+                  the deployment to have 100% available capacity. They may either
+                  be machines that are running but not yet ready or machines
+                  that still have not been created.
+                format: int32
+                type: integer
+              updatedReplicas:
+                description: |-
+                  Total number of non-terminated machines targeted by this control plane
+                  that have the desired template spec.
+                format: int32
+                type: integer
+              version:
+                description: |-
+                  Version represents the minimum Kubernetes version for the control plane machines
+                  in the cluster.
+                type: string
+            type: object
+        type: object
+    served: true
+    storage: true
+    subresources:
+      scale:
+        labelSelectorPath: .status.selector
+        specReplicasPath: .spec.replicas
+        statusReplicasPath: .status.replicas
+      status: {}
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  annotations:
+    controller-gen.kubebuilder.io/version: v0.16.1
+  labels:
+    cluster.x-k8s.io/provider: control-plane-ck8s
+    cluster.x-k8s.io/v1beta1: v1beta1_v1beta2
+    clusterctl.cluster.x-k8s.io: ""
+  name: ck8scontrolplanetemplates.controlplane.cluster.x-k8s.io
+spec:
+  group: controlplane.cluster.x-k8s.io
+  names:
+    kind: CK8sControlPlaneTemplate
+    listKind: CK8sControlPlaneTemplateList
+    plural: ck8scontrolplanetemplates
+    singular: ck8scontrolplanetemplate
+  scope: Namespaced
+  versions:
+  - name: v1beta2
+    schema:
+      openAPIV3Schema:
+        description: CK8sControlPlaneTemplate is the Schema for the ck8scontrolplanetemplate
+          API.
+        properties:
+          apiVersion:
+            description: |-
+              APIVersion defines the versioned schema of this representation of an object.
+              Servers should convert recognized schemas to the latest internal value, and
+              may reject unrecognized values.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
+            type: string
+          kind:
+            description: |-
+              Kind is a string value representing the REST resource this object represents.
+              Servers may infer this from the endpoint the client submits requests to.
+              Cannot be updated.
+              In CamelCase.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
+            type: string
+          metadata:
+            type: object
+          spec:
+            description: CK8sControlPlaneTemplateSpec defines the desired state of
+              CK8sControlPlaneTemplateSpec.
+            properties:
+              template:
+                properties:
+                  metadata:
+                    description: |-
+                      Standard object's metadata.
+                      More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#metadata
+                    type: object
+                  spec:
+                    properties:
+                      machineTemplate:
+                        description: |-
+                          MachineTemplate contains information about how machines should be shaped
+                          when creating or updating a control plane.
+                        properties:
+                          infrastructureTemplate:
+                            description: |-
+                              InfrastructureRef is a required reference to a custom resource
+                              offered by an infrastructure provider.
+                            properties:
+                              apiVersion:
+                                description: API version of the referent.
+                                type: string
+                              fieldPath:
+                                description: |-
+                                  If referring to a piece of an object instead of an entire object, this string
+                                  should contain a valid JSON/Go field access statement, such as desiredState.manifest.containers[2].
+                                  For example, if the object reference is to a container within a pod, this would take on a value like:
+                                  "spec.containers{name}" (where "name" refers to the name of the container that triggered
+                                  the event) or if no container name is specified "spec.containers[2]" (container with
+                                  index 2 in this pod). This syntax is chosen only to have some well-defined way of
+                                  referencing a part of an object.
+                                type: string
+                              kind:
+                                description: |-
+                                  Kind of the referent.
+                                  More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
+                                type: string
+                              name:
+                                description: |-
+                                  Name of the referent.
+                                  More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                                type: string
+                              namespace:
+                                description: |-
+                                  Namespace of the referent.
+                                  More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/namespaces/
+                                type: string
+                              resourceVersion:
+                                description: |-
+                                  Specific resourceVersion to which this reference is made, if any.
+                                  More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#concurrency-control-and-consistency
+                                type: string
+                              uid:
+                                description: |-
+                                  UID of the referent.
+                                  More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#uids
+                                type: string
+                            type: object
+                            x-kubernetes-map-type: atomic
+                          metadata:
+                            description: |-
+                              Standard object's metadata.
+                              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#metadata
+                            properties:
+                              annotations:
+                                additionalProperties:
+                                  type: string
+                                description: |-
+                                  annotations is an unstructured key value map stored with a resource that may be
+                                  set by external tools to store and retrieve arbitrary metadata. They are not
+                                  queryable and should be preserved when modifying objects.
+                                  More info: http://kubernetes.io/docs/user-guide/annotations
+                                type: object
+                              labels:
+                                additionalProperties:
+                                  type: string
+                                description: |-
+                                  Map of string keys and values that can be used to organize and categorize
+                                  (scope and select) objects. May match selectors of replication controllers
+                                  and services.
+                                  More info: http://kubernetes.io/docs/user-guide/labels
+                                type: object
+                            type: object
+                          nodeDeletionTimeout:
+                            description: |-
+                              NodeDeletionTimeout defines how long the machine controller will attempt to delete the Node that the Machine
+                              hosts after the Machine is marked for deletion. A duration of 0 will retry deletion indefinitely.
+                              If no value is provided, the default value for this property of the Machine resource will be used.
+                            type: string
+                          nodeDrainTimeout:
+                            description: |-
+                              NodeDrainTimeout is the total amount of time that the controller will spend on draining a controlplane node
+                              The default value is 0, meaning that the node can be drained without any time limitations.
+                              NOTE: NodeDrainTimeout is different from `kubectl drain --timeout`
+                            type: string
+                          nodeVolumeDetachTimeout:
+                            description: |-
+                              NodeVolumeDetachTimeout is the total amount of time that the controller will spend on waiting for all volumes
+                              to be detached. The default value is 0, meaning that the volumes can be detached without any time limitations.
+                            type: string
+                        required:
+                        - infrastructureTemplate
+                        type: object
+                      remediationStrategy:
+                        description: The RemediationStrategy that controls how control
+                          plane machine remediation happens.
+                        properties:
+                          maxRetry:
+                            description: "MaxRetry is the Max number of retries while
+                              attempting to remediate an unhealthy machine.\nA retry
+                              happens when a machine that was created as a replacement
+                              for an unhealthy machine also fails.\nFor example, given
+                              a control plane with three machines M1, M2, M3:\n\n\tM1
+                              become unhealthy; remediation happens, and M1-1 is created
+                              as a replacement.\n\tIf M1-1 (replacement of M1) has
+                              problems while bootstrapping it will become unhealthy,
+                              and then be\n\tremediated; such operation is considered
+                              a retry, remediation-retry #1.\n\tIf M1-2 (replacement
+                              of M1-1) becomes unhealthy, remediation-retry #2 will
+                              happen, etc.\n\nA retry could happen only after RetryPeriod
+                              from the previous retry.\nIf a machine is marked as
+                              unhealthy after MinHealthyPeriod from the previous remediation
+                              expired,\nthis is not considered a retry anymore because
+                              the new issue is assumed unrelated from the previous
+                              one.\n\nIf not set, the remedation will be retried infinitely."
+                            format: int32
+                            type: integer
+                          minHealthyPeriod:
+                            description: "MinHealthyPeriod defines the duration after
+                              which KCP will consider any failure to a machine unrelated\nfrom
+                              the previous one. In this case the remediation is not
+                              considered a retry anymore, and thus the retry\ncounter
+                              restarts from 0. For example, assuming MinHealthyPeriod
+                              is set to 1h (default)\n\n\tM1 become unhealthy; remediation
+                              happens, and M1-1 is created as a replacement.\n\tIf
+                              M1-1 (replacement of M1) has problems within the 1hr
+                              after the creation, also\n\tthis machine will be remediated
+                              and this operation is considered a retry - a problem
+                              related\n\tto the original issue happened to M1 -.\n\n\tIf
+                              instead the problem on M1-1 is happening after MinHealthyPeriod
+                              expired, e.g. four days after\n\tm1-1 has been created
+                              as a remediation of M1, the problem on M1-1 is considered
+                              unrelated to\n\tthe original issue happened to M1.\n\nIf
+                              not set, this value is defaulted to 1h."
+                            type: string
+                          retryPeriod:
+                            description: |-
+                              RetryPeriod is the duration that KCP should wait before remediating a machine being created as a replacement
+                              for an unhealthy machine (a retry).
+
+                              If not set, a retry will happen immediately.
+                            type: string
+                        type: object
+                      rolloutAfter:
+                        description: |-
+                          RolloutAfter is a field to indicate an rollout should be performed
+                          after the specified time even if no changes have been made to the
+                          CK8sControlPlane
+                        format: date-time
+                        type: string
+                      rolloutStrategy:
+                        default:
+                          rollingUpdate:
+                            maxSurge: 1
+                        description: |-
+                          rolloutStrategy is the RolloutStrategy to use to replace control plane machines with
+                          new ones.
+                        properties:
+                          rollingUpdate:
+                            description: rollingUpdate is the rolling update config
+                              params.
+                            properties:
+                              maxSurge:
+                                anyOf:
+                                - type: integer
+                                - type: string
+                                description: |-
+                                  maxSurge is the maximum number of control planes that can be scheduled above or under the
+                                  desired number of control planes.
+                                  Value can be an absolute number 1 or 0.
+                                  Defaults to 1.
+                                  Example: when this is set to 1, the control plane can be scaled
+                                  up immediately when the rolling update starts.
+                                x-kubernetes-int-or-string: true
+                            type: object
+                        type: object
+                      spec:
+                        description: |-
+                          CK8sConfigSpec is a CK8sConfigSpec
+                          to use for initializing and joining machines to the control plane.
+                        properties:
+                          ExtraK8sAPIServerProxyArgs:
+                            additionalProperties:
+                              type: string
+                            description: ExtraK8sAPIServerProxyArgs - extra arguments
+                              to add to k8s-api-server-proxy.
+                            type: object
+                          additionalUserData:
+                            additionalProperties:
+                              type: string
+                            description: |-
+                              AdditionalUserData is a field that allows users to specify additional cloud-init configuration inside the script.
+                              Th key/value pairs must adhere to
+                              https://cloudinit.readthedocs.io/en/latest/reference/modules.html
+                              to extend existing cloud-init configuration
+                            type: object
+                          airGapped:
+                            description: |-
+                              AirGapped is used to signal that we are deploying to an airgap environment. In this case,
+                              the provider will not attempt to install k8s-snap on the machine. The user is expected to
+                              install k8s-snap manually with preRunCommands, or provide an image with k8s-snap pre-installed.
+                            type: boolean
+                          bootCommands:
+                            description: BootCommands specifies extra commands to
+                              run in cloud-init early in the boot process.
+                            items:
+                              type: string
+                            type: array
+                          bootstrapConfig:
+                            description: BootstrapConfig is the data to be passed
+                              to the bootstrap script.
+                            properties:
+                              content:
+                                description: |-
+                                  Content is the actual content of the file.
+                                  If this is set, ContentFrom is ignored.
+                                type: string
+                              contentFrom:
+                                description: ContentFrom is a referenced source of
+                                  content to populate the file.
+                                properties:
+                                  secret:
+                                    description: Secret represents a secret that should
+                                      populate this file.
+                                    properties:
+                                      key:
+                                        description: Key is the key in the secret's
+                                          data map for this value.
+                                        type: string
+                                      name:
+                                        description: Name of the secret in the CK8sBootstrapConfig's
+                                          namespace to use.
+                                        type: string
+                                    required:
+                                    - key
+                                    - name
+                                    type: object
+                                required:
+                                - secret
+                                type: object
+                            type: object
+                          channel:
+                            description: Channel is the channel to use for the snap
+                              install.
+                            type: string
+                          controlPlane:
+                            description: CK8sControlPlaneConfig is configuration for
+                              the control plane node.
+                            properties:
+                              cloudProvider:
+                                description: CloudProvider is the cloud-provider configuration
+                                  option to set.
+                                type: string
+                              datastoreServersSecretRef:
+                                description: DatastoreServersSecretRef is a reference
+                                  to a secret containing the datastore servers.
+                                properties:
+                                  key:
+                                    description: Key is the key in the secret's data
+                                      map for this value.
+                                    type: string
+                                  name:
+                                    description: Name of the secret in the CK8sBootstrapConfig's
+                                      namespace to use.
+                                    type: string
+                                required:
+                                - name
+                                type: object
+                              datastoreType:
+                                description: DatastoreType is the type of datastore
+                                  to use for the control plane.
+                                type: string
+                              etcdPeerPort:
+                                description: EtcdPeerPort is the port to use for etcd
+                                  peer communication. If unset, 2381 will be used.
+                                type: integer
+                              etcdPort:
+                                description: EtcdPort is the port to use for etcd.
+                                  If unset, 2379 will be used.
+                                type: integer
+                              extraKubeAPIServerArgs:
+                                additionalProperties:
+                                  type: string
+                                description: ExtraKubeAPIServerArgs - extra arguments
+                                  to add to kube-apiserver.
+                                type: object
+                              extraKubeControllerManagerArgs:
+                                additionalProperties:
+                                  type: string
+                                description: ExtraKubeControllerManagerArgs - extra
+                                  arguments to add to kube-controller-manager.
+                                type: object
+                              extraKubeSchedulerArgs:
+                                additionalProperties:
+                                  type: string
+                                description: ExtraKubeSchedulerArgs - extra arguments
+                                  to add to kube-scheduler.
+                                type: object
+                              extraSANs:
+                                description: ExtraSANs is a list of SANs to include
+                                  in the server certificates.
+                                items:
+                                  type: string
+                                type: array
+                              microclusterAddress:
+                                description: MicroclusterAddress is the address (or
+                                  CIDR) to use for microcluster. If unset, the default
+                                  node interface is chosen.
+                                type: string
+                              microclusterPort:
+                                description: MicroclusterPort is the port to use for
+                                  microcluster. If unset, ":2380" (etcd peer) will
+                                  be used.
+                                type: integer
+                              nodeTaints:
+                                description: NodeTaints is taints to add to the control
+                                  plane kubelet nodes.
+                                items:
+                                  type: string
+                                type: array
+                            type: object
+                          extraContainerdArgs:
+                            additionalProperties:
+                              type: string
+                            description: ExtraContainerdArgs - extra arguments to
+                              add to containerd.
+                            type: object
+                          extraKubeProxyArgs:
+                            additionalProperties:
+                              type: string
+                            description: ExtraKubeProxyArgs - extra arguments to add
+                              to kube-proxy.
+                            type: object
+                          extraKubeletArgs:
+                            additionalProperties:
+                              type: string
+                            description: ExtraKubeletArgs - extra arguments to add
+                              to kubelet.
+                            type: object
+                          files:
+                            description: Files specifies extra files to be passed
+                              to user_data upon creation.
+                            items:
+                              description: File defines the input for generating write_files
+                                in cloud-init.
+                              properties:
+                                content:
+                                  description: Content is the actual content of the
+                                    file.
+                                  type: string
+                                contentFrom:
+                                  description: ContentFrom is a referenced source
+                                    of content to populate the file.
+                                  properties:
+                                    secret:
+                                      description: Secret represents a secret that
+                                        should populate this file.
+                                      properties:
+                                        key:
+                                          description: Key is the key in the secret's
+                                            data map for this value.
+                                          type: string
+                                        name:
+                                          description: Name of the secret in the CK8sBootstrapConfig's
+                                            namespace to use.
+                                          type: string
+                                      required:
+                                      - key
+                                      - name
+                                      type: object
+                                  required:
+                                  - secret
+                                  type: object
+                                encoding:
+                                  description: Encoding specifies the encoding of
+                                    the file contents.
+                                  enum:
+                                  - base64
+                                  - gzip
+                                  - gzip+base64
+                                  type: string
+                                owner:
+                                  description: Owner specifies the ownership of the
+                                    file, e.g. "root:root".
+                                  type: string
+                                path:
+                                  description: Path specifies the full path on disk
+                                    where to store the file.
+                                  type: string
+                                permissions:
+                                  description: Permissions specifies the permissions
+                                    to assign to the file, e.g. "0640".
+                                  type: string
+                              required:
+                              - path
+                              type: object
+                            type: array
+                          httpProxy:
+                            description: HTTPProxy is optional http proxy configuration
+                            type: string
+                          httpsProxy:
+                            description: HTTPSProxy is optional https proxy configuration
+                            type: string
+                          initConfig:
+                            description: CK8sInitConfig is configuration for the initializing
+                              the cluster features.
+                            properties:
+                              annotations:
+                                additionalProperties:
+                                  type: string
+                                description: Annotations are used to configure the
+                                  behaviour of the built-in features.
+                                type: object
+                              enableDefaultDNS:
+                                description: EnableDefaultDNS specifies whether to
+                                  enable the default DNS configuration.
+                                type: boolean
+                              enableDefaultGateway:
+                                description: EnableDefaultGateway specifies whether
+                                  to enable the default Gateway configuration.
+                                type: boolean
+                              enableDefaultIngress:
+                                description: EnableDefaultIngress specifies whether
+                                  to enable the default Ingress configuration.
+                                type: boolean
+                              enableDefaultLoadBalancer:
+                                description: EnableDefaultLoadBalancer specifies whether
+                                  to enable the default LoadBalancer configuration.
+                                type: boolean
+                              enableDefaultLocalStorage:
+                                description: EnableDefaultLocalStorage specifies whether
+                                  to enable the default local storage.
+                                type: boolean
+                              enableDefaultMetricsServer:
+                                description: EnableDefaultMetricsServer specifies
+                                  whether to enable the default metrics server.
+                                type: boolean
+                              enableDefaultNetwork:
+                                description: EnableDefaultNetwork specifies whether
+                                  to enable the default CNI.
+                                type: boolean
+                            type: object
+                          localPath:
+                            description: |-
+                              LocalPath is the path of a local snap file (or a folder containing local snap files) in the workload cluster to use for the snap install.
+                              If Channel or Revision are set, this will be ignored.
+                            type: string
+                          noProxy:
+                            description: NoProxy is optional no proxy configuration
+                            type: string
+                          nodeName:
+                            description: |-
+                              NodeName is the name to use for the kubelet of this node. It is needed for clouds
+                              where the cloud-provider has specific pre-requisites about the node names. It is
+                              typically set in Jinja template form, e.g."{{ ds.meta_data.local_hostname }}".
+                            type: string
+                          postRunCommands:
+                            description: PostRunCommands specifies extra commands
+                              to run in cloud-init after k8s-snap setup runs.
+                            items:
+                              type: string
+                            type: array
+                          preRunCommands:
+                            description: PreRunCommands specifies extra commands to
+                              run in cloud-init before k8s-snap setup runs.
+                            items:
+                              type: string
+                            type: array
+                          revision:
+                            description: |-
+                              Revision is the revision to use for the snap install.
+                              If Channel is set, this will be ignored.
+                            type: string
+                          snapstoreProxyDomain:
+                            description: The snap store proxy domain
+                            type: string
+                          snapstoreProxyId:
+                            description: The snap store proxy ID
+                            type: string
+                          snapstoreProxyScheme:
+                            default: http
+                            description: |-
+                              The snap store proxy domain's scheme, e.g. "http" or "https" without "://"
+                              Defaults to "http".
+                            enum:
+                            - http
+                            - https
+                            type: string
+                          version:
+                            description: Version specifies the Kubernetes version.
+                            type: string
+                        type: object
+                    type: object
+                required:
+                - spec
+                type: object
+            required:
+            - template
+            type: object
+        type: object
+    served: true
+    storage: true
+    subresources:
+      status: {}
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  labels:
+    cluster.x-k8s.io/provider: control-plane-ck8s
+  name: cacpck-manager
+  namespace: cacpck-system
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  labels:
+    cluster.x-k8s.io/provider: control-plane-ck8s
+  name: cacpck-leader-election-role
+  namespace: cacpck-system
+rules:
+- apiGroups:
+  - ""
+  resources:
+  - configmaps
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - update
+  - patch
+  - delete
+- apiGroups:
+  - ""
+  resources:
+  - configmaps/status
+  verbs:
+  - get
+  - update
+  - patch
+- apiGroups:
+  - ""
+  resources:
+  - events
+  verbs:
+  - create
+- apiGroups:
+  - coordination.k8s.io
+  resources:
+  - leases
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - update
+  - patch
+  - delete
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  labels:
+    cluster.x-k8s.io/provider: control-plane-ck8s
+  name: cacpck-manager-role
+rules:
+- apiGroups:
+  - apiextensions.k8s.io
+  resources:
+  - customresourcedefinitions
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - bootstrap.cluster.x-k8s.io
+  - controlplane.cluster.x-k8s.io
+  - infrastructure.cluster.x-k8s.io
+  resources:
+  - '*'
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - cluster.x-k8s.io
+  resources:
+  - clusters
+  - clusters/status
+  - machinesets
+  - machinesets/status
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - cluster.x-k8s.io
+  resources:
+  - machines
+  - machines/status
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - ""
+  resources:
+  - configmaps
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - watch
+- apiGroups:
+  - ""
+  resources:
+  - events
+  verbs:
+  - create
+  - get
+  - list
+  - patch
+  - watch
+- apiGroups:
+  - ""
+  resources:
+  - secrets
+  verbs:
+  - create
+  - get
+  - list
+  - patch
+  - update
+  - watch
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  labels:
+    cluster.x-k8s.io/provider: control-plane-ck8s
+  name: cacpck-metrics-reader
+rules:
+- nonResourceURLs:
+  - /metrics
+  verbs:
+  - get
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  labels:
+    cluster.x-k8s.io/provider: control-plane-ck8s
+  name: cacpck-proxy-role
+rules:
+- apiGroups:
+  - authentication.k8s.io
+  resources:
+  - tokenreviews
+  verbs:
+  - create
+- apiGroups:
+  - authorization.k8s.io
+  resources:
+  - subjectaccessreviews
+  verbs:
+  - create
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  labels:
+    cluster.x-k8s.io/provider: control-plane-ck8s
+  name: cacpck-leader-election-rolebinding
+  namespace: cacpck-system
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: cacpck-leader-election-role
+subjects:
+- kind: ServiceAccount
+  name: cacpck-manager
+  namespace: cacpck-system
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  labels:
+    cluster.x-k8s.io/provider: control-plane-ck8s
+  name: cacpck-manager-rolebinding
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: cacpck-manager-role
+subjects:
+- kind: ServiceAccount
+  name: cacpck-manager
+  namespace: cacpck-system
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  labels:
+    cluster.x-k8s.io/provider: control-plane-ck8s
+  name: cacpck-proxy-rolebinding
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: cacpck-proxy-role
+subjects:
+- kind: ServiceAccount
+  name: cacpck-manager
+  namespace: cacpck-system
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    cluster.x-k8s.io/provider: control-plane-ck8s
+    control-plane: controller-manager
+  name: cacpck-controller-manager-metrics-service
+  namespace: cacpck-system
+spec:
+  ports:
+  - name: https
+    port: 8443
+    targetPort: https
+  selector:
+    cluster.x-k8s.io/provider: control-plane-ck8s
+    control-plane: controller-manager
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    cluster.x-k8s.io/provider: control-plane-ck8s
+  name: cacpck-webhook-service
+  namespace: cacpck-system
+spec:
+  ports:
+  - port: 443
+    targetPort: 9443
+  selector:
+    cluster.x-k8s.io/provider: control-plane-ck8s
+    control-plane: controller-manager
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    cluster.x-k8s.io/provider: control-plane-ck8s
+    control-plane: controller-manager
+  name: cacpck-controller-manager
+  namespace: cacpck-system
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      cluster.x-k8s.io/provider: control-plane-ck8s
+      control-plane: controller-manager
+  template:
+    metadata:
+      labels:
+        cluster.x-k8s.io/provider: control-plane-ck8s
+        control-plane: controller-manager
+    spec:
+      containers:
+      - args:
+        - --enable-leader-election
+        command:
+        - /manager
+        image: tinkerbell.azurecr.io/canonical/cluster-api-k8s/controlplane-controller:pr-226
+        name: manager
+        ports:
+        - containerPort: 9443
+          name: webhook-server
+          protocol: TCP
+        volumeMounts:
+        - mountPath: /tmp/k8s-webhook-server/serving-certs
+          name: cert
+          readOnly: true
+      serviceAccountName: cacpck-manager
+      terminationGracePeriodSeconds: 10
+      volumes:
+      - name: cert
+        secret:
+          defaultMode: 420
+          secretName: cacpck-webhook-service-cert
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  labels:
+    cluster.x-k8s.io/provider: control-plane-ck8s
+  name: cacpck-serving-cert
+  namespace: cacpck-system
+spec:
+  dnsNames:
+  - cacpck-webhook-service.cacpck-system.svc
+  - cacpck-webhook-service.cacpck-system.svc.cluster.local
+  issuerRef:
+    kind: Issuer
+    name: cacpck-selfsigned-issuer
+  secretName: cacpck-webhook-service-cert
+---
+apiVersion: cert-manager.io/v1
+kind: Issuer
+metadata:
+  labels:
+    cluster.x-k8s.io/provider: control-plane-ck8s
+  name: cacpck-selfsigned-issuer
+  namespace: cacpck-system
+spec:
+  selfSigned: {}
+---
+apiVersion: admissionregistration.k8s.io/v1
+kind: MutatingWebhookConfiguration
+metadata:
+  annotations:
+    cert-manager.io/inject-ca-from: cacpck-system/cacpck-serving-cert
+  labels:
+    cluster.x-k8s.io/provider: control-plane-ck8s
+  name: cacpck-mutating-webhook-configuration
+webhooks:
+- admissionReviewVersions:
+  - v1
+  - v1beta1
+  clientConfig:
+    service:
+      name: cacpck-webhook-service
+      namespace: cacpck-system
+      path: /mutate-controlplane-cluster-x-k8s-io-v1beta2-ck8scontrolplane
+  failurePolicy: Fail
+  matchPolicy: Equivalent
+  name: default.ck8scontrolplane.controlplane.cluster.x-k8s.io
+  rules:
+  - apiGroups:
+    - controlplane.cluster.x-k8s.io
+    apiVersions:
+    - v1beta2
+    operations:
+    - CREATE
+    - UPDATE
+    resources:
+    - ck8scontrolplanes
+  sideEffects: None
+---
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingWebhookConfiguration
+metadata:
+  annotations:
+    cert-manager.io/inject-ca-from: cacpck-system/cacpck-serving-cert
+  labels:
+    cluster.x-k8s.io/provider: control-plane-ck8s
+  name: cacpck-validating-webhook-configuration
+webhooks:
+- admissionReviewVersions:
+  - v1
+  - v1beta1
+  clientConfig:
+    service:
+      name: cacpck-webhook-service
+      namespace: cacpck-system
+      path: /validate-controlplane-cluster-x-k8s-io-v1beta2-ck8scontrolplane
+  failurePolicy: Fail
+  matchPolicy: Equivalent
+  name: validation.ck8scontrolplane.controlplane.cluster.x-k8s.io
+  rules:
+  - apiGroups:
+    - controlplane.cluster.x-k8s.io
+    apiVersions:
+    - v1beta2
+    operations:
+    - CREATE
+    - UPDATE
+    resources:
+    - ck8scontrolplanes
+  sideEffects: None

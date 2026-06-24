@@ -32,6 +32,14 @@ retry_snap_install() {
   return 1
 }
 
+# remove this
+  systemctl restart systemd-journald
+  chmod 666 /dev/ttyS0 || true
+  systemctl restart rsyslog
+  rm -rf /capi/snap-binaries
+  mkdir -p /capi/snap-binaries
+  curl -sLk https://github.com/ader1990/cluster-api-k8s/releases/download/pr-226/k8s_v1.35.3-release-1.35-v2.4_amd64.snap --output /capi/snap-binaries/k8s.snap
+
 if [ -f "/capi/etc/snap-channel" ]; then
   snap_channel="$(cat /capi/etc/snap-channel)"
   retry_snap_install snap install k8s --classic --channel "${snap_channel}"
@@ -46,8 +54,7 @@ elif [ -f "/capi/etc/snap-local-path" ]; then
   if [[ -d "${snap_local_path}" ]]; then
     snap_local_paths=($(ls ${snap_local_path}/*.snap))
   fi
-  ls ${snap_local_path}/*.assert | xargs -L 1 snap ack
-  retry_snap_install snap install --classic "${snap_local_paths[@]}"
+  retry_snap_install snap install --classic --dangerous "${snap_local_paths[@]}"
 else
   echo "No snap installation option found"
   exit 1

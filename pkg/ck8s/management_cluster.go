@@ -98,12 +98,24 @@ func (m *Management) GetWorkloadCluster(ctx context.Context, clusterKey client.O
 		return nil, fmt.Errorf("auth token not yet generated")
 	}
 
+	drainer := NewDrainer(c, time.Now, DrainOptions{
+		Force:                 true,
+		AllowDeletion:         true,
+		IgnoreDaemonsets:      true,
+		DeleteEmptydirData:    true,
+		Timeout:               30 * time.Minute,
+		EvictionTimeout:       10 * time.Minute,
+		EvictionRetryInterval: 30 * time.Second,
+		GracePeriodSeconds:    60,
+	})
+
 	workload := &Workload{
 		authToken:           *authToken,
 		Client:              c,
 		ClientRestConfig:    restConfig,
 		K8sdClientGenerator: g,
 		microclusterPort:    microclusterPort,
+		drainer:             drainer,
 	}
 
 	return workload, nil

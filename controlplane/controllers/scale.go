@@ -102,21 +102,14 @@ func (r *CK8sControlPlaneReconciler) scaleDownControlPlane(
 ) (ctrl.Result, error) {
 	logger := ctrl.LoggerFrom(ctx)
 
-	// Pick the Machine that we should scale down.
-	machineToDelete, err := selectMachineForScaleDown(ctx, controlPlane, outdatedMachines)
-	if err != nil {
-		return ctrl.Result{}, fmt.Errorf("failed to select machine for scale down: %w", err)
-	}
-
-	// Run preflight checks ensuring the control plane is stable before proceeding with a scale up/scale down operation; if not, wait.
-	// Given that we're scaling down, we can exclude the machineToDelete from the preflight checks.
-	if result, err := r.preflightChecks(ctx, controlPlane, machineToDelete); err != nil || !result.IsZero() {
-		return result, err
-	}
-
-	if machineToDelete == nil {
-		logger.Info("Failed to pick control plane Machine to delete")
-		return ctrl.Result{}, fmt.Errorf("failed to pick control plane Machine to delete: %w", err)
+	annotationsKcp := kcp.GetAnnotations()
+	orphanNode := annotationsKcp["orphan-node"]
+	controlPlane.SetOrphanNode(orphanNode)
+	orphanNodeReadyToBeRemoved := controlPlane.GetOrphanNodeReadyToBeRemoved()
+	logger.Info("Orphan node ready to be removed  name", "Orphan", orphanNodeReadyToBeRemoved)
+	logger.Info("Orphan node name", "Orphan", orphanNode)
+	if orphanNodeReadyToBeRemoved == "" && orphanNode != "" {
+		return ctrl.Result{Requeue: true}, nil
 	}
 
 	microclusterPort := controlPlane.KCP.Spec.CK8sConfigSpec.ControlPlaneConfig.GetMicroclusterPort()
@@ -126,17 +119,41 @@ func (r *CK8sControlPlaneReconciler) scaleDownControlPlane(
 		logger.Error(err, "failed to create client to workload cluster")
 		return ctrl.Result{}, fmt.Errorf("failed to create client to workload cluster: %w", err)
 	}
-
-	if machineToDelete.Status.NodeRef != nil {
-		// TODO: If the node is not part of the microcluster, this may still return an error. We should catch that case,
-		// and proceed with the machine removal.
-		if err := workloadCluster.RemoveMachineFromCluster(ctx, machineToDelete); err != nil {
-			logger.Error(err, "failed to remove machine from microcluster")
-			return ctrl.Result{}, fmt.Errorf("failed to remove machine from microcluster: %w", err)
+	if orphanNodeReadyToBeRemoved != "" {
+		logger.Info("Removing machine from cluster gracefully")
+		if err := workloadCluster.RemoveMachineFromCluster(ctx, orphanNodeReadyToBeRemoved, false); err != nil {
+			logger.Error(err, "Failed to remove machine from cluster gracefully")
+			logger.Info("Removing machine from cluster forcefully")
+			if errForce := workloadCluster.RemoveMachineFromCluster(ctx, orphanNodeReadyToBeRemoved, true); errForce != nil {
+				logger.Error(err, "failed to remove machine from microcluster forcefully")
+			}
 		}
+		annotationsKcp["orphan-node"] = ""
+		kcp.SetAnnotations(annotationsKcp)
 	}
 
-	logger = logger.WithValues("machine", machineToDelete)
+	// Pick the Machine that we should scale down.
+	machineToDelete, err := selectMachineForScaleDown(ctx, controlPlane, outdatedMachines)
+	if err != nil {
+		return ctrl.Result{}, fmt.Errorf("failed to select machine for scale down: %w", err)
+	}
+
+	if machineToDelete == nil {
+		logger.Info("Failed to pick control plane Machine to delete")
+		return ctrl.Result{}, fmt.Errorf("failed to pick control plane Machine to delete: %w", err)
+	}
+
+	// Run preflight checks ensuring the control plane is stable before proceeding with a scale up/scale down operation; if not, wait.
+	// Given that we're scaling down, we can exclude the machineToDelete from the preflight checks.
+	if result, err := r.preflightChecks(ctx, controlPlane, machineToDelete); err != nil || !result.IsZero() {
+		return result, err
+	}
+
+	annotations := map[string]string{}
+	annotations["orphan-node"] = machineToDelete.Status.NodeRef.Name
+	kcp.SetAnnotations(annotations)
+
+	logger.Info("Removing control plane machine")
 	if err := r.Delete(ctx, machineToDelete); err != nil && !apierrors.IsNotFound(err) {
 		logger.Error(err, "Failed to delete control plane machine")
 		r.recorder.Eventf(kcp, corev1.EventTypeWarning, "FailedScaleDown",
@@ -144,7 +161,6 @@ func (r *CK8sControlPlaneReconciler) scaleDownControlPlane(
 		return ctrl.Result{}, err
 	}
 
-	// Requeue the control plane, in case there are additional operations to perform
 	return ctrl.Result{Requeue: true}, nil
 }
 
