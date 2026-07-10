@@ -22,7 +22,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
-	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
+	clusterv1 "sigs.k8s.io/cluster-api/api/core/v1beta2"
 
 	bootstrapv1 "github.com/canonical/cluster-api-k8s/bootstrap/api/v1beta2"
 	"github.com/canonical/cluster-api-k8s/pkg/errors"
@@ -286,11 +286,11 @@ type CK8sControlPlane struct {
 	Status CK8sControlPlaneStatus `json:"status,omitempty"`
 }
 
-func (in *CK8sControlPlane) GetConditions() clusterv1.Conditions {
+func (in *CK8sControlPlane) GetV1Beta1Conditions() clusterv1.Conditions {
 	return in.Status.Conditions
 }
 
-func (in *CK8sControlPlane) SetConditions(conditions clusterv1.Conditions) {
+func (in *CK8sControlPlane) SetV1Beta1Conditions(conditions clusterv1.Conditions) {
 	in.Status.Conditions = conditions
 }
 

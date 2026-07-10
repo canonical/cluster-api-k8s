@@ -32,12 +32,11 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/klog/v2"
-	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
+	clusterv1 "sigs.k8s.io/cluster-api/api/core/v1beta2"
 	"sigs.k8s.io/cluster-api/controllers/noderefutil"
-	expv1 "sigs.k8s.io/cluster-api/exp/api/v1beta1"
 	"sigs.k8s.io/cluster-api/test/framework"
 	"sigs.k8s.io/cluster-api/test/framework/clusterctl"
-	"sigs.k8s.io/cluster-api/util/conditions"
+	conditions "sigs.k8s.io/cluster-api/util/conditions/deprecated/v1beta1"
 	"sigs.k8s.io/cluster-api/util/patch"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -86,7 +85,7 @@ type ApplyClusterTemplateAndWaitResult struct {
 	Cluster            *clusterv1.Cluster
 	ControlPlane       *controlplanev1.CK8sControlPlane
 	MachineDeployments []*clusterv1.MachineDeployment
-	MachinePools       []*expv1.MachinePool
+	MachinePools       []*clusterv1.MachinePool
 }
 
 // ExpectedWorkerNodes returns the expected number of worker nodes that will
@@ -203,7 +202,7 @@ type ApplyCustomClusterTemplateAndWaitResult struct {
 	Cluster            *clusterv1.Cluster
 	ControlPlane       *controlplanev1.CK8sControlPlane
 	MachineDeployments []*clusterv1.MachineDeployment
-	MachinePools       []*expv1.MachinePool
+	MachinePools       []*clusterv1.MachinePool
 }
 
 func ApplyCustomClusterTemplateAndWait(ctx context.Context, input ApplyCustomClusterTemplateAndWaitInput, result *ApplyCustomClusterTemplateAndWaitResult) {
@@ -245,11 +244,11 @@ func ApplyCustomClusterTemplateAndWait(ctx context.Context, input ApplyCustomClu
 		Name:      input.ClusterName,
 	}, input.WaitForClusterIntervals...)
 
-	if result.Cluster.Spec.Topology != nil {
+	if result.Cluster.Spec.Topology.IsDefined() {
 		result.ClusterClass = framework.GetClusterClassByName(ctx, framework.GetClusterClassByNameInput{
 			Getter:    input.ClusterProxy.GetClient(),
 			Namespace: input.Namespace,
-			Name:      result.Cluster.Spec.Topology.Class,
+			Name:      result.Cluster.Spec.Topology.ClassRef.Name,
 		})
 	}
 
@@ -358,7 +357,7 @@ func WaitForCK8sControlPlaneMachinesToExist(ctx context.Context, input WaitForCK
 		}
 		count := 0
 		for _, machine := range machineList.Items {
-			if machine.Status.NodeRef != nil {
+			if machine.Status.NodeRef.IsDefined() {
 				count++
 			}
 		}
@@ -395,7 +394,7 @@ func WaitForOneCK8sControlPlaneMachineToExist(ctx context.Context, input WaitFor
 		}
 		count := 0
 		for _, machine := range machineList.Items {
-			if machine.Status.NodeRef != nil {
+			if machine.Status.NodeRef.IsDefined() {
 				count++
 			}
 		}
@@ -460,9 +459,9 @@ func AssertControlPlaneFailureDomains(ctx context.Context, input AssertControlPl
 
 	By("Checking all the control plane machines are in the expected failure domains")
 	controlPlaneFailureDomains := sets.Set[string]{}
-	for fd, fdSettings := range input.Cluster.Status.FailureDomains {
-		if fdSettings.ControlPlane {
-			controlPlaneFailureDomains.Insert(fd)
+	for _, fd := range input.Cluster.Status.FailureDomains {
+		if fd.ControlPlane != nil && *fd.ControlPlane {
+			controlPlaneFailureDomains.Insert(fd.Name)
 		}
 	}
 
@@ -479,10 +478,9 @@ func AssertControlPlaneFailureDomains(ctx context.Context, input AssertControlPl
 	}, retryableOperationTimeout, retryableOperationInterval).Should(Succeed(), "Couldn't list control-plane machines for the cluster %q", input.Cluster.Name)
 
 	for _, machine := range machineList.Items {
-		if machine.Spec.FailureDomain != nil {
-			machineFD := *machine.Spec.FailureDomain
-			if !controlPlaneFailureDomains.Has(machineFD) {
-				Fail(fmt.Sprintf("Machine %s is in the %q failure domain, expecting one of the failure domain defined at cluster level", machine.Name, machineFD))
+		if machine.Spec.FailureDomain != "" {
+			if !controlPlaneFailureDomains.Has(machine.Spec.FailureDomain) {
+				Fail(fmt.Sprintf("Machine %s is in the %q failure domain, expecting one of the failure domain defined at cluster level", machine.Name, machine.Spec.FailureDomain))
 			}
 		}
 	}
@@ -1052,7 +1050,7 @@ func WaitForControlPlaneMachinesToBeUpgraded(ctx context.Context, input WaitForC
 		upgraded := 0
 		for _, machine := range machines {
 			m := machine
-			if *m.Spec.Version == input.KubernetesUpgradeVersion && conditions.IsTrue(&m, clusterv1.MachineNodeHealthyCondition) {
+			if m.Spec.Version == input.KubernetesUpgradeVersion && conditions.IsTrue(&m, clusterv1.MachineNodeHealthyCondition) {
 				upgraded++
 			}
 		}
@@ -1078,23 +1076,17 @@ func UpgradeMachineDeploymentsAndWait(ctx context.Context, input framework.Upgra
 		Expect(err).ToNot(HaveOccurred())
 
 		oldVersion := deployment.Spec.Template.Spec.Version
-		deployment.Spec.Template.Spec.Version = &input.UpgradeVersion
-		// Create a new ObjectReference for the infrastructure provider
-		newInfrastructureRef := corev1.ObjectReference{
-			APIVersion: "infrastructure.cluster.x-k8s.io/v1beta1",
-			Kind:       "DockerMachineTemplate",
-			Name:       fmt.Sprintf("%s-md-new-0", input.Cluster.Name),
-			Namespace:  deployment.Spec.Template.Spec.InfrastructureRef.Namespace,
-		}
-
-		// Update the infrastructureRef
-		deployment.Spec.Template.Spec.InfrastructureRef = newInfrastructureRef
+		deployment.Spec.Template.Spec.Version = input.UpgradeVersion
+		// Point the infrastructureRef at the new template. In v1beta2 the ref is a
+		// ContractVersionedObjectReference (no namespace/apiVersion), so preserve the
+		// existing Kind/APIGroup and only swap the Name.
+		deployment.Spec.Template.Spec.InfrastructureRef.Name = fmt.Sprintf("%s-md-new-0", input.Cluster.Name)
 		Eventually(func() error {
 			return patchHelper.Patch(ctx, deployment)
 		}, retryableOperationTimeout, retryableOperationInterval).Should(Succeed(), "Failed to patch Kubernetes version on MachineDeployment %s", klog.KObj(deployment))
 
 		Byf("Waiting for Kubernetes versions of machines in MachineDeployment %s to be upgraded from %s to %s",
-			klog.KObj(deployment), *oldVersion, input.UpgradeVersion)
+			klog.KObj(deployment), oldVersion, input.UpgradeVersion)
 		framework.WaitForMachineDeploymentMachinesToBeUpgraded(ctx, framework.WaitForMachineDeploymentMachinesToBeUpgradedInput{
 			Lister:                   mgmtClient,
 			Cluster:                  input.Cluster,

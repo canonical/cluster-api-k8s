@@ -16,11 +16,10 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/client-go/rest"
-	podv1 "k8s.io/kubernetes/pkg/api/v1/pod"
-	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
+	clusterv1 "sigs.k8s.io/cluster-api/api/core/v1beta2"
 	"sigs.k8s.io/cluster-api/util"
 	"sigs.k8s.io/cluster-api/util/collections"
-	"sigs.k8s.io/cluster-api/util/conditions"
+	conditions "sigs.k8s.io/cluster-api/util/conditions/deprecated/v1beta1"
 	ctrlclient "sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
@@ -117,8 +116,18 @@ func (w *Workload) ClusterStatus(ctx context.Context) (ClusterStatus, error) {
 
 func hasProvisioningMachine(machines collections.Machines) bool {
 	for _, machine := range machines {
-		if machine.Status.NodeRef == nil {
+		if machine.Status.NodeRef.Name == "" {
 			return true
+		}
+	}
+	return false
+}
+
+// isPodReady returns true if the pod has a Ready condition with status True.
+func isPodReady(pod *corev1.Pod) bool {
+	for _, c := range pod.Status.Conditions {
+		if c.Type == corev1.PodReady {
+			return c.Status == corev1.ConditionTrue
 		}
 	}
 	return false
@@ -177,7 +186,7 @@ func (w *Workload) GetK8sdProxyForControlPlane(ctx context.Context, options k8sd
 			continue
 		}
 
-		if !podv1.IsPodReady(&pod) {
+		if !isPodReady(&pod) {
 			// if the Pod is not Ready, it won't be able to accept any k8sd API calls.
 			allErrors = append(allErrors, fmt.Errorf("pod '%s' is not Ready", pod.Name))
 			continue
@@ -208,7 +217,7 @@ func (w *Workload) GetK8sdProxyForMachine(ctx context.Context, machine *clusterv
 		return nil, fmt.Errorf("machine object is nil")
 	}
 
-	if machine.Status.NodeRef == nil {
+	if machine.Status.NodeRef.Name == "" {
 		return nil, fmt.Errorf("machine %s has no node reference", machine.Name)
 	}
 
@@ -448,7 +457,7 @@ func (w *Workload) RemoveMachineFromCluster(ctx context.Context, machine *cluste
 	if machine == nil {
 		return fmt.Errorf("machine object is not set")
 	}
-	if machine.Status.NodeRef == nil {
+	if machine.Status.NodeRef.Name == "" {
 		return fmt.Errorf("machine %s has no node reference", machine.Name)
 	}
 
@@ -559,7 +568,7 @@ func (w *Workload) UpdateAgentConditions(ctx context.Context, controlPlane *Cont
 		// Search for the machine corresponding to the node.
 		var machine *clusterv1.Machine
 		for _, m := range controlPlane.Machines {
-			if m.Status.NodeRef != nil && m.Status.NodeRef.Name == node.Name {
+			if m.Status.NodeRef.Name != "" && m.Status.NodeRef.Name == node.Name {
 				machine = m
 				break
 			}
@@ -621,7 +630,7 @@ func (w *Workload) UpdateAgentConditions(ctx context.Context, controlPlane *Cont
 	// If there are provisioned machines without corresponding nodes, report this as a failing conditions with SeverityError.
 	for i := range controlPlane.Machines {
 		machine := controlPlane.Machines[i]
-		if machine.Status.NodeRef == nil {
+		if machine.Status.NodeRef.Name == "" {
 			continue
 		}
 		found := false

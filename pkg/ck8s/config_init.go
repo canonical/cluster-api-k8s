@@ -6,7 +6,7 @@ import (
 
 	apiv1 "github.com/canonical/k8s-snap-api/api/v1"
 	"k8s.io/utils/ptr"
-	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
+	clusterv1 "sigs.k8s.io/cluster-api/api/core/v1beta2"
 
 	bootstrapv1 "github.com/canonical/cluster-api-k8s/bootstrap/api/v1beta2"
 	"github.com/canonical/cluster-api-k8s/pkg/secret"
@@ -110,18 +110,14 @@ func GenerateInitControlPlaneConfig(cfg InitControlPlaneConfig) (apiv1.Bootstrap
 
 	// networking
 	if cfg.ClusterNetwork != nil {
-		if v := ptr.Deref(cfg.ClusterNetwork.APIServerPort, 0); v != 0 {
+		if v := cfg.ClusterNetwork.APIServerPort; v != 0 {
 			out.SecurePort = ptr.To(int(v))
 		}
-		if pods := cfg.ClusterNetwork.Pods; pods != nil {
-			if len(pods.CIDRBlocks) > 0 {
-				out.PodCIDR = ptr.To(strings.Join(pods.CIDRBlocks, ","))
-			}
+		if pods := cfg.ClusterNetwork.Pods; len(pods.CIDRBlocks) > 0 {
+			out.PodCIDR = ptr.To(strings.Join(pods.CIDRBlocks, ","))
 		}
-		if services := cfg.ClusterNetwork.Services; services != nil {
-			if len(services.CIDRBlocks) > 0 {
-				out.ServiceCIDR = ptr.To(strings.Join(services.CIDRBlocks, ","))
-			}
+		if services := cfg.ClusterNetwork.Services; len(services.CIDRBlocks) > 0 {
+			out.ServiceCIDR = ptr.To(strings.Join(services.CIDRBlocks, ","))
 		}
 		if v := cfg.ClusterNetwork.ServiceDomain; v != "" {
 			out.ClusterConfig.DNS.ClusterDomain = ptr.To(v)

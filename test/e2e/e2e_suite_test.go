@@ -35,12 +35,11 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 
 	"k8s.io/klog/v2"
-	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
+	clusterv1 "sigs.k8s.io/cluster-api/api/core/v1beta2"
 	"sigs.k8s.io/cluster-api/test/framework"
 	"sigs.k8s.io/cluster-api/test/framework/bootstrap"
 	"sigs.k8s.io/cluster-api/test/framework/clusterctl"
 	"sigs.k8s.io/cluster-api/test/framework/ginkgoextensions"
-	dockerinfrav1 "sigs.k8s.io/cluster-api/test/infrastructure/docker/api/v1beta1"
 	ctrl "sigs.k8s.io/controller-runtime"
 
 	bootstrapv1 "github.com/canonical/cluster-api-k8s/bootstrap/api/v1beta2"
@@ -206,7 +205,6 @@ func initScheme() *runtime.Scheme {
 	framework.TryAddDefaultSchemes(sc)
 	Expect(controlplanev1.AddToScheme(sc)).To(Succeed())
 	Expect(bootstrapv1.AddToScheme(sc)).To(Succeed())
-	Expect(dockerinfrav1.AddToScheme(sc)).To(Succeed())
 	return sc
 }
 
@@ -242,10 +240,10 @@ func setupBootstrapCluster(config *clusterctl.E2EConfig, scheme *runtime.Scheme,
 			By("Creating the bootstrap cluster using Docker")
 			clusterProvider = bootstrap.CreateKindBootstrapClusterAndLoadImages(ctx, bootstrap.CreateKindBootstrapClusterAndLoadImagesInput{
 				Name:               config.ManagementClusterName,
-				KubernetesVersion:  config.GetVariable(KubernetesVersionManagement),
+				KubernetesVersion:  config.MustGetVariable(KubernetesVersionManagement),
 				RequiresDockerSock: config.HasDockerProvider(),
 				Images:             config.Images,
-				IPFamily:           config.GetVariable(IPFamily),
+				IPFamily:           config.MustGetVariable(IPFamily),
 				LogFolder:          filepath.Join(artifactFolder, "kind"),
 			})
 			Expect(clusterProvider).ToNot(BeNil(), "Failed to create a bootstrap cluster")

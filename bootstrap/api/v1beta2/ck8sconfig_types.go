@@ -18,7 +18,7 @@ package v1beta2
 
 import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
+	clusterv1 "sigs.k8s.io/cluster-api/api/core/v1beta2"
 )
 
 // NOTE: json tags are required.  Any new fields you add must have json tags for the fields to be serialized.
@@ -340,11 +340,11 @@ type CK8sConfig struct {
 	Status CK8sConfigStatus `json:"status,omitempty"`
 }
 
-func (c *CK8sConfig) GetConditions() clusterv1.Conditions {
+func (c *CK8sConfig) GetV1Beta1Conditions() clusterv1.Conditions {
 	return c.Status.Conditions
 }
 
-func (c *CK8sConfig) SetConditions(conditions clusterv1.Conditions) {
+func (c *CK8sConfig) SetV1Beta1Conditions(conditions clusterv1.Conditions) {
 	c.Status.Conditions = conditions
 }
 

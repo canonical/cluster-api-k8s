@@ -88,7 +88,7 @@ var _ = Describe("Machine Deployment Orchestrated In place upgrades", func() {
 					InfrastructureProvider:   infrastructureProvider,
 					Namespace:                namespace.Name,
 					ClusterName:              clusterName,
-					KubernetesVersion:        e2eConfig.GetVariable(KubernetesVersion),
+					KubernetesVersion:        e2eConfig.MustGetVariable(KubernetesVersion),
 					ControlPlaneMachineCount: ptr.To(int64(1)),
 					WorkerMachineCount:       ptr.To(int64(3)),
 				},
@@ -106,7 +106,7 @@ var _ = Describe("Machine Deployment Orchestrated In place upgrades", func() {
 				ClusterProxy:            bootstrapClusterProxy,
 				Cluster:                 result.Cluster,
 				WaitForUpgradeIntervals: e2eConfig.GetIntervals(specName, "wait-machine-upgrade"),
-				UpgradeOption:           e2eConfig.GetVariable(InPlaceUpgradeOption),
+				UpgradeOption:           e2eConfig.MustGetVariable(InPlaceUpgradeOption),
 				MachineDeployments:      result.MachineDeployments,
 			})
 		})

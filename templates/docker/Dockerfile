@@ -59,6 +59,7 @@ RUN /install-go.sh $(grep '^go ' /src/k8s-snap/src/k8s/go.mod | cut -d' ' -f2) &
 ## IMAGE(builder-dqlite): Used as base image for building components that need dqlite
 
 FROM builder AS builder-dqlite
+# NOTE: k8s-snap moved the build hack scripts from k8s/hack to src/k8s/hack.
 RUN cp -rv /src/k8s-snap/src/k8s/hack /build/static-dqlite-deps
 RUN bash -x /build/static-dqlite-deps/static-dqlite.sh
 ENV DQLITE_BUILD_SCRIPTS_DIR=/build/static-dqlite-deps
@@ -71,6 +72,7 @@ FROM builder-dqlite AS build-k8sd
 WORKDIR /src/k8s-snap/src/k8s
 RUN make static -j
 RUN mkdir -p /out/bin && mv ./bin/static/* /out/bin/
+
 
 ## components build
 FROM builder-dqlite AS build-components

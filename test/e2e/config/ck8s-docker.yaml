@@ -15,8 +15,8 @@ providers:
   - name: cluster-api
     type: CoreProvider
     versions:
-      - name: v1.9.6
-        value: https://github.com/kubernetes-sigs/cluster-api/releases/download/v1.9.6/core-components.yaml
+      - name: v1.13.2
+        value: https://github.com/kubernetes-sigs/cluster-api/releases/download/v1.13.2/core-components.yaml
         type: url
         files:
           - sourcePath: "../data/shared/v1beta1/metadata.yaml"
@@ -28,8 +28,8 @@ providers:
     versions:
       # By default, will use the latest version defined in ../data/shared/v1beta1/metadata.yaml
       # to init the management cluster
-      - name: v1.9.6 # used during e2e-test
-        value: https://github.com/kubernetes-sigs/cluster-api/releases/download/v1.9.6/infrastructure-components-development.yaml
+      - name: v1.13.2 # used during e2e-test
+        value: https://github.com/kubernetes-sigs/cluster-api/releases/download/v1.13.2/infrastructure-components-development.yaml
         type: url
         files:
           - sourcePath: "../data/shared/v1beta1/metadata.yaml"
@@ -42,7 +42,7 @@ providers:
       # the defaultProviderVersion in https://github.com/kubernetes-sigs/cluster-api/blob/main/hack/tools/internal/tilt-prepare/main.go as
       # default version for docker infrastructure provider
       # name here should match defaultProviderVersion
-      - name: v1.11.99 # next; use manifest from source files
+      - name: v1.13.2 # next; use manifest from source files
         value: https://github.com/kubernetes-sigs/cluster-api/releases/latest/download/infrastructure-components-development.yaml
         type: url
         files:
