@@ -33,7 +33,7 @@ FROM $BUILD_BASE AS builder
 
 ## NOTE(neoaggelos): k8s-snap repo and branch to use for building
 ARG REPO=https://github.com/canonical/k8s-snap
-ARG BRANCH=main
+ARG BRANCH=temp/test-anon-token-capi-changes
 
 ARG KUBERNETES_VERSION=""
 # This is used to build the kubernetes version to upgrade when testing in place upgrades
