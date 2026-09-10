@@ -753,7 +753,7 @@ func aggregateFromMachinesToKCP(input aggregateFromMachinesToKCPInput) {
 		conditions.Set(input.controlPlane.KCP, metav1.Condition{
 			Type:    input.condition,
 			Status:  metav1.ConditionFalse,
-			Reason:  controlplanev1.GroupVersion.Version,
+			Reason:  input.unhealthyReason,
 			Message: strings.Join(input.kcpErrors, "; "),
 		})
 		return
@@ -764,7 +764,7 @@ func aggregateFromMachinesToKCP(input aggregateFromMachinesToKCPInput) {
 		conditions.Set(input.controlPlane.KCP, metav1.Condition{
 			Type:    input.condition,
 			Status:  metav1.ConditionFalse,
-			Reason:  controlplanev1.GroupVersion.Version,
+			Reason:  input.unhealthyReason,
 			Message: fmt.Sprintf("Following machines are reporting warnings: %s", strings.Join(kcpMachinesWithWarnings.List(), ", ")),
 		})
 		return
@@ -774,8 +774,8 @@ func aggregateFromMachinesToKCP(input aggregateFromMachinesToKCPInput) {
 	if len(kcpMachinesWithInfo) > 0 {
 		conditions.Set(input.controlPlane.KCP, metav1.Condition{
 			Type:    input.condition,
-			Status:  metav1.ConditionTrue,
-			Reason:  controlplanev1.GroupVersion.Version,
+			Status:  metav1.ConditionFalse,
+			Reason:  input.unhealthyReason,
 			Message: fmt.Sprintf("Following machines are reporting info: %s", strings.Join(kcpMachinesWithInfo.List(), ", ")),
 		})
 		return
@@ -786,7 +786,7 @@ func aggregateFromMachinesToKCP(input aggregateFromMachinesToKCPInput) {
 		conditions.Set(input.controlPlane.KCP, metav1.Condition{
 			Type:    input.condition,
 			Status:  metav1.ConditionTrue,
-			Reason:  controlplanev1.GroupVersion.Version,
+			Reason:  "",
 			Message: fmt.Sprintf("Following machines are reporting true: %s", strings.Join(kcpMachinesWithTrue.List(), ", ")),
 		})
 		return
@@ -797,7 +797,7 @@ func aggregateFromMachinesToKCP(input aggregateFromMachinesToKCPInput) {
 		conditions.Set(input.controlPlane.KCP, metav1.Condition{
 			Type:    input.condition,
 			Status:  metav1.ConditionUnknown,
-			Reason:  controlplanev1.GroupVersion.Version,
+			Reason:  input.unknownReason,
 			Message: fmt.Sprintf("Following machines are reporting unknown %s status: %s", input.note, strings.Join(kcpMachinesWithUnknown.List(), ", ")),
 		})
 		return

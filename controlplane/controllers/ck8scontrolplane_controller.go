@@ -84,7 +84,7 @@ func (r *CK8sControlPlaneReconciler) Reconcile(ctx context.Context, req ctrl.Req
 	if err := r.Get(ctx, req.NamespacedName, kcp); err != nil {
 		if apierrors.IsNotFound(err) {
 			logger.Error(err, "Failed to retrieve CK8sControlPlane: Not Found")
-			return ctrl.Result{}, err
+			return ctrl.Result{}, nil
 		}
 		logger.Error(err, "Failed to retrieve CK8sControlPlane")
 		return ctrl.Result{}, err
@@ -110,7 +110,7 @@ func (r *CK8sControlPlaneReconciler) Reconcile(ctx context.Context, req ctrl.Req
 	}
 
 	// Wait for the cluster infrastructure to be ready before creating machines
-	if !conditions.IsTrue(cluster, clusterv1.InfrastructureReadyCondition) {
+	if !ptr.Deref(cluster.Status.Initialization.InfrastructureProvisioned, false) {
 		logger.Info("Cluster infrastructure is not ready. Requeuing CK8sControlPlane")
 		return reconcile.Result{}, nil
 	}
@@ -147,24 +147,24 @@ func (r *CK8sControlPlaneReconciler) Reconcile(ctx context.Context, req ctrl.Req
 				logger.Info("Could not connect to workload cluster to fetch status", "updateErr", updateErr.Error())
 			} else {
 				logger.Error(updateErr, "Failed to update CK8sControlPlane Status")
-				err = kerrors.NewAggregate([]error{err, updateErr})
+				reterr = kerrors.NewAggregate([]error{reterr, updateErr})
 			}
 		}
 
 		// Always attempt to Patch the CK8sControlPlane object and status after each reconciliation.
 		if patchErr := patchCK8sControlPlane(ctx, patchHelper, kcp); patchErr != nil {
 			logger.Error(patchErr, "Failed to patch CK8sControlPlane")
-			err = kerrors.NewAggregate([]error{err, patchErr})
+			reterr = kerrors.NewAggregate([]error{reterr, patchErr})
 		}
 
 		// TODO: remove this as soon as we have a proper remote cluster cache in place.
 		// Make KCP to requeue in case status is not ready, so we can check for node status without waiting for a full resync (by default 10 minutes).
 		// Only requeue if we are not going in exponential backoff due to error, or if we are not already re-queueing, or if the object has a deletion timestamp.
 		logger.Info("Checking if to requeueing CK8sControlPlane")
-		if err == nil && !res.Requeue && res.RequeueAfter <= 0 && kcp.DeletionTimestamp.IsZero() {
+		if reterr == nil && !res.Requeue && res.RequeueAfter <= 0 && kcp.DeletionTimestamp.IsZero() {
 			logger.Info("Checking if to requeueing CK8sControlPlane for not ready status")
 
-			if !conditions.IsTrue(cluster, clusterv1.ClusterControlPlaneAvailableCondition) {
+			if !conditions.IsTrue(kcp, string(controlplanev1.AvailableCondition)) {
 				logger.Info("Requeueing CK8sControlPlane for not ready status", "requeueAfter", 20*time.Second)
 				res = ctrl.Result{RequeueAfter: 20 * time.Second}
 			}

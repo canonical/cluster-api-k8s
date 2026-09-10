@@ -16,7 +16,7 @@ providers:
     type: CoreProvider
     versions:
       - name: v1.13.4
-        value: https://github.com/ader1990/cluster-api/releases/download/v1.13.4/core-components.yaml
+        value: https://github.com/kubernetes-sigs/cluster-api/releases/download/v1.13.4/core-components.yaml
         type: url
         files:
           - sourcePath: "../data/shared/v1beta1/metadata.yaml"
