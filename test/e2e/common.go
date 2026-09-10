@@ -30,7 +30,7 @@ import (
 	. "github.com/onsi/gomega"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
+	clusterv1 "sigs.k8s.io/cluster-api/api/core/v1beta2"
 	"sigs.k8s.io/cluster-api/test/framework"
 	"sigs.k8s.io/cluster-api/test/framework/clusterctl"
 	"sigs.k8s.io/cluster-api/util"
@@ -68,13 +68,13 @@ type cleanupInput struct {
 	SpecName             string
 	ClusterProxy         framework.ClusterProxy
 	ArtifactFolder       string
+	ClusterctlConfigPath string
 	Namespace            *corev1.Namespace
 	CancelWatches        context.CancelFunc
 	Cluster              *clusterv1.Cluster
 	IntervalsGetter      func(spec, key string) []interface{}
 	SkipCleanup          bool
 	AdditionalCleanup    func()
-	ClusterctlConfigPath string
 }
 
 func dumpSpecResourcesAndCleanup(ctx context.Context, input cleanupInput) {

@@ -16,7 +16,11 @@ limitations under the License.
 
 package controllers
 
-import "time"
+import (
+	"time"
+
+	clusterv1 "sigs.k8s.io/cluster-api/api/core/v1beta2"
+)
 
 const (
 	// deleteRequeueAfter is how long to wait before checking again to see if
@@ -35,5 +39,6 @@ const (
 	// it is set on machines that are getting deleted (either because of a user initiated control plane
 	// scaling down, or because of a provider initiated remediation), such that the provider can perform
 	// the necessary cleanup steps.
-	ck8sHookName = "ck8s"
+	ck8sHookName                      = "ck8s"
+	PreTerminateHookCleanupAnnotation = clusterv1.PreTerminateDeleteHookAnnotationPrefix + "/ck8s"
 )

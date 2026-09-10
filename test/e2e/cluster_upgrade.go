@@ -45,7 +45,7 @@ type ClusterUpgradeSpecInput struct {
 	BootstrapClusterProxy framework.ClusterProxy
 	ArtifactFolder        string
 	SkipCleanup           bool
-	ControlPlaneWaiters   ControlPlaneWaiters
+	ControlPlaneWaiters   clusterctl.ControlPlaneWaiters
 
 	// InfrastructureProviders specifies the infrastructure to use for clusterctl
 	// operations (Example: get cluster templates).
@@ -124,7 +124,6 @@ func ClusterUpgradeSpec(ctx context.Context, inputGetter func() ClusterUpgradeSp
 				maxControlPlaneMachineCount = controlPlaneMachineCount
 			}
 		}
-
 		// Setup a Namespace where to host objects for this spec and create a watcher for the namespace events.
 		namespace, cancelWatches = setupSpecNamespace(ctx, specName, input.BootstrapClusterProxy, input.ArtifactFolder)
 
@@ -155,33 +154,31 @@ func ClusterUpgradeSpec(ctx context.Context, inputGetter func() ClusterUpgradeSp
 	It("Should create and upgrade a workload cluster", func() {
 		By("Creating a workload cluster")
 		ApplyClusterTemplateAndWait(ctx, ApplyClusterTemplateAndWaitInput{
-			ClusterProxy: input.BootstrapClusterProxy,
+			ClusterProxy: bootstrapClusterProxy,
 			ConfigCluster: clusterctl.ConfigClusterInput{
 				LogFolder:                clusterctlLogFolder,
-				ClusterctlConfigPath:     input.ClusterctlConfigPath,
-				KubeconfigPath:           input.BootstrapClusterProxy.GetKubeconfigPath(),
-				InfrastructureProvider:   *input.InfrastructureProvider,
+				ClusterctlConfigPath:     clusterctlConfigPath,
+				KubeconfigPath:           bootstrapClusterProxy.GetKubeconfigPath(),
+				InfrastructureProvider:   clusterctl.DefaultInfrastructureProvider,
 				Flavor:                   flavor,
 				Namespace:                namespace.Name,
 				ClusterName:              clusterName,
-				KubernetesVersion:        input.E2EConfig.MustGetVariable(KubernetesVersion),
+				KubernetesVersion:        e2eConfig.MustGetVariable(KubernetesVersion),
 				ControlPlaneMachineCount: &controlPlaneMachineCount,
 				WorkerMachineCount:       &workerMachineCount,
 			},
-			ControlPlaneWaiters:          input.ControlPlaneWaiters,
-			WaitForClusterIntervals:      input.E2EConfig.GetIntervals(specName, "wait-cluster"),
-			WaitForControlPlaneIntervals: input.E2EConfig.GetIntervals(specName, "wait-control-plane"),
-			WaitForMachineDeployments:    input.E2EConfig.GetIntervals(specName, "wait-worker-nodes"),
+			WaitForClusterIntervals:      e2eConfig.GetIntervals(specName, "wait-cluster"),
+			WaitForControlPlaneIntervals: e2eConfig.GetIntervals(specName, "wait-control-plane"),
+			WaitForMachineDeployments:    e2eConfig.GetIntervals(specName, "wait-cluster"),
 		}, result)
 
-		By("Upgrading the Kubernetes control-plane")
 		UpgradeControlPlaneAndWaitForUpgrade(ctx, UpgradeControlPlaneAndWaitForUpgradeInput{
 			ClusterProxy:                input.BootstrapClusterProxy,
 			Cluster:                     result.Cluster,
-			ControlPlane:                result.ControlPlane,
+			KubernetesUpgradeVersion:    e2eConfig.MustGetVariable(KubernetesVersionUpgradeTo),
 			MaxControlPlaneMachineCount: maxControlPlaneMachineCount,
-			KubernetesUpgradeVersion:    input.E2EConfig.MustGetVariable(KubernetesVersionUpgradeTo),
-			WaitForMachinesToBeUpgraded: input.E2EConfig.GetIntervals(specName, "wait-machine-upgrade"),
+			WaitForMachinesToBeUpgraded: e2eConfig.GetIntervals(specName, "wait-control-plane-machines"),
+			ControlPlane:                result.ControlPlane,
 		})
 
 		By("Upgrading the machine deployment")

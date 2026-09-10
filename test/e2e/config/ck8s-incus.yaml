@@ -15,8 +15,8 @@ providers:
   - name: cluster-api
     type: CoreProvider
     versions:
-      - name: v1.9.6
-        value: https://github.com/kubernetes-sigs/cluster-api/releases/download/v1.9.6/core-components.yaml
+      - name: v1.13.4
+        value: https://github.com/kubernetes-sigs/cluster-api/releases/download/v1.13.4/core-components.yaml
         type: url
         files:
           - sourcePath: "../data/shared/v1beta1/metadata.yaml"
@@ -27,8 +27,8 @@ providers:
     type: InfrastructureProvider
     versions:
       # Latest stable version
-      - name: v0.8.3
-        value: https://github.com/lxc/cluster-api-provider-incus/releases/download/v0.8.3/infrastructure-components.yaml
+      - name: v0.9.0
+        value: https://github.com/lxc/cluster-api-provider-incus/releases/download/v0.9.0/infrastructure-components.yaml
         type: url
         files:
           - sourcePath: "../data/shared/v1beta1_incus/metadata.yaml"
@@ -114,3 +114,4 @@ intervals:
   scale/wait-cluster: ["10m", "10s"]
   scale/wait-control-plane: ["20m", "10s"]
   scale/wait-worker-nodes: ["20m", "10s"]
+  workload-cluster-upgrade/wait-control-plane-machines: ["20m", "10s"]

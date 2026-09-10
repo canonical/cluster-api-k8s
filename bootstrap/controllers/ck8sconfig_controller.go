@@ -31,7 +31,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	kerrors "k8s.io/apimachinery/pkg/util/errors"
 	"k8s.io/utils/ptr"
-	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
+	clusterv1 "sigs.k8s.io/cluster-api/api/core/v1beta2"
 	bsutil "sigs.k8s.io/cluster-api/bootstrap/util"
 	"sigs.k8s.io/cluster-api/util"
 	"sigs.k8s.io/cluster-api/util/annotations"
@@ -42,7 +42,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	kubeyaml "sigs.k8s.io/yaml"
 
-	bootstrapv1 "github.com/canonical/cluster-api-k8s/bootstrap/api/v1beta2"
+	bootstrapv1 "github.com/canonical/cluster-api-k8s/bootstrap/api/v1beta3"
 	"github.com/canonical/cluster-api-k8s/pkg/ck8s"
 	"github.com/canonical/cluster-api-k8s/pkg/cloudinit"
 	"github.com/canonical/cluster-api-k8s/pkg/locking"
@@ -151,15 +151,6 @@ func (r *CK8sConfigReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 
 	// Attempt to Patch the CK8sConfig object and status after each reconciliation if no error occurs.
 	defer func() {
-		// always update the readyCondition; the summary is represented using the "1 of x completed" notation.
-
-		conditions.SetSummary(config,
-			conditions.WithConditions(
-				bootstrapv1.DataSecretAvailableCondition,
-				bootstrapv1.CertificatesAvailableCondition,
-			),
-		)
-
 		// Patch ObservedGeneration only if the reconciliation completed successfully
 		patchOpts := []patch.Option{}
 		if rerr == nil {
@@ -175,16 +166,26 @@ func (r *CK8sConfigReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 
 	switch {
 	// Wait for the infrastructure to be ready.
-	case !cluster.Status.InfrastructureReady:
+	case !ptr.Deref(cluster.Status.Initialization.InfrastructureProvisioned, false):
 		log.Info("Cluster infrastructure is not ready, waiting")
-		conditions.MarkFalse(config, bootstrapv1.DataSecretAvailableCondition, bootstrapv1.WaitingForClusterInfrastructureReason, clusterv1.ConditionSeverityInfo, "")
+		conditions.Set(config, metav1.Condition{
+			Type:    string(bootstrapv1.DataSecretAvailableCondition),
+			Status:  metav1.ConditionFalse,
+			Reason:  bootstrapv1.WaitingForClusterInfrastructureReason,
+			Message: "Cluster infrastructure is not ready yet",
+		})
 		return ctrl.Result{RequeueAfter: 1 * time.Minute}, nil
 	// Reconcile status for machines that already have a secret reference, but our status isn't up to date.
 	// This case solves the pivoting scenario (or a backup restore) which doesn't preserve the status subresource on objects.
 	case configOwner.DataSecretName() != nil && (!config.Status.Ready || config.Status.DataSecretName == nil):
 		config.Status.Ready = true
 		config.Status.DataSecretName = configOwner.DataSecretName()
-		conditions.MarkTrue(config, bootstrapv1.DataSecretAvailableCondition)
+		conditions.Set(config, metav1.Condition{
+			Type:    string(bootstrapv1.DataSecretAvailableCondition),
+			Status:  metav1.ConditionTrue,
+			Reason:  "DataSecretAvailable",
+			Message: "Data secret is available",
+		})
 		return ctrl.Result{}, nil
 	// Status is ready means a config has been generated.
 	case config.Status.Ready:
@@ -193,7 +194,7 @@ func (r *CK8sConfigReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 	}
 
 	// Note: can't use IsFalse here because we need to handle the absence of the condition as well as false.
-	if !conditions.IsTrue(cluster, clusterv1.ControlPlaneInitializedCondition) {
+	if !conditions.IsTrue(cluster, clusterv1.ClusterControlPlaneInitializedCondition) {
 		return r.handleClusterNotInitialized(ctx, scope)
 	}
 
@@ -258,7 +259,12 @@ func (r *CK8sConfigReconciler) joinControlplane(ctx context.Context, scope *Scop
 
 	files, err := r.resolveFiles(ctx, scope.Config)
 	if err != nil {
-		conditions.MarkFalse(scope.Config, bootstrapv1.DataSecretAvailableCondition, bootstrapv1.DataSecretGenerationFailedReason, clusterv1.ConditionSeverityWarning, "%s", err.Error())
+		conditions.Set(scope.Config, metav1.Condition{
+			Type:    string(bootstrapv1.DataSecretAvailableCondition),
+			Status:  metav1.ConditionFalse,
+			Reason:  bootstrapv1.DataSecretGenerationFailedReason,
+			Message: err.Error(),
+		})
 		return err
 	}
 
@@ -329,7 +335,12 @@ func (r *CK8sConfigReconciler) joinWorker(ctx context.Context, scope *Scope) err
 
 	authToken, err := token.Lookup(ctx, r.Client, client.ObjectKeyFromObject(scope.Cluster))
 	if err != nil {
-		conditions.MarkFalse(scope.Config, bootstrapv1.DataSecretAvailableCondition, bootstrapv1.DataSecretGenerationFailedReason, clusterv1.ConditionSeverityWarning, "%s", err.Error())
+		conditions.Set(scope.Config, metav1.Condition{
+			Type:    string(bootstrapv1.DataSecretAvailableCondition),
+			Status:  metav1.ConditionFalse,
+			Reason:  bootstrapv1.DataSecretGenerationFailedReason,
+			Message: err.Error(),
+		})
 		return err
 	}
 
@@ -366,7 +377,12 @@ func (r *CK8sConfigReconciler) joinWorker(ctx context.Context, scope *Scope) err
 
 	files, err := r.resolveFiles(ctx, scope.Config)
 	if err != nil {
-		conditions.MarkFalse(scope.Config, bootstrapv1.DataSecretAvailableCondition, bootstrapv1.DataSecretGenerationFailedReason, clusterv1.ConditionSeverityWarning, "%s", err.Error())
+		conditions.Set(scope.Config, metav1.Condition{
+			Type:    string(bootstrapv1.DataSecretAvailableCondition),
+			Status:  metav1.ConditionFalse,
+			Reason:  bootstrapv1.DataSecretGenerationFailedReason,
+			Message: err.Error(),
+		})
 		return err
 	}
 
@@ -591,8 +607,13 @@ func (r *CK8sConfigReconciler) handleClusterNotInitialized(ctx context.Context, 
 	// initialize the DataSecretAvailableCondition if missing.
 	// this is required in order to avoid the condition's LastTransitionTime to flicker in case of errors surfacing
 	// using the DataSecretGeneratedFailedReason
-	if conditions.GetReason(scope.Config, bootstrapv1.DataSecretAvailableCondition) != bootstrapv1.DataSecretGenerationFailedReason {
-		conditions.MarkFalse(scope.Config, bootstrapv1.DataSecretAvailableCondition, clusterv1.WaitingForControlPlaneAvailableReason, clusterv1.ConditionSeverityInfo, "")
+	if c := conditions.Get(scope.Config, string(bootstrapv1.DataSecretAvailableCondition)); c == nil || c.Reason != bootstrapv1.DataSecretGenerationFailedReason {
+		conditions.Set(scope.Config, metav1.Condition{
+			Type:    string(bootstrapv1.DataSecretAvailableCondition),
+			Status:  metav1.ConditionFalse,
+			Reason:  string(bootstrapv1.WaitingForControlPlaneAvailableReason),
+			Message: "Waiting for control plane to become available",
+		})
 	}
 
 	// if it's NOT a control plane machine, requeue
@@ -635,10 +656,20 @@ func (r *CK8sConfigReconciler) handleClusterNotInitialized(ctx context.Context, 
 		*metav1.NewControllerRef(scope.Config, bootstrapv1.GroupVersion.WithKind("CK8sConfig")),
 	)
 	if err != nil {
-		conditions.MarkFalse(scope.Config, bootstrapv1.CertificatesAvailableCondition, bootstrapv1.CertificatesGenerationFailedReason, clusterv1.ConditionSeverityWarning, "%s", err.Error())
+		conditions.Set(scope.Config, metav1.Condition{
+			Type:    string(bootstrapv1.CertificatesAvailableCondition),
+			Status:  metav1.ConditionFalse,
+			Reason:  bootstrapv1.CertificatesGenerationFailedReason,
+			Message: err.Error(),
+		})
 		return ctrl.Result{}, err
 	}
-	conditions.MarkTrue(scope.Config, bootstrapv1.CertificatesAvailableCondition)
+	conditions.Set(scope.Config, metav1.Condition{
+		Type:    string(bootstrapv1.CertificatesAvailableCondition),
+		Status:  metav1.ConditionTrue,
+		Reason:  "CertificatesAvailable",
+		Message: "Certificates are available",
+	})
 
 	authToken, err := token.Lookup(ctx, r.Client, client.ObjectKeyFromObject(scope.Cluster))
 	if err != nil {
@@ -656,7 +687,7 @@ func (r *CK8sConfigReconciler) handleClusterNotInitialized(ctx context.Context, 
 		PopulatedCertificates: certificates,
 		InitConfig:            scope.Config.Spec.InitConfig,
 
-		ClusterNetwork: scope.Cluster.Spec.ClusterNetwork,
+		ClusterNetwork: &scope.Cluster.Spec.ClusterNetwork,
 
 		ExtraKubeProxyArgs:         scope.Config.Spec.ExtraKubeProxyArgs,
 		ExtraKubeletArgs:           scope.Config.Spec.ExtraKubeletArgs,
@@ -686,13 +717,23 @@ func (r *CK8sConfigReconciler) handleClusterNotInitialized(ctx context.Context, 
 
 	files, err := r.resolveFiles(ctx, scope.Config)
 	if err != nil {
-		conditions.MarkFalse(scope.Config, bootstrapv1.DataSecretAvailableCondition, bootstrapv1.DataSecretGenerationFailedReason, clusterv1.ConditionSeverityWarning, "%s", err.Error())
+		conditions.Set(scope.Config, metav1.Condition{
+			Type:    string(bootstrapv1.DataSecretAvailableCondition),
+			Status:  metav1.ConditionFalse,
+			Reason:  bootstrapv1.DataSecretGenerationFailedReason,
+			Message: err.Error(),
+		})
 		return ctrl.Result{}, err
 	}
 
 	userSuppliedBootstrapConfig, err := r.resolveUserBootstrapConfig(ctx, scope.Config)
 	if err != nil {
-		conditions.MarkFalse(scope.Config, bootstrapv1.DataSecretAvailableCondition, bootstrapv1.DataSecretGenerationFailedReason, clusterv1.ConditionSeverityWarning, "%s", err.Error())
+		conditions.Set(scope.Config, metav1.Condition{
+			Type:    string(bootstrapv1.DataSecretAvailableCondition),
+			Status:  metav1.ConditionFalse,
+			Reason:  bootstrapv1.DataSecretGenerationFailedReason,
+			Message: err.Error(),
+		})
 		return ctrl.Result{}, err
 	}
 
@@ -704,7 +745,12 @@ func (r *CK8sConfigReconciler) handleClusterNotInitialized(ctx context.Context, 
 
 	snapInstallData, err := r.getSnapInstallDataFromSpec(scope.Config.Spec)
 	if err != nil {
-		conditions.MarkFalse(scope.Config, bootstrapv1.SnapInstallDataValidatedCondition, bootstrapv1.SnapInstallValidationFailedReason, clusterv1.ConditionSeverityError, "%s", err.Error())
+		conditions.Set(scope.Config, metav1.Condition{
+			Type:    string(bootstrapv1.SnapInstallDataValidatedCondition),
+			Status:  metav1.ConditionFalse,
+			Reason:  bootstrapv1.SnapInstallValidationFailedReason,
+			Message: err.Error(),
+		})
 		return ctrl.Result{Requeue: true}, fmt.Errorf("failed to get snap install data from spec: %w", err)
 	}
 
@@ -814,7 +860,13 @@ func (r *CK8sConfigReconciler) storeBootstrapData(ctx context.Context, scope *Sc
 
 	scope.Config.Status.DataSecretName = ptr.To(secret.Name)
 	scope.Config.Status.Ready = true
-	conditions.MarkTrue(scope.Config, bootstrapv1.DataSecretAvailableCondition)
+	scope.Config.Status.Initialization.DataSecretCreated = ptr.To(true)
+	conditions.Set(scope.Config, metav1.Condition{
+		Type:    string(bootstrapv1.DataSecretAvailableCondition),
+		Status:  metav1.ConditionTrue,
+		Reason:  "DataSecretAvailable",
+		Message: "Bootstrap data secret has been stored",
+	})
 	return nil
 }
 
@@ -822,8 +874,8 @@ func (r *CK8sConfigReconciler) reconcileTopLevelObjectSettings(_ *clusterv1.Clus
 	log := r.Log.WithValues("ck8sconfig", fmt.Sprintf("%s/%s", config.Namespace, config.Name))
 
 	// If there are no Version settings defined in Config, use Version from machine, if defined
-	if config.Spec.Version == "" && machine.Spec.Version != nil {
-		config.Spec.Version = *machine.Spec.Version
+	if config.Spec.Version == "" && machine.Spec.Version != "" {
+		config.Spec.Version = machine.Spec.Version
 		log.Info("Altering Config", "Version", config.Spec.Version)
 	}
 }

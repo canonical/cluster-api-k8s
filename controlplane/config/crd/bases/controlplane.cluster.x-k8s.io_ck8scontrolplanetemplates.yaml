@@ -3,7 +3,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.16.1
+    controller-gen.kubebuilder.io/version: v0.21.0
   name: ck8scontrolplanetemplates.controlplane.cluster.x-k8s.io
 spec:
   group: controlplane.cluster.x-k8s.io
@@ -104,6 +104,548 @@ spec:
                             description: |-
                               Standard object's metadata.
                               More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#metadata
+                            properties:
+                              annotations:
+                                additionalProperties:
+                                  type: string
+                                description: |-
+                                  annotations is an unstructured key value map stored with a resource that may be
+                                  set by external tools to store and retrieve arbitrary metadata. They are not
+                                  queryable and should be preserved when modifying objects.
+                                  More info: http://kubernetes.io/docs/user-guide/annotations
+                                type: object
+                              labels:
+                                additionalProperties:
+                                  type: string
+                                description: |-
+                                  labels is a map of string keys and values that can be used to organize and categorize
+                                  (scope and select) objects. May match selectors of replication controllers
+                                  and services.
+                                  More info: http://kubernetes.io/docs/user-guide/labels
+                                type: object
+                            type: object
+                          nodeDeletionTimeout:
+                            description: |-
+                              NodeDeletionTimeout defines how long the machine controller will attempt to delete the Node that the Machine
+                              hosts after the Machine is marked for deletion. A duration of 0 will retry deletion indefinitely.
+                              If no value is provided, the default value for this property of the Machine resource will be used.
+                            type: string
+                          nodeDrainTimeout:
+                            description: |-
+                              NodeDrainTimeout is the total amount of time that the controller will spend on draining a controlplane node
+                              The default value is 0, meaning that the node can be drained without any time limitations.
+                              NOTE: NodeDrainTimeout is different from `kubectl drain --timeout`
+                            type: string
+                          nodeVolumeDetachTimeout:
+                            description: |-
+                              NodeVolumeDetachTimeout is the total amount of time that the controller will spend on waiting for all volumes
+                              to be detached. The default value is 0, meaning that the volumes can be detached without any time limitations.
+                            type: string
+                        required:
+                        - infrastructureTemplate
+                        type: object
+                      remediationStrategy:
+                        description: The RemediationStrategy that controls how control
+                          plane machine remediation happens.
+                        properties:
+                          maxRetry:
+                            description: "MaxRetry is the Max number of retries while
+                              attempting to remediate an unhealthy machine.\nA retry
+                              happens when a machine that was created as a replacement
+                              for an unhealthy machine also fails.\nFor example, given
+                              a control plane with three machines M1, M2, M3:\n\n\tM1
+                              become unhealthy; remediation happens, and M1-1 is created
+                              as a replacement.\n\tIf M1-1 (replacement of M1) has
+                              problems while bootstrapping it will become unhealthy,
+                              and then be\n\tremediated; such operation is considered
+                              a retry, remediation-retry #1.\n\tIf M1-2 (replacement
+                              of M1-1) becomes unhealthy, remediation-retry #2 will
+                              happen, etc.\n\nA retry could happen only after RetryPeriod
+                              from the previous retry.\nIf a machine is marked as
+                              unhealthy after MinHealthyPeriod from the previous remediation
+                              expired,\nthis is not considered a retry anymore because
+                              the new issue is assumed unrelated from the previous
+                              one.\n\nIf not set, the remedation will be retried infinitely."
+                            format: int32
+                            type: integer
+                          minHealthyPeriod:
+                            description: "MinHealthyPeriod defines the duration after
+                              which KCP will consider any failure to a machine unrelated\nfrom
+                              the previous one. In this case the remediation is not
+                              considered a retry anymore, and thus the retry\ncounter
+                              restarts from 0. For example, assuming MinHealthyPeriod
+                              is set to 1h (default)\n\n\tM1 become unhealthy; remediation
+                              happens, and M1-1 is created as a replacement.\n\tIf
+                              M1-1 (replacement of M1) has problems within the 1hr
+                              after the creation, also\n\tthis machine will be remediated
+                              and this operation is considered a retry - a problem
+                              related\n\tto the original issue happened to M1 -.\n\n\tIf
+                              instead the problem on M1-1 is happening after MinHealthyPeriod
+                              expired, e.g. four days after\n\tm1-1 has been created
+                              as a remediation of M1, the problem on M1-1 is considered
+                              unrelated to\n\tthe original issue happened to M1.\n\nIf
+                              not set, this value is defaulted to 1h."
+                            type: string
+                          retryPeriod:
+                            description: |-
+                              RetryPeriod is the duration that KCP should wait before remediating a machine being created as a replacement
+                              for an unhealthy machine (a retry).
+
+                              If not set, a retry will happen immediately.
+                            type: string
+                        type: object
+                      rolloutAfter:
+                        description: |-
+                          RolloutAfter is a field to indicate an rollout should be performed
+                          after the specified time even if no changes have been made to the
+                          CK8sControlPlane
+                        format: date-time
+                        type: string
+                      rolloutStrategy:
+                        default:
+                          rollingUpdate:
+                            maxSurge: 1
+                        description: |-
+                          rolloutStrategy is the RolloutStrategy to use to replace control plane machines with
+                          new ones.
+                        properties:
+                          rollingUpdate:
+                            description: rollingUpdate is the rolling update config
+                              params.
+                            properties:
+                              maxSurge:
+                                anyOf:
+                                - type: integer
+                                - type: string
+                                description: |-
+                                  maxSurge is the maximum number of control planes that can be scheduled above or under the
+                                  desired number of control planes.
+                                  Value can be an absolute number 1 or 0.
+                                  Defaults to 1.
+                                  Example: when this is set to 1, the control plane can be scaled
+                                  up immediately when the rolling update starts.
+                                x-kubernetes-int-or-string: true
+                            type: object
+                        type: object
+                      spec:
+                        description: |-
+                          CK8sConfigSpec is a CK8sConfigSpec
+                          to use for initializing and joining machines to the control plane.
+                        properties:
+                          ExtraK8sAPIServerProxyArgs:
+                            additionalProperties:
+                              type: string
+                            description: ExtraK8sAPIServerProxyArgs - extra arguments
+                              to add to k8s-api-server-proxy.
+                            type: object
+                          additionalUserData:
+                            additionalProperties:
+                              type: string
+                            description: |-
+                              AdditionalUserData is a field that allows users to specify additional cloud-init configuration inside the script.
+                              Th key/value pairs must adhere to
+                              https://cloudinit.readthedocs.io/en/latest/reference/modules.html
+                              to extend existing cloud-init configuration
+                            type: object
+                          airGapped:
+                            description: |-
+                              AirGapped is used to signal that we are deploying to an airgap environment. In this case,
+                              the provider will not attempt to install k8s-snap on the machine. The user is expected to
+                              install k8s-snap manually with preRunCommands, or provide an image with k8s-snap pre-installed.
+                            type: boolean
+                          bootCommands:
+                            description: BootCommands specifies extra commands to
+                              run in cloud-init early in the boot process.
+                            items:
+                              type: string
+                            type: array
+                          bootstrapConfig:
+                            description: BootstrapConfig is the data to be passed
+                              to the bootstrap script.
+                            properties:
+                              content:
+                                description: |-
+                                  Content is the actual content of the file.
+                                  If this is set, ContentFrom is ignored.
+                                type: string
+                              contentFrom:
+                                description: ContentFrom is a referenced source of
+                                  content to populate the file.
+                                properties:
+                                  secret:
+                                    description: Secret represents a secret that should
+                                      populate this file.
+                                    properties:
+                                      key:
+                                        description: Key is the key in the secret's
+                                          data map for this value.
+                                        type: string
+                                      name:
+                                        description: Name of the secret in the CK8sBootstrapConfig's
+                                          namespace to use.
+                                        type: string
+                                    required:
+                                    - key
+                                    - name
+                                    type: object
+                                required:
+                                - secret
+                                type: object
+                            type: object
+                          channel:
+                            description: Channel is the channel to use for the snap
+                              install.
+                            type: string
+                          controlPlane:
+                            description: CK8sControlPlaneConfig is configuration for
+                              the control plane node.
+                            properties:
+                              cloudProvider:
+                                description: CloudProvider is the cloud-provider configuration
+                                  option to set.
+                                type: string
+                              datastoreServersSecretRef:
+                                description: DatastoreServersSecretRef is a reference
+                                  to a secret containing the datastore servers.
+                                properties:
+                                  key:
+                                    description: Key is the key in the secret's data
+                                      map for this value.
+                                    type: string
+                                  name:
+                                    description: Name of the secret in the CK8sBootstrapConfig's
+                                      namespace to use.
+                                    type: string
+                                required:
+                                - name
+                                type: object
+                              datastoreType:
+                                description: DatastoreType is the type of datastore
+                                  to use for the control plane.
+                                type: string
+                              etcdPeerPort:
+                                description: EtcdPeerPort is the port to use for etcd
+                                  peer communication. If unset, 2381 will be used.
+                                type: integer
+                              etcdPort:
+                                description: EtcdPort is the port to use for etcd.
+                                  If unset, 2379 will be used.
+                                type: integer
+                              extraKubeAPIServerArgs:
+                                additionalProperties:
+                                  type: string
+                                description: ExtraKubeAPIServerArgs - extra arguments
+                                  to add to kube-apiserver.
+                                type: object
+                              extraKubeControllerManagerArgs:
+                                additionalProperties:
+                                  type: string
+                                description: ExtraKubeControllerManagerArgs - extra
+                                  arguments to add to kube-controller-manager.
+                                type: object
+                              extraKubeSchedulerArgs:
+                                additionalProperties:
+                                  type: string
+                                description: ExtraKubeSchedulerArgs - extra arguments
+                                  to add to kube-scheduler.
+                                type: object
+                              extraSANs:
+                                description: ExtraSANs is a list of SANs to include
+                                  in the server certificates.
+                                items:
+                                  type: string
+                                type: array
+                              microclusterAddress:
+                                description: MicroclusterAddress is the address (or
+                                  CIDR) to use for microcluster. If unset, the default
+                                  node interface is chosen.
+                                type: string
+                              microclusterPort:
+                                description: MicroclusterPort is the port to use for
+                                  microcluster. If unset, ":2380" (etcd peer) will
+                                  be used.
+                                type: integer
+                              nodeTaints:
+                                description: NodeTaints is taints to add to the control
+                                  plane kubelet nodes.
+                                items:
+                                  type: string
+                                type: array
+                            type: object
+                          extraContainerdArgs:
+                            additionalProperties:
+                              type: string
+                            description: ExtraContainerdArgs - extra arguments to
+                              add to containerd.
+                            type: object
+                          extraKubeProxyArgs:
+                            additionalProperties:
+                              type: string
+                            description: ExtraKubeProxyArgs - extra arguments to add
+                              to kube-proxy.
+                            type: object
+                          extraKubeletArgs:
+                            additionalProperties:
+                              type: string
+                            description: ExtraKubeletArgs - extra arguments to add
+                              to kubelet.
+                            type: object
+                          files:
+                            description: Files specifies extra files to be passed
+                              to user_data upon creation.
+                            items:
+                              description: File defines the input for generating write_files
+                                in cloud-init.
+                              properties:
+                                content:
+                                  description: Content is the actual content of the
+                                    file.
+                                  type: string
+                                contentFrom:
+                                  description: ContentFrom is a referenced source
+                                    of content to populate the file.
+                                  properties:
+                                    secret:
+                                      description: Secret represents a secret that
+                                        should populate this file.
+                                      properties:
+                                        key:
+                                          description: Key is the key in the secret's
+                                            data map for this value.
+                                          type: string
+                                        name:
+                                          description: Name of the secret in the CK8sBootstrapConfig's
+                                            namespace to use.
+                                          type: string
+                                      required:
+                                      - key
+                                      - name
+                                      type: object
+                                  required:
+                                  - secret
+                                  type: object
+                                encoding:
+                                  description: Encoding specifies the encoding of
+                                    the file contents.
+                                  enum:
+                                  - base64
+                                  - gzip
+                                  - gzip+base64
+                                  type: string
+                                owner:
+                                  description: Owner specifies the ownership of the
+                                    file, e.g. "root:root".
+                                  type: string
+                                path:
+                                  description: Path specifies the full path on disk
+                                    where to store the file.
+                                  type: string
+                                permissions:
+                                  description: Permissions specifies the permissions
+                                    to assign to the file, e.g. "0640".
+                                  type: string
+                              required:
+                              - path
+                              type: object
+                            type: array
+                          httpProxy:
+                            description: HTTPProxy is optional http proxy configuration
+                            type: string
+                          httpsProxy:
+                            description: HTTPSProxy is optional https proxy configuration
+                            type: string
+                          initConfig:
+                            description: CK8sInitConfig is configuration for the initializing
+                              the cluster features.
+                            properties:
+                              annotations:
+                                additionalProperties:
+                                  type: string
+                                description: Annotations are used to configure the
+                                  behaviour of the built-in features.
+                                type: object
+                              enableDefaultDNS:
+                                description: EnableDefaultDNS specifies whether to
+                                  enable the default DNS configuration.
+                                type: boolean
+                              enableDefaultGateway:
+                                description: EnableDefaultGateway specifies whether
+                                  to enable the default Gateway configuration.
+                                type: boolean
+                              enableDefaultIngress:
+                                description: EnableDefaultIngress specifies whether
+                                  to enable the default Ingress configuration.
+                                type: boolean
+                              enableDefaultLoadBalancer:
+                                description: EnableDefaultLoadBalancer specifies whether
+                                  to enable the default LoadBalancer configuration.
+                                type: boolean
+                              enableDefaultLocalStorage:
+                                description: EnableDefaultLocalStorage specifies whether
+                                  to enable the default local storage.
+                                type: boolean
+                              enableDefaultMetricsServer:
+                                description: EnableDefaultMetricsServer specifies
+                                  whether to enable the default metrics server.
+                                type: boolean
+                              enableDefaultNetwork:
+                                description: EnableDefaultNetwork specifies whether
+                                  to enable the default CNI.
+                                type: boolean
+                            type: object
+                          localPath:
+                            description: |-
+                              LocalPath is the path of a local snap file (or a folder containing local snap files) in the workload cluster to use for the snap install.
+                              If Channel or Revision are set, this will be ignored.
+                            type: string
+                          noProxy:
+                            description: NoProxy is optional no proxy configuration
+                            type: string
+                          nodeName:
+                            description: |-
+                              NodeName is the name to use for the kubelet of this node. It is needed for clouds
+                              where the cloud-provider has specific pre-requisites about the node names. It is
+                              typically set in Jinja template form, e.g."{{ ds.meta_data.local_hostname }}".
+                            type: string
+                          postRunCommands:
+                            description: PostRunCommands specifies extra commands
+                              to run in cloud-init after k8s-snap setup runs.
+                            items:
+                              type: string
+                            type: array
+                          preRunCommands:
+                            description: PreRunCommands specifies extra commands to
+                              run in cloud-init before k8s-snap setup runs.
+                            items:
+                              type: string
+                            type: array
+                          revision:
+                            description: |-
+                              Revision is the revision to use for the snap install.
+                              If Channel is set, this will be ignored.
+                            type: string
+                          snapstoreProxyDomain:
+                            description: The snap store proxy domain
+                            type: string
+                          snapstoreProxyId:
+                            description: The snap store proxy ID
+                            type: string
+                          snapstoreProxyScheme:
+                            default: http
+                            description: |-
+                              The snap store proxy domain's scheme, e.g. "http" or "https" without "://"
+                              Defaults to "http".
+                            enum:
+                            - http
+                            - https
+                            type: string
+                          version:
+                            description: Version specifies the Kubernetes version.
+                            type: string
+                        type: object
+                    type: object
+                required:
+                - spec
+                type: object
+            required:
+            - template
+            type: object
+        type: object
+    served: true
+    storage: false
+    subresources:
+      status: {}
+  - name: v1beta3
+    schema:
+      openAPIV3Schema:
+        description: CK8sControlPlaneTemplate is the Schema for the ck8scontrolplanetemplate
+          API.
+        properties:
+          apiVersion:
+            description: |-
+              APIVersion defines the versioned schema of this representation of an object.
+              Servers should convert recognized schemas to the latest internal value, and
+              may reject unrecognized values.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
+            type: string
+          kind:
+            description: |-
+              Kind is a string value representing the REST resource this object represents.
+              Servers may infer this from the endpoint the client submits requests to.
+              Cannot be updated.
+              In CamelCase.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
+            type: string
+          metadata:
+            type: object
+          spec:
+            description: CK8sControlPlaneTemplateSpec defines the desired state of
+              CK8sControlPlaneTemplateSpec.
+            properties:
+              template:
+                properties:
+                  metadata:
+                    description: |-
+                      Standard object's metadata.
+                      More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#metadata
+                    type: object
+                  spec:
+                    properties:
+                      machineTemplate:
+                        description: |-
+                          MachineTemplate contains information about how machines should be shaped
+                          when creating or updating a control plane.
+                        properties:
+                          infrastructureTemplate:
+                            description: |-
+                              InfrastructureRef is a required reference to a custom resource
+                              offered by an infrastructure provider.
+                            properties:
+                              apiVersion:
+                                description: API version of the referent.
+                                type: string
+                              fieldPath:
+                                description: |-
+                                  If referring to a piece of an object instead of an entire object, this string
+                                  should contain a valid JSON/Go field access statement, such as desiredState.manifest.containers[2].
+                                  For example, if the object reference is to a container within a pod, this would take on a value like:
+                                  "spec.containers{name}" (where "name" refers to the name of the container that triggered
+                                  the event) or if no container name is specified "spec.containers[2]" (container with
+                                  index 2 in this pod). This syntax is chosen only to have some well-defined way of
+                                  referencing a part of an object.
+                                type: string
+                              kind:
+                                description: |-
+                                  Kind of the referent.
+                                  More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
+                                type: string
+                              name:
+                                description: |-
+                                  Name of the referent.
+                                  More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                                type: string
+                              namespace:
+                                description: |-
+                                  Namespace of the referent.
+                                  More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/namespaces/
+                                type: string
+                              resourceVersion:
+                                description: |-
+                                  Specific resourceVersion to which this reference is made, if any.
+                                  More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#concurrency-control-and-consistency
+                                type: string
+                              uid:
+                                description: |-
+                                  UID of the referent.
+                                  More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#uids
+                                type: string
+                            type: object
+                            x-kubernetes-map-type: atomic
+                          metadata:
+                            description: |-
+                              Standard object's metadata.
+                              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#metadata
+                            minProperties: 1
                             properties:
                               annotations:
                                 additionalProperties:

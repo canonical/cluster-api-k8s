@@ -27,17 +27,18 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	kerrors "k8s.io/apimachinery/pkg/util/errors"
 	"k8s.io/apiserver/pkg/storage/names"
-	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
+	clusterv1 "sigs.k8s.io/cluster-api/api/core/v1beta2"
 	"sigs.k8s.io/cluster-api/controllers/external"
 	"sigs.k8s.io/cluster-api/util"
 	"sigs.k8s.io/cluster-api/util/collections"
 	"sigs.k8s.io/cluster-api/util/conditions"
 	ctrl "sigs.k8s.io/controller-runtime"
 
-	bootstrapv1 "github.com/canonical/cluster-api-k8s/bootstrap/api/v1beta2"
-	controlplanev1 "github.com/canonical/cluster-api-k8s/controlplane/api/v1beta2"
+	bootstrapv1 "github.com/canonical/cluster-api-k8s/bootstrap/api/v1beta3"
+	controlplanev1 "github.com/canonical/cluster-api-k8s/controlplane/api/v1beta3"
 	"github.com/canonical/cluster-api-k8s/pkg/ck8s"
 )
 
@@ -48,7 +49,7 @@ func (r *CK8sControlPlaneReconciler) initializeControlPlane(ctx context.Context,
 
 	// Perform an uncached read of all the owned machines. This check is in place to make sure
 	// that the controller cache is not misbehaving and we end up initializing the cluster more than once.
-	ownedMachines, err := r.managementClusterUncached.GetMachinesForCluster(ctx, util.ObjectKey(cluster), collections.OwnedMachines(kcp))
+	ownedMachines, err := r.managementClusterUncached.GetMachinesForCluster(ctx, util.ObjectKey(cluster), collections.OwnedMachines(kcp, schema.GroupKind{Group: controlplanev1.GroupVersion.Group, Kind: "CK8sControlPlane"}))
 	if err != nil {
 		logger.Error(err, "failed to perform an uncached read of control plane machines for cluster")
 		return ctrl.Result{}, err
@@ -61,8 +62,8 @@ func (r *CK8sControlPlaneReconciler) initializeControlPlane(ctx context.Context,
 	}
 
 	bootstrapSpec := controlPlane.InitialControlPlaneConfig()
-	fd := controlPlane.NextFailureDomainForScaleUp(ctx)
-	if err := r.cloneConfigsAndGenerateMachine(ctx, cluster, kcp, bootstrapSpec, fd); err != nil {
+	fd, _ := controlPlane.NextFailureDomainForScaleUp(ctx)
+	if err := r.cloneConfigsAndGenerateMachine(ctx, cluster, kcp, bootstrapSpec, &fd); err != nil {
 		logger.Error(err, "Failed to create initial control plane Machine")
 		r.recorder.Eventf(kcp, corev1.EventTypeWarning, "FailedInitialization", "Failed to create initial control plane Machine for cluster %s/%s control plane: %v", cluster.Namespace, cluster.Name, err)
 		return ctrl.Result{}, err
@@ -82,8 +83,8 @@ func (r *CK8sControlPlaneReconciler) scaleUpControlPlane(ctx context.Context, cl
 
 	// Create the bootstrap configuration
 	bootstrapSpec := controlPlane.JoinControlPlaneConfig()
-	fd := controlPlane.NextFailureDomainForScaleUp(ctx)
-	if err := r.cloneConfigsAndGenerateMachine(ctx, cluster, kcp, bootstrapSpec, fd); err != nil {
+	fd, _ := controlPlane.NextFailureDomainForScaleUp(ctx)
+	if err := r.cloneConfigsAndGenerateMachine(ctx, cluster, kcp, bootstrapSpec, &fd); err != nil {
 		logger.Error(err, "Failed to create additional control plane Machine")
 		r.recorder.Eventf(kcp, corev1.EventTypeWarning, "FailedScaleUp", "Failed to create additional control plane Machine for cluster %s/%s control plane: %v", cluster.Namespace, cluster.Name, err)
 		return ctrl.Result{}, err
@@ -127,7 +128,7 @@ func (r *CK8sControlPlaneReconciler) scaleDownControlPlane(
 		return ctrl.Result{}, fmt.Errorf("failed to create client to workload cluster: %w", err)
 	}
 
-	if machineToDelete.Status.NodeRef != nil {
+	if machineToDelete.Status.NodeRef.Name != "" {
 		// TODO: If the node is not part of the microcluster, this may still return an error. We should catch that case,
 		// and proceed with the machine removal.
 		if err := workloadCluster.RemoveMachineFromCluster(ctx, machineToDelete); err != nil {
@@ -172,8 +173,11 @@ func (r *CK8sControlPlaneReconciler) preflightChecks(_ context.Context, controlP
 	}
 
 	// Check machine health conditions; if there are conditions with False or Unknown, then wait.
-	allMachineHealthConditions := []clusterv1.ConditionType{controlplanev1.MachineAgentHealthyCondition}
-
+	allMachineHealthConditions := []string{
+		clusterv1.MachineReadyCondition,
+		clusterv1.MachineAvailableCondition,
+		clusterv1.MachineUpToDateCondition,
+	}
 	machineErrors := []error{}
 
 loopmachines:
@@ -187,7 +191,7 @@ loopmachines:
 		}
 
 		for _, condition := range allMachineHealthConditions {
-			if err := preflightCheckCondition("machine", machine, condition); err != nil {
+			if err := preflightCheckCondition(machine, condition); err != nil {
 				machineErrors = append(machineErrors, err)
 			}
 		}
@@ -205,16 +209,9 @@ loopmachines:
 	return ctrl.Result{}, nil
 }
 
-func preflightCheckCondition(kind string, obj conditions.Getter, condition clusterv1.ConditionType) error {
-	c := conditions.Get(obj, condition)
-	if c == nil {
-		return fmt.Errorf("%s %s does not have %s condition: %w", kind, obj.GetName(), condition, ErrPreConditionFailed)
-	}
-	if c.Status == corev1.ConditionFalse {
-		return fmt.Errorf("%s %s reports %s condition is false (%s, %s): %w", kind, obj.GetName(), condition, c.Severity, c.Message, ErrPreConditionFailed)
-	}
-	if c.Status == corev1.ConditionUnknown {
-		return fmt.Errorf("%s %s reports %s condition is unknown (%s): %w", kind, obj.GetName(), condition, c.Message, ErrPreConditionFailed)
+func preflightCheckCondition(machine *clusterv1.Machine, condition string) error {
+	if !conditions.IsTrue(machine, condition) {
+		return fmt.Errorf("machine %s reports %s condition is false: %w", machine.Name, condition, ErrPreConditionFailed)
 	}
 
 	return nil
@@ -252,7 +249,7 @@ func (r *CK8sControlPlaneReconciler) cloneConfigsAndGenerateMachine(ctx context.
 	}
 
 	// Clone the infrastructure template
-	infraRef, err := external.CreateFromTemplate(ctx, &external.CreateFromTemplateInput{
+	infraObj, _, err := external.CreateFromTemplate(ctx, &external.CreateFromTemplateInput{
 		Client:      r.Client,
 		TemplateRef: &kcp.Spec.MachineTemplate.InfrastructureRef,
 		Namespace:   kcp.Namespace,
@@ -265,6 +262,14 @@ func (r *CK8sControlPlaneReconciler) cloneConfigsAndGenerateMachine(ctx context.
 		return fmt.Errorf("failed to clone infrastructure template: %w", err)
 	}
 
+	infraRef := &corev1.ObjectReference{
+		APIVersion: infraObj.GetAPIVersion(),
+		Kind:       infraObj.GetKind(),
+		Name:       infraObj.GetName(),
+		Namespace:  infraObj.GetNamespace(),
+		UID:        infraObj.GetUID(),
+	}
+
 	// Clone the bootstrap configuration
 	bootstrapRef, err := r.generateCK8sConfig(ctx, kcp, cluster, bootstrapSpec)
 	if err != nil {
@@ -273,7 +278,18 @@ func (r *CK8sControlPlaneReconciler) cloneConfigsAndGenerateMachine(ctx context.
 
 	// Only proceed to generating the Machine if we haven't encountered an error
 	if len(errs) == 0 {
-		if err := r.generateMachine(ctx, kcp, cluster, infraRef, bootstrapRef, failureDomain); err != nil {
+		machineInfraRef := &clusterv1.ContractVersionedObjectReference{
+			Kind:     infraRef.Kind,
+			Name:     infraRef.Name,
+			APIGroup: infraRef.GroupVersionKind().Group,
+		}
+		machineBootstrapRef := &clusterv1.ContractVersionedObjectReference{
+			Kind:     bootstrapRef.Kind,
+			Name:     bootstrapRef.Name,
+			APIGroup: bootstrapRef.GroupVersionKind().Group,
+		}
+
+		if err := r.generateMachine(ctx, kcp, cluster, machineInfraRef, machineBootstrapRef, failureDomain); err != nil {
 			errs = append(errs, fmt.Errorf("failed to create Machine: %w", err))
 		}
 	}
@@ -344,7 +360,7 @@ func (r *CK8sControlPlaneReconciler) generateCK8sConfig(ctx context.Context, kcp
 	return bootstrapRef, nil
 }
 
-func (r *CK8sControlPlaneReconciler) generateMachine(ctx context.Context, kcp *controlplanev1.CK8sControlPlane, cluster *clusterv1.Cluster, infraRef, bootstrapRef *corev1.ObjectReference, failureDomain *string) error {
+func (r *CK8sControlPlaneReconciler) generateMachine(ctx context.Context, kcp *controlplanev1.CK8sControlPlane, cluster *clusterv1.Cluster, infraRef, bootstrapRef *clusterv1.ContractVersionedObjectReference, failureDomain *string) error {
 	machine := &clusterv1.Machine{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      names.SimpleNameGenerator.GenerateName(kcp.Name + "-"),
@@ -356,15 +372,12 @@ func (r *CK8sControlPlaneReconciler) generateMachine(ctx context.Context, kcp *c
 		},
 		Spec: clusterv1.MachineSpec{
 			ClusterName:       cluster.Name,
-			Version:           &kcp.Spec.Version,
+			Version:           kcp.Spec.Version,
 			InfrastructureRef: *infraRef,
 			Bootstrap: clusterv1.Bootstrap{
-				ConfigRef: bootstrapRef,
+				ConfigRef: *bootstrapRef,
 			},
-			FailureDomain:           failureDomain,
-			NodeDrainTimeout:        kcp.Spec.MachineTemplate.NodeDrainTimeout,
-			NodeVolumeDetachTimeout: kcp.Spec.MachineTemplate.NodeVolumeDetachTimeout,
-			NodeDeletionTimeout:     kcp.Spec.MachineTemplate.NodeDeletionTimeout,
+			FailureDomain: *failureDomain,
 		},
 	}
 

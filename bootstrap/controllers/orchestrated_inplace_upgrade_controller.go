@@ -11,14 +11,14 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/tools/record"
-	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
+	clusterv1 "sigs.k8s.io/cluster-api/api/core/v1beta2"
 	"sigs.k8s.io/cluster-api/util"
 	"sigs.k8s.io/cluster-api/util/collections"
 	"sigs.k8s.io/cluster-api/util/patch"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	bootstrapv1 "github.com/canonical/cluster-api-k8s/bootstrap/api/v1beta2"
+	bootstrapv1 "github.com/canonical/cluster-api-k8s/bootstrap/api/v1beta3"
 	"github.com/canonical/cluster-api-k8s/pkg/ck8s"
 	"github.com/canonical/cluster-api-k8s/pkg/trace"
 	"github.com/canonical/cluster-api-k8s/pkg/upgrade/inplace"
@@ -264,7 +264,7 @@ func (r *OrchestratedInPlaceUpgradeController) getOwnedMachines(ctx context.Cont
 	)
 	// NOTE(Hue): The nosec is due to a false positive: https://stackoverflow.com/questions/62446118/implicit-memory-aliasing-in-for-loop
 	for _, _ms := range msList.Items { // #nosec G601
-		if util.IsOwnedByObject(&_ms, md) {
+		if util.IsOwnedByObject(&_ms, md, clusterv1.GroupVersion.WithKind("MachineDeployment").GroupKind()) {
 			ms = _ms
 			found = true
 			break
@@ -275,7 +275,11 @@ func (r *OrchestratedInPlaceUpgradeController) getOwnedMachines(ctx context.Cont
 		return nil, fmt.Errorf("failed to find MachineSet owned by MachineDeployment %q", md.Name)
 	}
 
-	ownedMachinesCollection, err := r.machineGetter.GetMachinesForCluster(ctx, client.ObjectKeyFromObject(cluster), collections.OwnedMachines(&ms))
+	ownedMachinesCollection, err := r.machineGetter.GetMachinesForCluster(
+		ctx,
+		client.ObjectKeyFromObject(cluster),
+		collections.OwnedMachines(&ms, clusterv1.GroupVersion.WithKind("MachineSet").GroupKind()),
+	)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get cluster machines: %w", err)
 	}

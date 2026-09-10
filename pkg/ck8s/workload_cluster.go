@@ -17,20 +17,20 @@ import (
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/client-go/rest"
 	podv1 "k8s.io/kubernetes/pkg/api/v1/pod"
-	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
+	clusterv1 "sigs.k8s.io/cluster-api/api/core/v1beta2"
 	"sigs.k8s.io/cluster-api/util"
 	"sigs.k8s.io/cluster-api/util/collections"
 	"sigs.k8s.io/cluster-api/util/conditions"
 	ctrlclient "sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
-	controlplanev1 "github.com/canonical/cluster-api-k8s/controlplane/api/v1beta2"
+	controlplanev1 "github.com/canonical/cluster-api-k8s/controlplane/api/v1beta3"
 )
 
 const (
 	// NOTE(neoaggelos): See notes below.
 	labelNodeRoleControlPlane = "node-role.kubernetes.io/control-plane"
-	k8sdConfigSecretName      = "k8sd-config" //nolint:gosec
+	k8sdConfigSecretName      = "k8sd-config"
 )
 
 // WorkloadCluster defines all behaviors necessary to upgrade kubernetes on a workload cluster
@@ -117,7 +117,7 @@ func (w *Workload) ClusterStatus(ctx context.Context) (ClusterStatus, error) {
 
 func hasProvisioningMachine(machines collections.Machines) bool {
 	for _, machine := range machines {
-		if machine.Status.NodeRef == nil {
+		if machine.Status.NodeRef.Name == "" {
 			return true
 		}
 	}
@@ -208,7 +208,7 @@ func (w *Workload) GetK8sdProxyForMachine(ctx context.Context, machine *clusterv
 		return nil, fmt.Errorf("machine object is nil")
 	}
 
-	if machine.Status.NodeRef == nil {
+	if machine.Status.NodeRef.Name == "" {
 		return nil, fmt.Errorf("machine %s has no node reference", machine.Name)
 	}
 
@@ -448,7 +448,7 @@ func (w *Workload) RemoveMachineFromCluster(ctx context.Context, machine *cluste
 	if machine == nil {
 		return fmt.Errorf("machine object is not set")
 	}
-	if machine.Status.NodeRef == nil {
+	if machine.Status.NodeRef.Name == "" {
 		return fmt.Errorf("machine %s has no node reference", machine.Name)
 	}
 
@@ -535,8 +535,8 @@ func (w *Workload) newHeaderWithNodeToken(nodeToken string) map[string][]string 
 // components. This operation is best effort, in the sense that in case
 // of problems in retrieving the pod status, it sets the condition to Unknown state without returning any error.
 func (w *Workload) UpdateAgentConditions(ctx context.Context, controlPlane *ControlPlane) {
-	allMachinePodConditions := []clusterv1.ConditionType{
-		controlplanev1.MachineAgentHealthyCondition,
+	allMachinePodConditions := []string{
+		string(controlplanev1.CK8sControlPlaneMachineAgentHealthyCondition),
 	}
 
 	// NOTE: this fun uses control plane nodes from the workload cluster as a source of truth for the current state.
@@ -545,10 +545,20 @@ func (w *Workload) UpdateAgentConditions(ctx context.Context, controlPlane *Cont
 		for i := range controlPlane.Machines {
 			machine := controlPlane.Machines[i]
 			for _, condition := range allMachinePodConditions {
-				conditions.MarkUnknown(machine, condition, controlplanev1.PodInspectionFailedReason, "Failed to get the node which is hosting this component")
+				conditions.Set(machine, metav1.Condition{
+					Type:    condition,
+					Status:  metav1.ConditionUnknown,
+					Reason:  string(controlplanev1.PodInspectionFailedReason),
+					Message: "Failed to get the node which is hosting this component",
+				})
 			}
 		}
-		conditions.MarkUnknown(controlPlane.KCP, controlplanev1.ControlPlaneComponentsHealthyCondition, controlplanev1.ControlPlaneComponentsInspectionFailedReason, "Failed to list nodes which are hosting control plane components")
+		conditions.Set(controlPlane.KCP, metav1.Condition{
+			Type:    string(controlplanev1.ControlPlaneComponentsHealthyCondition),
+			Status:  metav1.ConditionUnknown,
+			Reason:  string(controlplanev1.ControlPlaneComponentsInspectionFailedReason),
+			Message: "Failed to list nodes which are hosting control plane components",
+		})
 		return
 	}
 
@@ -559,7 +569,7 @@ func (w *Workload) UpdateAgentConditions(ctx context.Context, controlPlane *Cont
 		// Search for the machine corresponding to the node.
 		var machine *clusterv1.Machine
 		for _, m := range controlPlane.Machines {
-			if m.Status.NodeRef != nil && m.Status.NodeRef.Name == node.Name {
+			if m.Status.NodeRef.Name != "" && m.Status.NodeRef.Name == node.Name {
 				machine = m
 				break
 			}
@@ -579,7 +589,12 @@ func (w *Workload) UpdateAgentConditions(ctx context.Context, controlPlane *Cont
 		// If the machine is deleting, report all the conditions as deleting
 		if !machine.DeletionTimestamp.IsZero() {
 			for _, condition := range allMachinePodConditions {
-				conditions.MarkFalse(machine, condition, clusterv1.DeletingReason, clusterv1.ConditionSeverityInfo, "")
+				conditions.Set(machine, metav1.Condition{
+					Type:    condition,
+					Status:  metav1.ConditionFalse,
+					Reason:  string(clusterv1.DeletingReason),
+					Message: "Machine is being deleted",
+				})
 			}
 			continue
 		}
@@ -589,7 +604,12 @@ func (w *Workload) UpdateAgentConditions(ctx context.Context, controlPlane *Cont
 			// NOTE: We are assuming unreachable as a temporary condition, leaving to MHC
 			// the responsibility to determine if the node is unhealthy or not.
 			for _, condition := range allMachinePodConditions {
-				conditions.MarkUnknown(machine, condition, controlplanev1.PodInspectionFailedReason, "Node is unreachable")
+				conditions.Set(machine, metav1.Condition{
+					Type:    condition,
+					Status:  metav1.ConditionFalse,
+					Reason:  string(controlplanev1.PodMissingReason),
+					Message: "Node is missing or unreachable, unable to inspect static pods",
+				})
 			}
 			continue
 		}
@@ -603,17 +623,43 @@ func (w *Workload) UpdateAgentConditions(ctx context.Context, controlPlane *Cont
 		if err := w.Client.Get(ctx, nodeKey, &targetnode); err != nil {
 			// If there is an error getting the Pod, do not set any conditions.
 			if apierrors.IsNotFound(err) {
-				conditions.MarkFalse(machine, controlplanev1.MachineAgentHealthyCondition, controlplanev1.PodMissingReason, clusterv1.ConditionSeverityError, "Node %s is missing", nodeKey.Name)
-
+				conditions.Set(machine, metav1.Condition{
+					Type:    string(controlplanev1.CK8sControlPlaneMachineAgentHealthyCondition),
+					Status:  metav1.ConditionUnknown,
+					Reason:  string(controlplanev1.PodInspectionFailedReason),
+					Message: "Node is unreachable",
+				})
 				return
 			}
-			conditions.MarkUnknown(machine, controlplanev1.MachineAgentHealthyCondition, controlplanev1.PodInspectionFailedReason, "Failed to get node status")
+			conditions.Set(machine, metav1.Condition{
+				Type:    string(controlplanev1.CK8sControlPlaneMachineAgentHealthyCondition),
+				Status:  metav1.ConditionUnknown,
+				Reason:  string(controlplanev1.PodInspectionFailedReason),
+				Message: "Failed to get node status for node " + node.Name + ", error: " + err.Error(),
+			})
 			return
 		}
 
 		for _, condition := range targetnode.Status.Conditions {
 			if condition.Type == corev1.NodeReady && condition.Status == corev1.ConditionTrue {
-				conditions.MarkTrue(machine, controlplanev1.MachineAgentHealthyCondition)
+				conditions.Set(machine, metav1.Condition{
+					Type:    clusterv1.MachineAvailableCondition,
+					Status:  metav1.ConditionTrue,
+					Reason:  clusterv1.MachineAvailableReason,
+					Message: "",
+				})
+				conditions.Set(machine, metav1.Condition{
+					Type:    clusterv1.MachineReadyCondition,
+					Status:  metav1.ConditionTrue,
+					Reason:  clusterv1.MachineReadyReason,
+					Message: "",
+				})
+				conditions.Set(machine, metav1.Condition{
+					Type:    clusterv1.MachineUpToDateCondition,
+					Status:  metav1.ConditionTrue,
+					Reason:  clusterv1.MachineUpToDateReason,
+					Message: "",
+				})
 			}
 		}
 	}
@@ -621,7 +667,7 @@ func (w *Workload) UpdateAgentConditions(ctx context.Context, controlPlane *Cont
 	// If there are provisioned machines without corresponding nodes, report this as a failing conditions with SeverityError.
 	for i := range controlPlane.Machines {
 		machine := controlPlane.Machines[i]
-		if machine.Status.NodeRef == nil {
+		if machine.Status.NodeRef.Name == "" {
 			continue
 		}
 		found := false
@@ -633,7 +679,12 @@ func (w *Workload) UpdateAgentConditions(ctx context.Context, controlPlane *Cont
 		}
 		if !found {
 			for _, condition := range allMachinePodConditions {
-				conditions.MarkFalse(machine, condition, controlplanev1.PodFailedReason, clusterv1.ConditionSeverityError, "Missing node")
+				conditions.Set(machine, metav1.Condition{
+					Type:    condition,
+					Status:  metav1.ConditionFalse,
+					Reason:  string(controlplanev1.PodFailedReason),
+					Message: "Node is missing",
+				})
 			}
 		}
 	}
@@ -643,7 +694,7 @@ func (w *Workload) UpdateAgentConditions(ctx context.Context, controlPlane *Cont
 		controlPlane:      controlPlane,
 		machineConditions: allMachinePodConditions,
 		kcpErrors:         kcpErrors,
-		condition:         controlplanev1.ControlPlaneComponentsHealthyCondition,
+		condition:         string(controlplanev1.ControlPlaneComponentsHealthyCondition),
 		unhealthyReason:   controlplanev1.ControlPlaneComponentsUnhealthyReason,
 		unknownReason:     controlplanev1.ControlPlaneComponentsUnknownReason,
 		note:              "control plane",
@@ -652,9 +703,9 @@ func (w *Workload) UpdateAgentConditions(ctx context.Context, controlPlane *Cont
 
 type aggregateFromMachinesToKCPInput struct {
 	controlPlane      *ControlPlane
-	machineConditions []clusterv1.ConditionType
+	machineConditions []string
 	kcpErrors         []string
-	condition         clusterv1.ConditionType
+	condition         string
 	unhealthyReason   string
 	unknownReason     string
 	note              string
@@ -677,18 +728,17 @@ func aggregateFromMachinesToKCP(input aggregateFromMachinesToKCPInput) {
 		for _, condition := range input.machineConditions {
 			if machineCondition := conditions.Get(machine, condition); machineCondition != nil {
 				switch machineCondition.Status {
-				case corev1.ConditionTrue:
+				case metav1.ConditionTrue:
 					kcpMachinesWithTrue.Insert(machine.Name)
-				case corev1.ConditionFalse:
-					switch machineCondition.Severity {
-					case clusterv1.ConditionSeverityInfo:
-						kcpMachinesWithInfo.Insert(machine.Name)
-					case clusterv1.ConditionSeverityWarning:
-						kcpMachinesWithWarnings.Insert(machine.Name)
-					case clusterv1.ConditionSeverityError:
+				case metav1.ConditionFalse:
+					reason := strings.ToLower(machineCondition.Reason)
+					switch {
+					case strings.Contains(reason, "error"), strings.Contains(reason, "fail"):
 						kcpMachinesWithErrors.Insert(machine.Name)
+					default:
+						kcpMachinesWithWarnings.Insert(machine.Name)
 					}
-				case corev1.ConditionUnknown:
+				case metav1.ConditionUnknown:
 					kcpMachinesWithUnknown.Insert(machine.Name)
 				}
 			}
@@ -700,31 +750,56 @@ func aggregateFromMachinesToKCP(input aggregateFromMachinesToKCPInput) {
 		input.kcpErrors = append(input.kcpErrors, fmt.Sprintf("Following machines are reporting %s errors: %s", input.note, strings.Join(kcpMachinesWithErrors.List(), ", ")))
 	}
 	if len(input.kcpErrors) > 0 {
-		conditions.MarkFalse(input.controlPlane.KCP, input.condition, input.unhealthyReason, clusterv1.ConditionSeverityError, "%s", strings.Join(input.kcpErrors, "; "))
+		conditions.Set(input.controlPlane.KCP, metav1.Condition{
+			Type:    input.condition,
+			Status:  metav1.ConditionFalse,
+			Reason:  input.unhealthyReason,
+			Message: strings.Join(input.kcpErrors, "; "),
+		})
 		return
 	}
 
 	// In case of no errors and at least one machine with warnings, report false, warnings.
 	if len(kcpMachinesWithWarnings) > 0 {
-		conditions.MarkFalse(input.controlPlane.KCP, input.condition, input.unhealthyReason, clusterv1.ConditionSeverityWarning, "Following machines are reporting %s warnings: %s", input.note, strings.Join(kcpMachinesWithWarnings.List(), ", "))
+		conditions.Set(input.controlPlane.KCP, metav1.Condition{
+			Type:    input.condition,
+			Status:  metav1.ConditionFalse,
+			Reason:  input.unhealthyReason,
+			Message: fmt.Sprintf("Following machines are reporting warnings: %s", strings.Join(kcpMachinesWithWarnings.List(), ", ")),
+		})
 		return
 	}
 
 	// In case of no errors, no warning, and at least one machine with info, report false, info.
-	if len(kcpMachinesWithWarnings) > 0 {
-		conditions.MarkFalse(input.controlPlane.KCP, input.condition, input.unhealthyReason, clusterv1.ConditionSeverityWarning, "Following machines are reporting %s info: %s", input.note, strings.Join(kcpMachinesWithInfo.List(), ", "))
+	if len(kcpMachinesWithInfo) > 0 {
+		conditions.Set(input.controlPlane.KCP, metav1.Condition{
+			Type:    input.condition,
+			Status:  metav1.ConditionFalse,
+			Reason:  input.unhealthyReason,
+			Message: fmt.Sprintf("Following machines are reporting info: %s", strings.Join(kcpMachinesWithInfo.List(), ", ")),
+		})
 		return
 	}
 
 	// In case of no errors, no warning, no Info, and at least one machine with true conditions, report true.
 	if len(kcpMachinesWithTrue) > 0 {
-		conditions.MarkTrue(input.controlPlane.KCP, input.condition)
+		conditions.Set(input.controlPlane.KCP, metav1.Condition{
+			Type:    input.condition,
+			Status:  metav1.ConditionTrue,
+			Reason:  "",
+			Message: fmt.Sprintf("Following machines are reporting true: %s", strings.Join(kcpMachinesWithTrue.List(), ", ")),
+		})
 		return
 	}
 
 	// Otherwise, if there is at least one machine with unknown, report unknown.
 	if len(kcpMachinesWithUnknown) > 0 {
-		conditions.MarkUnknown(input.controlPlane.KCP, input.condition, input.unknownReason, "Following machines are reporting unknown %s status: %s", input.note, strings.Join(kcpMachinesWithUnknown.List(), ", "))
+		conditions.Set(input.controlPlane.KCP, metav1.Condition{
+			Type:    input.condition,
+			Status:  metav1.ConditionUnknown,
+			Reason:  input.unknownReason,
+			Message: fmt.Sprintf("Following machines are reporting unknown %s status: %s", input.note, strings.Join(kcpMachinesWithUnknown.List(), ", ")),
+		})
 		return
 	}
 

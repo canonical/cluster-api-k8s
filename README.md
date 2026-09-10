@@ -5,3 +5,6 @@ This repository contains bootstrap and control plane providers to deploy Canonic
 CABPCK (Cluster API bootstrap provider for Canonical Kubernetes) is responsible for generate cloud-init scripts for generate Machines such that they run Kubernetes nodes. This implementation uses [Canonical Kubernetes](https://github.com/canonical/k8s-snap) to deliver Kubernetes.
 
 CACPCK (Cluster API control plane provider for Canonical Kubernetes) is responsible for managing the lifecycle of machines that host the control plane nodes of a Canonical Kubernetes cluster.
+
+Current cluster api version: v1beta2.
+Current version: v1beta3.

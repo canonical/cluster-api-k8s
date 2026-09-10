@@ -1,4 +1,4 @@
-apiVersion: cluster.x-k8s.io/v1beta1
+apiVersion: cluster.x-k8s.io/v1beta2
 kind: Cluster
 metadata:
   name: ${CLUSTER_NAME}
@@ -10,11 +10,11 @@ spec:
       cidrBlocks: ${SERVICE_CIDR:=[10.152.0.0/16]}
     serviceDomain: cluster.local
   controlPlaneRef:
-    apiVersion: controlplane.cluster.x-k8s.io/v1beta2
+    apiGroup: controlplane.cluster.x-k8s.io
     kind: CK8sControlPlane
     name: ${CLUSTER_NAME}-control-plane
   infrastructureRef:
-    apiVersion: infrastructure.cluster.x-k8s.io/v1alpha2
+    apiGroup: infrastructure.cluster.x-k8s.io
     kind: LXCCluster
     name: ${CLUSTER_NAME}
 ---
@@ -44,6 +44,9 @@ spec:
     nodeDrainTimeout: 30s
     nodeVolumeDetachTimeout: 30s
     nodeDeletionTimeout: 30s
+    metadata:
+      labels:
+        key: value
   replicas: ${CONTROL_PLANE_MACHINE_COUNT}
   version: ${KUBERNETES_VERSION}
   spec:
@@ -67,7 +70,7 @@ spec:
       image:
         name: ${LXC_IMAGE_NAME}
 ---
-apiVersion: cluster.x-k8s.io/v1beta1
+apiVersion: cluster.x-k8s.io/v1beta2
 kind: MachineDeployment
 metadata:
   name: ${CLUSTER_NAME}-md-0
@@ -91,11 +94,11 @@ spec:
       clusterName: ${CLUSTER_NAME}
       bootstrap:
         configRef:
-          apiVersion: bootstrap.cluster.x-k8s.io/v1beta2
+          apiGroup: bootstrap.cluster.x-k8s.io
           kind: CK8sConfigTemplate
           name: ${CLUSTER_NAME}-md-0
       infrastructureRef:
-        apiVersion: infrastructure.cluster.x-k8s.io/v1alpha2
+        apiGroup: infrastructure.cluster.x-k8s.io
         kind: LXCMachineTemplate
         name: ${CLUSTER_NAME}-md-0
 ---
@@ -126,17 +129,21 @@ spec:
 # MachineHealthCheck object with
 # - a selector that targets all the machines with label e2e.remediation.label=""
 # - unhealthyConditions triggering remediation after 10s the condition is set
-apiVersion: cluster.x-k8s.io/v1beta1
+apiVersion: cluster.x-k8s.io/v1beta2
 kind: MachineHealthCheck
 metadata:
   name: "${CLUSTER_NAME}-mhc-0"
 spec:
   clusterName: "${CLUSTER_NAME}"
-  maxUnhealthy: 100%
+  remediation:
+    triggerIf:
+      unhealthyLessThanOrEqualTo: 100%
   selector:
     matchLabels:
       e2e.remediation.label: ""
-  unhealthyConditions:
-    - type: e2e.remediation.condition
-      status: "False"
-      timeout: 10s
+  checks:
+    nodeStartupTimeoutSeconds: 120
+    unhealthyNodeConditions:
+      - status: "False"
+        timeoutSeconds: 10
+        type: e2e.remediation.condition
