@@ -130,7 +130,6 @@ func main() {
 	}
 
 	if os.Getenv("ENABLE_WEBHOOKS") != "false" {
-
 		if err = (&controlplanev1beta2.CK8sControlPlane{}).SetupWebhookWithManager(mgr); err != nil {
 			setupLog.Error(err, "unable to create webhook", "webhook", "CK8sControlPlane v1beta2")
 			os.Exit(1)

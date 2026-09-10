@@ -30,7 +30,7 @@ import (
 const (
 	// NOTE(neoaggelos): See notes below.
 	labelNodeRoleControlPlane = "node-role.kubernetes.io/control-plane"
-	k8sdConfigSecretName      = "k8sd-config" //nolint:gosec
+	k8sdConfigSecretName      = "k8sd-config"
 )
 
 // WorkloadCluster defines all behaviors necessary to upgrade kubernetes on a workload cluster

@@ -69,9 +69,8 @@ func (r *MachineReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 	// if machine registered PreTerminate hook, wait for capi asks to resolve PreTerminateDeleteHook
 	if annotations.HasWithPrefix(clusterv1.PreTerminateDeleteHookAnnotationPrefix, m.Annotations) &&
 		m.Annotations[clusterv1.PreTerminateDeleteHookAnnotationPrefix] == ck8sHookName {
-
 		if !conditions.IsFalse(m, string(clusterv1.PreDrainDeleteHookSucceededV1Beta1Condition)) {
-			logger.Info("wait for machine drain and detech volume operation complete.")
+			logger.Info("wait for machine drain and detach volume operation complete.")
 			return ctrl.Result{}, nil
 		}
 
