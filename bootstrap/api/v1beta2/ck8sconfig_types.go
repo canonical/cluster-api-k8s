@@ -190,6 +190,10 @@ type CK8sControlPlaneConfig struct {
 	// ExtraKubeSchedulerArgs - extra arguments to add to kube-scheduler.
 	// +optional
 	ExtraKubeSchedulerArgs map[string]*string `json:"extraKubeSchedulerArgs,omitempty"`
+
+	// RemovalCooldownPeriodSeconds is the period in seconds to wait to remove a Control Plane after a new Control Plane just showed up
+	// +optional
+	RemovalCooldownPeriodSeconds int `json:"removalCooldownPeriodSeconds,omitempty"`
 }
 
 // GetMicroclusterPort returns the port to use for microcluster.

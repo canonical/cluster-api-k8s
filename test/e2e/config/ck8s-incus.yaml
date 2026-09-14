@@ -15,8 +15,8 @@ providers:
   - name: cluster-api
     type: CoreProvider
     versions:
-      - name: v1.9.6
-        value: https://github.com/kubernetes-sigs/cluster-api/releases/download/v1.9.6/core-components.yaml
+      - name: v1.13.2
+        value: https://github.com/kubernetes-sigs/cluster-api/releases/download/v1.13.2/core-components.yaml
         type: url
         files:
           - sourcePath: "../data/shared/v1beta1/metadata.yaml"
@@ -27,8 +27,8 @@ providers:
     type: InfrastructureProvider
     versions:
       # Latest stable version
-      - name: v0.8.3
-        value: https://github.com/lxc/cluster-api-provider-incus/releases/download/v0.8.3/infrastructure-components.yaml
+      - name: v0.9.0
+        value: https://github.com/lxc/cluster-api-provider-incus/releases/download/v0.9.0/infrastructure-components.yaml
         type: url
         files:
           - sourcePath: "../data/shared/v1beta1_incus/metadata.yaml"
@@ -70,9 +70,9 @@ providers:
         targetName: "metadata.yaml"
 
 variables:
-  KUBERNETES_VERSION_MANAGEMENT: "v1.32.9"
-  KUBERNETES_VERSION: "v1.33.5"
-  KUBERNETES_VERSION_UPGRADE_TO: "v1.34.0"
+  KUBERNETES_VERSION_MANAGEMENT: "v1.35.3"
+  KUBERNETES_VERSION: "v1.35.3"
+  KUBERNETES_VERSION_UPGRADE_TO: "v1.35.3"
   IP_FAMILY: "IPv4"
   IN_PLACE_UPGRADE_OPTION: "channel=1.34-classic/stable"
   
