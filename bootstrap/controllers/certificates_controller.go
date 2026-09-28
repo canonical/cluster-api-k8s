@@ -219,7 +219,7 @@ func (r *CertificatesReconciler) refreshCertificates(ctx context.Context, scope 
 	var expirySecondsUnix int
 	configOwner, _ := bsutil.GetConfigOwner(ctx, r.Client, scope.Config)
 	if configOwner.IsControlPlaneMachine() {
-		var extraSANs []string
+		extraSANs := make([]string, 0, 1)
 		extraSANs = append(extraSANs, scope.Config.Spec.ControlPlaneConfig.ExtraSANs...)
 		extraSANs = append(extraSANs, scope.Cluster.Spec.ControlPlaneEndpoint.Host)
 		expirySecondsUnix, err = scope.Workload.RefreshControlPlaneCertificates(

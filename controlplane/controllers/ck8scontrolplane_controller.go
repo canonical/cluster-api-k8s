@@ -31,7 +31,6 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	kerrors "k8s.io/apimachinery/pkg/util/errors"
 	"k8s.io/client-go/tools/record"
-	"k8s.io/utils/pointer"
 	"k8s.io/utils/ptr"
 	clusterv1 "sigs.k8s.io/cluster-api/api/core/v1beta2"
 	"sigs.k8s.io/cluster-api/controllers/external"
@@ -85,7 +84,7 @@ func (r *CK8sControlPlaneReconciler) Reconcile(ctx context.Context, req ctrl.Req
 	if err := r.Get(ctx, req.NamespacedName, kcp); err != nil {
 		if apierrors.IsNotFound(err) {
 			logger.Error(err, "Failed to retrieve CK8sControlPlane: Not Found")
-			return ctrl.Result{}, err
+			return ctrl.Result{}, nil
 		}
 		logger.Error(err, "Failed to retrieve CK8sControlPlane")
 		return ctrl.Result{}, err
@@ -111,7 +110,7 @@ func (r *CK8sControlPlaneReconciler) Reconcile(ctx context.Context, req ctrl.Req
 	}
 
 	// Wait for the cluster infrastructure to be ready before creating machines
-	if !conditions.IsTrue(cluster, clusterv1.InfrastructureReadyCondition) {
+	if !ptr.Deref(cluster.Status.Initialization.InfrastructureProvisioned, false) {
 		logger.Info("Cluster infrastructure is not ready. Requeuing CK8sControlPlane")
 		return reconcile.Result{}, nil
 	}
@@ -130,7 +129,7 @@ func (r *CK8sControlPlaneReconciler) Reconcile(ctx context.Context, req ctrl.Req
 		// patch and return right away instead of reusing the main defer,
 		// because the main defer may take too much time to get cluster status
 		// Patch ObservedGeneration only if the reconciliation completed successfully
-		patchOpts := []patch.Option{}
+		patchOpts := make([]patch.Option, 0, 1)
 		patchOpts = append(patchOpts, patch.WithStatusObservedGeneration{})
 		if err := patchHelper.Patch(ctx, kcp, patchOpts...); err != nil {
 			logger.Error(err, "Failed to patch CK8sControlPlane to add finalizer")
@@ -148,24 +147,24 @@ func (r *CK8sControlPlaneReconciler) Reconcile(ctx context.Context, req ctrl.Req
 				logger.Info("Could not connect to workload cluster to fetch status", "updateErr", updateErr.Error())
 			} else {
 				logger.Error(updateErr, "Failed to update CK8sControlPlane Status")
-				err = kerrors.NewAggregate([]error{err, updateErr})
+				reterr = kerrors.NewAggregate([]error{reterr, updateErr})
 			}
 		}
 
 		// Always attempt to Patch the CK8sControlPlane object and status after each reconciliation.
 		if patchErr := patchCK8sControlPlane(ctx, patchHelper, kcp); patchErr != nil {
 			logger.Error(patchErr, "Failed to patch CK8sControlPlane")
-			err = kerrors.NewAggregate([]error{err, patchErr})
+			reterr = kerrors.NewAggregate([]error{reterr, patchErr})
 		}
 
 		// TODO: remove this as soon as we have a proper remote cluster cache in place.
 		// Make KCP to requeue in case status is not ready, so we can check for node status without waiting for a full resync (by default 10 minutes).
 		// Only requeue if we are not going in exponential backoff due to error, or if we are not already re-queueing, or if the object has a deletion timestamp.
 		logger.Info("Checking if to requeueing CK8sControlPlane")
-		if err == nil && !res.Requeue && res.RequeueAfter <= 0 && kcp.DeletionTimestamp.IsZero() {
+		if reterr == nil && !res.Requeue && res.RequeueAfter <= 0 && kcp.DeletionTimestamp.IsZero() {
 			logger.Info("Checking if to requeueing CK8sControlPlane for not ready status")
 
-			if !conditions.IsTrue(cluster, clusterv1.ClusterControlPlaneAvailableCondition) {
+			if !conditions.IsTrue(kcp, string(controlplanev1.AvailableCondition)) {
 				logger.Info("Requeueing CK8sControlPlane for not ready status", "requeueAfter", 20*time.Second)
 				res = ctrl.Result{RequeueAfter: 20 * time.Second}
 			}
@@ -436,7 +435,7 @@ func (r *CK8sControlPlaneReconciler) updateStatus(ctx context.Context, kcp *cont
 	// is installed, so we fall back to API-server accessibility (ClusterStatus succeeded + replicas
 	// exist) to break the initialization deadlock and allow the MAAS controller to proceed.
 	if status.HasK8sdConfigMap || (!enableDefaultNetwork && replicas > 0) {
-		kcp.Status.Initialization.ControlPlaneInitialized = pointer.Bool(true)
+		kcp.Status.Initialization.ControlPlaneInitialized = ptr.To(true)
 	}
 
 	// When default network is disabled, nodes remain NotReady until the external CNI is
@@ -591,6 +590,42 @@ func (r *CK8sControlPlaneReconciler) reconcile(ctx context.Context, cluster *clu
 	if err := r.syncMachines(ctx, kcp, controlPlane); err != nil {
 		return reconcile.Result{}, fmt.Errorf("failed to sync Machines: %w", err)
 	}
+	if len(ownedMachines.UnsortedList()) == 0 {
+		conditions.Set(kcp, metav1.Condition{
+			Type:   string(controlplanev1.MachinesReadyCondition),
+			Status: metav1.ConditionTrue,
+			Reason: controlplanev1.MachinesReadyReason,
+		})
+	} else {
+		readyCondition, err := conditions.NewAggregateCondition(
+			ownedMachines.UnsortedList(), clusterv1.MachineReadyCondition,
+			conditions.TargetConditionType(controlplanev1.MachinesReadyCondition),
+			conditions.CustomMergeStrategy{
+				MergeStrategy: conditions.DefaultMergeStrategy(
+					conditions.ComputeReasonFunc(conditions.GetDefaultComputeMergeReasonFunc(
+						controlplanev1.MachinesNotReadyReason,
+						controlplanev1.MachinesReadyUnknownReason,
+						controlplanev1.MachinesReadyReason,
+					)),
+				),
+			},
+		)
+		if err != nil {
+			conditions.Set(kcp, metav1.Condition{
+				Type:    string(controlplanev1.MachinesReadyCondition),
+				Status:  metav1.ConditionUnknown,
+				Reason:  controlplanev1.MachinesReadyInternalErrorReason,
+				Message: "Please check controller logs for errors",
+			})
+
+			logger.Error(err, fmt.Sprintf("Failed to aggregate Machine's %s conditions", clusterv1.MachinesReadyCondition))
+		} else {
+			if readyCondition.Reason == "" {
+				readyCondition.Reason = controlplanev1.MachinesReadyReason
+			}
+			conditions.Set(kcp, *readyCondition)
+		}
+	}
 
 	// Updates conditions reporting the status of static pods
 	// NOTE: Conditions reporting KCP operation progress like e.g. Resized or SpecUpToDate are inlined with the rest of the execution.
@@ -602,6 +637,11 @@ func (r *CK8sControlPlaneReconciler) reconcile(ctx context.Context, cluster *clu
 	// otherwise continue with the other KCP operations.
 	if result, err := r.reconcileUnhealthyMachines(ctx, controlPlane); err != nil || !result.IsZero() {
 		return result, err
+	}
+
+	if !conditions.IsTrue(kcp, clusterv1.MachinesReadyCondition) {
+		logger.Info("clusterv1.MachinesReadyCondition is false, reqeueing")
+		return ctrl.Result{Requeue: true}, nil
 	}
 
 	// Control plane machines rollout due to configuration changes (e.g. upgrades) takes precedence over other operations.

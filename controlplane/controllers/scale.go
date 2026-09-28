@@ -21,6 +21,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"math"
 	"strings"
 
 	corev1 "k8s.io/api/core/v1"
@@ -30,6 +31,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	kerrors "k8s.io/apimachinery/pkg/util/errors"
 	"k8s.io/apiserver/pkg/storage/names"
+	"k8s.io/utils/ptr"
 	clusterv1 "sigs.k8s.io/cluster-api/api/core/v1beta2"
 	"sigs.k8s.io/cluster-api/controllers/external"
 	"sigs.k8s.io/cluster-api/util"
@@ -360,6 +362,16 @@ func (r *CK8sControlPlaneReconciler) generateCK8sConfig(ctx context.Context, kcp
 	return bootstrapRef, nil
 }
 
+func tranformTimeoutToSeconds(timeout *metav1.Duration) *int32 {
+	if timeout == nil {
+		return nil
+	}
+
+	secondsInt := int32(math.Round(timeout.Seconds()))
+
+	return ptr.To(secondsInt)
+}
+
 func (r *CK8sControlPlaneReconciler) generateMachine(ctx context.Context, kcp *controlplanev1.CK8sControlPlane, cluster *clusterv1.Cluster, infraRef, bootstrapRef *clusterv1.ContractVersionedObjectReference, failureDomain *string) error {
 	machine := &clusterv1.Machine{
 		ObjectMeta: metav1.ObjectMeta{
@@ -378,6 +390,11 @@ func (r *CK8sControlPlaneReconciler) generateMachine(ctx context.Context, kcp *c
 				ConfigRef: *bootstrapRef,
 			},
 			FailureDomain: *failureDomain,
+			Deletion: clusterv1.MachineDeletionSpec{
+				NodeDrainTimeoutSeconds:        tranformTimeoutToSeconds(kcp.Spec.MachineTemplate.NodeDrainTimeout),
+				NodeVolumeDetachTimeoutSeconds: tranformTimeoutToSeconds(kcp.Spec.MachineTemplate.NodeVolumeDetachTimeout),
+				NodeDeletionTimeoutSeconds:     tranformTimeoutToSeconds(kcp.Spec.MachineTemplate.NodeDeletionTimeout),
+			},
 		},
 	}
 

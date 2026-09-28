@@ -166,7 +166,7 @@ func (r *CK8sConfigReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 
 	switch {
 	// Wait for the infrastructure to be ready.
-	case !*cluster.Status.Initialization.InfrastructureProvisioned:
+	case !ptr.Deref(cluster.Status.Initialization.InfrastructureProvisioned, false):
 		log.Info("Cluster infrastructure is not ready, waiting")
 		conditions.Set(config, metav1.Condition{
 			Type:    string(bootstrapv1.DataSecretAvailableCondition),
@@ -194,7 +194,7 @@ func (r *CK8sConfigReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 	}
 
 	// Note: can't use IsFalse here because we need to handle the absence of the condition as well as false.
-	if !conditions.IsTrue(cluster, clusterv1.ClusterControlPlaneAvailableCondition) {
+	if !conditions.IsTrue(cluster, clusterv1.ClusterControlPlaneInitializedCondition) {
 		return r.handleClusterNotInitialized(ctx, scope)
 	}
 

@@ -41,9 +41,9 @@ spec:
       kind: LXCMachineTemplate
       name: ${CLUSTER_NAME}-control-plane
       apiVersion: infrastructure.cluster.x-k8s.io/v1alpha2
-    nodeDrainTimeout: 30s
-    nodeVolumeDetachTimeout: 30s
-    nodeDeletionTimeout: 30s
+    nodeDrainTimeout: 300s
+    nodeVolumeDetachTimeout: 300s
+    nodeDeletionTimeout: 300s
     metadata:
       labels:
         key: value
@@ -130,6 +130,10 @@ spec:
         apiGroup: infrastructure.cluster.x-k8s.io
         kind: LXCMachineTemplate
         name: ${CLUSTER_NAME}-md-0
+      deletion:
+        nodeDrainTimeoutSeconds: 300
+        nodeVolumeDetachTimeoutSeconds: 300
+        nodeDeletionTimeoutSeconds: 300
 ---
 apiVersion: infrastructure.cluster.x-k8s.io/v1alpha2
 kind: LXCMachineTemplate

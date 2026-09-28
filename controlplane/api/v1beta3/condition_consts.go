@@ -22,8 +22,14 @@ import clusterv1 "sigs.k8s.io/cluster-api/api/core/v1beta2"
 
 const (
 	// MachinesReady reports an aggregate of current status of the machines controlled by the CK8sControlPlane.
-	MachinesReadyCondition                       clusterv1.ConditionType = "MachinesReady"
-	CK8sControlPlaneMachineAgentHealthyCondition clusterv1.ConditionType = "AgentHealthy"
+	MachinesReadyCondition clusterv1.ConditionType = "MachinesReady"
+)
+
+const (
+	MachinesNotReadyReason           = "MachinesNotReadyReason"
+	MachinesReadyUnknownReason       = "MachinesReadyUnknownReason"
+	MachinesReadyReason              = "MachinesReadyReason"
+	MachinesReadyInternalErrorReason = "MachinesReadyInternalErrorReason"
 )
 
 const (
@@ -72,6 +78,9 @@ const (
 	// ControlPlaneComponentsHealthyCondition reports the overall status of the control plane.
 	ControlPlaneComponentsHealthyCondition clusterv1.ConditionType = "ControlPlaneComponentsHealthy"
 
+	// ControlPlaneComponentsUnhealthyReason (Severity=Error) documents all control plane components are healthy.
+	ControlPlaneComponentsHealthyReason = "ControlPlaneComponentsHealthy"
+
 	// ControlPlaneComponentsUnhealthyReason (Severity=Error) documents a control plane component not healthy.
 	ControlPlaneComponentsUnhealthyReason = "ControlPlaneComponentsUnhealthy"
 
@@ -83,6 +92,8 @@ const (
 
 	// MachineAgentHealthyCondition reports a machine's operational status.
 	MachineAgentHealthyCondition clusterv1.ConditionType = "AgentHealthy"
+
+	MachineAgentHealthyConditionReason = "AgentHealthy"
 
 	// PodProvisioningReason (Severity=Info) documents a pod waiting to be provisioned i.e., Pod is in "Pending" phase.
 	PodProvisioningReason = "PodProvisioning"
