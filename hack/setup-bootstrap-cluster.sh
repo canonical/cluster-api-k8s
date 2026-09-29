@@ -118,8 +118,20 @@ echo "==> Pulling kubeconfig from $bootstrap_cluster_name to ~/.kube/config..."
 mkdir -p ~/.kube
 sudo lxc file pull $bootstrap_cluster_name/root/.kube/config ~/.kube/config
 
+sudo lxc exec $bootstrap_cluster_name -- k8s kubectl get node
+sudo lxc exec $bootstrap_cluster_name -- k8s kubectl get pod -n kube-system
+sudo lxc exec $bootstrap_cluster_name -- k8s kubectl get pod -A
+
+sleep 120
+
+sudo lxc exec $bootstrap_cluster_name -- k8s kubectl get node
+sudo lxc exec $bootstrap_cluster_name -- k8s kubectl get pod -n kube-system
+sudo lxc exec $bootstrap_cluster_name -- k8s kubectl get pod -A
+
+sleep 30
+
+sudo lxc exec $bootstrap_cluster_name -- k8s kubectl logs -n kube-system deployment/coredns --all-pods
+sudo lxc exec $bootstrap_cluster_name -- k8s kubectl logs -n kube-system deployment/cilium-operator --all-pods
+
 echo "==> Setup complete! Bootstrap cluster '$bootstrap_cluster_name' is ready."
-
-
-
 

@@ -16,7 +16,7 @@ permissions:
 jobs:
   build-e2e-images:
     name: Build & Run E2E Images
-    runs-on: [self-hosted, linux, X64, jammy, xlarge]
+    runs-on: [self-hosted, linux, X64, noble, xlarge]
     steps:
       - name: Login to GitHub Container Registry
         uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3

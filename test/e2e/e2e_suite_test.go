@@ -194,6 +194,7 @@ var _ = SynchronizedAfterSuite(func() {
 
 	By("Dumping logs from the bootstrap cluster")
 	dumpBootstrapClusterLogs(bootstrapClusterProxy)
+	bootstrapClusterProxy.CollectWorkloadClusterLogs(ctx, "kube-system", "test", filepath.Join(artifactFolder, "clusters", "test"))
 
 	Byf("Dumping all the Cluster API resources in the %q namespace", input.Namespace.Name)
 	// Dump all Cluster API related resources to artifacts before deleting them.
@@ -319,7 +320,7 @@ func dumpBootstrapClusterLogs(bootstrapClusterProxy framework.ClusterProxy) {
 				Spec:       clusterv1.MachineSpec{ClusterName: nodeName},
 				ObjectMeta: metav1.ObjectMeta{Name: nodeName},
 			},
-			filepath.Join(artifactFolder, "clusters", bootstrapClusterProxy.GetName(), "machines", nodeName),
+			filepath.Join(artifactFolder, "clusters", bootstrapClusterProxy.GetName(), "machinesLogs", nodeName),
 		)
 		if err != nil {
 			fmt.Printf("Failed to get logs for the bootstrap cluster node %s: %v\n", nodeName, err)
