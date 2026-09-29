@@ -195,6 +195,16 @@ var _ = SynchronizedAfterSuite(func() {
 	By("Dumping logs from the bootstrap cluster")
 	dumpBootstrapClusterLogs(bootstrapClusterProxy)
 
+	Byf("Dumping all the Cluster API resources in the %q namespace", input.Namespace.Name)
+	// Dump all Cluster API related resources to artifacts before deleting them.
+	framework.DumpAllResources(ctx, framework.DumpAllResourcesInput{
+		Lister:               input.ClusterProxy.GetClient(),
+		Namespace:            "kube-system",
+		LogPath:              filepath.Join(input.ArtifactFolder, "clusters", input.ClusterProxy.GetName(), "kube-system"),
+		KubeConfigPath:       input.ClusterProxy.GetKubeconfigPath(),
+		ClusterctlConfigPath: input.ClusterctlConfigPath,
+	})
+
 	By("Tearing down the management cluster")
 	if !skipCleanup {
 		tearDown(bootstrapClusterProvider, bootstrapClusterProxy)
@@ -297,6 +307,7 @@ func dumpBootstrapClusterLogs(bootstrapClusterProxy framework.ClusterProxy) {
 
 	for i := range nodes.Items {
 		nodeName := nodes.Items[i].GetName()
+		fmt.Printf("Getting logs from bootstrap node: %s\n", nodeName)
 		err = clusterLogCollector.CollectMachineLog(
 			ctx,
 			bootstrapClusterProxy.GetClient(),

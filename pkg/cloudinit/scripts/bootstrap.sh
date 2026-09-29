@@ -7,6 +7,7 @@
 
 address="$(cat /capi/etc/microcluster-address)"
 name="$(cat /capi/etc/node-name)"
+
 config_file="/capi/etc/config.yaml"
 
 if [ ! -f /etc/kubernetes/pki/ca.crt ]; then
