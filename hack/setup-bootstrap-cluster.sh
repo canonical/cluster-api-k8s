@@ -133,5 +133,7 @@ sleep 30
 sudo lxc exec $bootstrap_cluster_name -- k8s kubectl logs -n kube-system deployment/coredns --all-pods
 sudo lxc exec $bootstrap_cluster_name -- k8s kubectl logs -n kube-system deployment/cilium-operator --all-pods
 
+sudo lxc exec $bootstrap_cluster_name -- journalctl -xn --no-pager
+
 echo "==> Setup complete! Bootstrap cluster '$bootstrap_cluster_name' is ready."
 
