@@ -5,13 +5,11 @@ import (
 
 	. "github.com/onsi/gomega"
 	"google.golang.org/protobuf/proto"
-	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/utils/ptr"
-	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
+	clusterv1 "sigs.k8s.io/cluster-api/api/core/v1beta2"
 
-	bootstrapv1 "github.com/canonical/cluster-api-k8s/bootstrap/api/v1beta2"
-	controlplanev1 "github.com/canonical/cluster-api-k8s/controlplane/api/v1beta2"
+	bootstrapv1 "github.com/canonical/cluster-api-k8s/bootstrap/api/v1beta3"
+	controlplanev1 "github.com/canonical/cluster-api-k8s/controlplane/api/v1beta3"
 )
 
 func TestMatchesCK8sBootstrapConfig(t *testing.T) {
@@ -51,11 +49,9 @@ func TestMatchesCK8sBootstrapConfig(t *testing.T) {
 			},
 			Spec: clusterv1.MachineSpec{
 				Bootstrap: clusterv1.Bootstrap{
-					ConfigRef: &corev1.ObjectReference{
-						Kind:       "CK8sConfig",
-						Namespace:  "default",
-						Name:       "test",
-						APIVersion: bootstrapv1.GroupVersion.String(),
+					ConfigRef: clusterv1.ContractVersionedObjectReference{
+						Kind: "CK8sConfig",
+						Name: "test",
 					},
 				},
 			},
@@ -100,11 +96,9 @@ func TestMatchesCK8sBootstrapConfig(t *testing.T) {
 			},
 			Spec: clusterv1.MachineSpec{
 				Bootstrap: clusterv1.Bootstrap{
-					ConfigRef: &corev1.ObjectReference{
-						Kind:       "CK8sConfig",
-						Namespace:  "default",
-						Name:       "test",
-						APIVersion: bootstrapv1.GroupVersion.String(),
+					ConfigRef: clusterv1.ContractVersionedObjectReference{
+						Kind: "CK8sConfig",
+						Name: "test",
 					},
 				},
 			},
@@ -160,11 +154,9 @@ func TestMatchesCK8sBootstrapConfig(t *testing.T) {
 			},
 			Spec: clusterv1.MachineSpec{
 				Bootstrap: clusterv1.Bootstrap{
-					ConfigRef: &corev1.ObjectReference{
-						Kind:       "CK8sConfig",
-						Namespace:  "default",
-						Name:       "test",
-						APIVersion: bootstrapv1.GroupVersion.String(),
+					ConfigRef: clusterv1.ContractVersionedObjectReference{
+						Kind: "CK8sConfig",
+						Name: "test",
 					},
 				},
 			},
@@ -226,11 +218,9 @@ func TestMatchesCK8sBootstrapConfig(t *testing.T) {
 			},
 			Spec: clusterv1.MachineSpec{
 				Bootstrap: clusterv1.Bootstrap{
-					ConfigRef: &corev1.ObjectReference{
-						Kind:       "CK8sConfig",
-						Namespace:  "default",
-						Name:       "test",
-						APIVersion: bootstrapv1.GroupVersion.String(),
+					ConfigRef: clusterv1.ContractVersionedObjectReference{
+						Kind: "CK8sConfig",
+						Name: "test",
 					},
 				},
 			},
@@ -295,25 +285,25 @@ func TestMatchesKubernetesVersion(t *testing.T) {
 			name:              "returns true if machine's version matches",
 			kubernetesVersion: "v1.30.0",
 			expectedMatch:     true,
-			machine:           &clusterv1.Machine{Spec: clusterv1.MachineSpec{Version: ptr.To("v1.30.0")}},
+			machine:           &clusterv1.Machine{Spec: clusterv1.MachineSpec{Version: "v1.30.0"}},
 		},
 		{
 			name:              "ignores 'v' prefix",
 			kubernetesVersion: "1.30.0",
 			expectedMatch:     true,
-			machine:           &clusterv1.Machine{Spec: clusterv1.MachineSpec{Version: ptr.To("v1.30.0")}},
+			machine:           &clusterv1.Machine{Spec: clusterv1.MachineSpec{Version: "v1.30.0"}},
 		},
 		{
 			name:              "returns false if machine's version does not match",
 			kubernetesVersion: "v1.30.0",
 			expectedMatch:     false,
-			machine:           &clusterv1.Machine{Spec: clusterv1.MachineSpec{Version: ptr.To("v1.29.0")}},
+			machine:           &clusterv1.Machine{Spec: clusterv1.MachineSpec{Version: "v1.29.0"}},
 		},
 		{
 			name:              "returns false if machine's version is nil",
 			kubernetesVersion: "v1.30.0",
 			expectedMatch:     false,
-			machine:           &clusterv1.Machine{Spec: clusterv1.MachineSpec{Version: nil}},
+			machine:           &clusterv1.Machine{Spec: clusterv1.MachineSpec{Version: ""}},
 		},
 		{
 			name:          "returns false if machine is nil",

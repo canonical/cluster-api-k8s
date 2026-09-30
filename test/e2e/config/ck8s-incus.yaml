@@ -15,8 +15,8 @@ providers:
   - name: cluster-api
     type: CoreProvider
     versions:
-      - name: v1.9.6
-        value: https://github.com/kubernetes-sigs/cluster-api/releases/download/v1.9.6/core-components.yaml
+      - name: v1.13.4
+        value: https://github.com/kubernetes-sigs/cluster-api/releases/download/v1.13.4/core-components.yaml
         type: url
         files:
           - sourcePath: "../data/shared/v1beta1/metadata.yaml"
@@ -27,8 +27,8 @@ providers:
     type: InfrastructureProvider
     versions:
       # Latest stable version
-      - name: v0.8.3
-        value: https://github.com/lxc/cluster-api-provider-incus/releases/download/v0.8.3/infrastructure-components.yaml
+      - name: v0.9.0
+        value: https://github.com/lxc/cluster-api-provider-incus/releases/download/v0.9.0/infrastructure-components.yaml
         type: url
         files:
           - sourcePath: "../data/shared/v1beta1_incus/metadata.yaml"
@@ -70,11 +70,11 @@ providers:
         targetName: "metadata.yaml"
 
 variables:
-  KUBERNETES_VERSION_MANAGEMENT: "v1.32.9"
-  KUBERNETES_VERSION: "v1.33.5"
-  KUBERNETES_VERSION_UPGRADE_TO: "v1.34.0"
+  KUBERNETES_VERSION_MANAGEMENT: "v1.34.11"
+  KUBERNETES_VERSION: "v1.34.11"
+  KUBERNETES_VERSION_UPGRADE_TO: "v1.35.8"
   IP_FAMILY: "IPv4"
-  IN_PLACE_UPGRADE_OPTION: "channel=1.34-classic/stable"
+  IN_PLACE_UPGRADE_OPTION: "channel=1.35-classic/stable"
   
   # LXD specific variables
   LXC_SECRET_NAME: "lxc-secret"
@@ -92,25 +92,26 @@ variables:
 intervals:
   # The array is defined as [timeout, polling interval]
   # copied from https://github.com/kubernetes-sigs/cluster-api/blob/main/test/e2e/config/docker.yaml
-  default/wait-controllers: ["3m", "10s"]
-  default/wait-cluster: ["5m", "10s"]
-  default/wait-control-plane: ["10m", "10s"]
-  default/wait-worker-nodes: ["10m", "10s"]
-  default/wait-machine-pool-nodes: ["5m", "10s"]
-  default/wait-delete-cluster: ["3m", "10s"]
+  default/wait-controllers: ["10m", "10s"]
+  default/wait-cluster: ["20m", "10s"]
+  default/wait-control-plane: ["20m", "10s"]
+  default/wait-worker-nodes: ["20m", "10s"]
+  default/wait-machine-pool-nodes: ["20m", "10s"]
+  default/wait-delete-cluster: ["12m", "10s"]
   default/wait-machine-upgrade: ["30m", "10s"]
-  default/wait-machine-pool-upgrade: ["5m", "10s"]
-  default/wait-nodes-ready: ["10m", "10s"]
-  default/wait-machine-remediation: ["5m", "10s"]
-  default/wait-autoscaler: ["5m", "10s"]
+  default/wait-machine-pool-upgrade: ["20m", "10s"]
+  default/wait-nodes-ready: ["20m", "10s"]
+  default/wait-machine-remediation: ["20m", "10s"]
+  default/wait-autoscaler: ["20m", "10s"]
   default/wait-machine-refresh: ["30m", "10s"]
-  node-drain/wait-deployment-available: ["3m", "10s"]
-  node-drain/wait-control-plane: ["15m", "10s"]
-  node-drain/wait-machine-deleted: ["2m", "10s"]
-  kcp-remediation/wait-machines: ["5m", "10s"]
+  node-drain/wait-deployment-available: ["6m", "10s"]
+  node-drain/wait-control-plane: ["20m", "10s"]
+  node-drain/wait-machine-deleted: ["10m", "10s"]
+  kcp-remediation/wait-machines: ["20m", "10s"]
   kcp-remediation/check-machines-stable: ["30s", "5s"]
-  kcp-remediation/wait-machine-provisioned: ["5m", "10s"]
+  kcp-remediation/wait-machine-provisioned: ["20m", "10s"]
   #  Giving a bit more time during scale tests, we analyze independently if everything works quickly enough.
-  scale/wait-cluster: ["10m", "10s"]
+  scale/wait-cluster: ["20m", "10s"]
   scale/wait-control-plane: ["20m", "10s"]
   scale/wait-worker-nodes: ["20m", "10s"]
+  workload-cluster-upgrade/wait-control-plane-machines: ["20m", "10s"]

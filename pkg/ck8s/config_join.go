@@ -3,7 +3,7 @@ package ck8s
 import (
 	apiv1 "github.com/canonical/k8s-snap-api/api/v1"
 
-	bootstrapv1 "github.com/canonical/cluster-api-k8s/bootstrap/api/v1beta2"
+	bootstrapv1 "github.com/canonical/cluster-api-k8s/bootstrap/api/v1beta3"
 )
 
 type JoinControlPlaneConfig struct {

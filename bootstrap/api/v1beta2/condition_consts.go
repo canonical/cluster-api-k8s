@@ -16,7 +16,7 @@ limitations under the License.
 
 package v1beta2
 
-import clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
+import clusterv1 "sigs.k8s.io/cluster-api/api/core/v1beta1"
 
 // Conditions and condition Reasons for the CK8sConfig object.
 
@@ -40,6 +40,7 @@ const (
 	//
 	// NOTE: Having the control plane machine available is a pre-condition for joining additional control planes
 	// or workers nodes.
+
 	// Deprecated: This has been deprecated in v1beta1 and will be removed in a future version.
 	// Switch to WaitingForControlPlaneAvailableReason constant from the `sigs.k8s.io/cluster-api/api/v1beta1`
 	// package.

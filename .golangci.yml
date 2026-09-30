@@ -135,6 +135,22 @@ linters:
           - staticcheck
         path: .*test.*
         text: ST1001
+      - linters:
+          - staticcheck
+        path: bootstrap
+        text: SA1019
+      - linters:
+          - staticcheck
+        path: controlplane
+        text: SA1019
+      - linters:
+          - gosec
+        path: bootstrap
+        text: G117
+      - linters:
+          - gosec
+        path: pkg
+        text: G101
     paths:
       - .*zz_generated.*\.go
       - contrib/.*

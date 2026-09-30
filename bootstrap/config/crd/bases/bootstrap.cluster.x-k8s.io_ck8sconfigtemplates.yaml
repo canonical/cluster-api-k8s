@@ -3,7 +3,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.16.1
+    controller-gen.kubebuilder.io/version: v0.21.0
   name: ck8sconfigtemplates.bootstrap.cluster.x-k8s.io
 spec:
   group: bootstrap.cluster.x-k8s.io
@@ -15,6 +15,353 @@ spec:
   scope: Namespaced
   versions:
   - name: v1beta2
+    schema:
+      openAPIV3Schema:
+        description: CK8sConfigTemplate is the Schema for the ck8sconfigtemplates
+          API.
+        properties:
+          apiVersion:
+            description: |-
+              APIVersion defines the versioned schema of this representation of an object.
+              Servers should convert recognized schemas to the latest internal value, and
+              may reject unrecognized values.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
+            type: string
+          kind:
+            description: |-
+              Kind is a string value representing the REST resource this object represents.
+              Servers may infer this from the endpoint the client submits requests to.
+              Cannot be updated.
+              In CamelCase.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
+            type: string
+          metadata:
+            type: object
+          spec:
+            description: CK8sConfigTemplateSpec defines the desired state of CK8sConfigTemplate.
+            properties:
+              template:
+                description: CK8sConfigTemplateResource defines the Template structure.
+                properties:
+                  spec:
+                    description: CK8sConfigSpec defines the desired state of CK8sConfig.
+                    properties:
+                      ExtraK8sAPIServerProxyArgs:
+                        additionalProperties:
+                          type: string
+                        description: ExtraK8sAPIServerProxyArgs - extra arguments
+                          to add to k8s-api-server-proxy.
+                        type: object
+                      additionalUserData:
+                        additionalProperties:
+                          type: string
+                        description: |-
+                          AdditionalUserData is a field that allows users to specify additional cloud-init configuration inside the script.
+                          Th key/value pairs must adhere to
+                          https://cloudinit.readthedocs.io/en/latest/reference/modules.html
+                          to extend existing cloud-init configuration
+                        type: object
+                      airGapped:
+                        description: |-
+                          AirGapped is used to signal that we are deploying to an airgap environment. In this case,
+                          the provider will not attempt to install k8s-snap on the machine. The user is expected to
+                          install k8s-snap manually with preRunCommands, or provide an image with k8s-snap pre-installed.
+                        type: boolean
+                      bootCommands:
+                        description: BootCommands specifies extra commands to run
+                          in cloud-init early in the boot process.
+                        items:
+                          type: string
+                        type: array
+                      bootstrapConfig:
+                        description: BootstrapConfig is the data to be passed to the
+                          bootstrap script.
+                        properties:
+                          content:
+                            description: |-
+                              Content is the actual content of the file.
+                              If this is set, ContentFrom is ignored.
+                            type: string
+                          contentFrom:
+                            description: ContentFrom is a referenced source of content
+                              to populate the file.
+                            properties:
+                              secret:
+                                description: Secret represents a secret that should
+                                  populate this file.
+                                properties:
+                                  key:
+                                    description: Key is the key in the secret's data
+                                      map for this value.
+                                    type: string
+                                  name:
+                                    description: Name of the secret in the CK8sBootstrapConfig's
+                                      namespace to use.
+                                    type: string
+                                required:
+                                - key
+                                - name
+                                type: object
+                            required:
+                            - secret
+                            type: object
+                        type: object
+                      channel:
+                        description: Channel is the channel to use for the snap install.
+                        type: string
+                      controlPlane:
+                        description: CK8sControlPlaneConfig is configuration for the
+                          control plane node.
+                        properties:
+                          cloudProvider:
+                            description: CloudProvider is the cloud-provider configuration
+                              option to set.
+                            type: string
+                          datastoreServersSecretRef:
+                            description: DatastoreServersSecretRef is a reference
+                              to a secret containing the datastore servers.
+                            properties:
+                              key:
+                                description: Key is the key in the secret's data map
+                                  for this value.
+                                type: string
+                              name:
+                                description: Name of the secret in the CK8sBootstrapConfig's
+                                  namespace to use.
+                                type: string
+                            required:
+                            - name
+                            type: object
+                          datastoreType:
+                            description: DatastoreType is the type of datastore to
+                              use for the control plane.
+                            type: string
+                          etcdPeerPort:
+                            description: EtcdPeerPort is the port to use for etcd
+                              peer communication. If unset, 2381 will be used.
+                            type: integer
+                          etcdPort:
+                            description: EtcdPort is the port to use for etcd. If
+                              unset, 2379 will be used.
+                            type: integer
+                          extraKubeAPIServerArgs:
+                            additionalProperties:
+                              type: string
+                            description: ExtraKubeAPIServerArgs - extra arguments
+                              to add to kube-apiserver.
+                            type: object
+                          extraKubeControllerManagerArgs:
+                            additionalProperties:
+                              type: string
+                            description: ExtraKubeControllerManagerArgs - extra arguments
+                              to add to kube-controller-manager.
+                            type: object
+                          extraKubeSchedulerArgs:
+                            additionalProperties:
+                              type: string
+                            description: ExtraKubeSchedulerArgs - extra arguments
+                              to add to kube-scheduler.
+                            type: object
+                          extraSANs:
+                            description: ExtraSANs is a list of SANs to include in
+                              the server certificates.
+                            items:
+                              type: string
+                            type: array
+                          microclusterAddress:
+                            description: MicroclusterAddress is the address (or CIDR)
+                              to use for microcluster. If unset, the default node
+                              interface is chosen.
+                            type: string
+                          microclusterPort:
+                            description: MicroclusterPort is the port to use for microcluster.
+                              If unset, ":2380" (etcd peer) will be used.
+                            type: integer
+                          nodeTaints:
+                            description: NodeTaints is taints to add to the control
+                              plane kubelet nodes.
+                            items:
+                              type: string
+                            type: array
+                        type: object
+                      extraContainerdArgs:
+                        additionalProperties:
+                          type: string
+                        description: ExtraContainerdArgs - extra arguments to add
+                          to containerd.
+                        type: object
+                      extraKubeProxyArgs:
+                        additionalProperties:
+                          type: string
+                        description: ExtraKubeProxyArgs - extra arguments to add to
+                          kube-proxy.
+                        type: object
+                      extraKubeletArgs:
+                        additionalProperties:
+                          type: string
+                        description: ExtraKubeletArgs - extra arguments to add to
+                          kubelet.
+                        type: object
+                      files:
+                        description: Files specifies extra files to be passed to user_data
+                          upon creation.
+                        items:
+                          description: File defines the input for generating write_files
+                            in cloud-init.
+                          properties:
+                            content:
+                              description: Content is the actual content of the file.
+                              type: string
+                            contentFrom:
+                              description: ContentFrom is a referenced source of content
+                                to populate the file.
+                              properties:
+                                secret:
+                                  description: Secret represents a secret that should
+                                    populate this file.
+                                  properties:
+                                    key:
+                                      description: Key is the key in the secret's
+                                        data map for this value.
+                                      type: string
+                                    name:
+                                      description: Name of the secret in the CK8sBootstrapConfig's
+                                        namespace to use.
+                                      type: string
+                                  required:
+                                  - key
+                                  - name
+                                  type: object
+                              required:
+                              - secret
+                              type: object
+                            encoding:
+                              description: Encoding specifies the encoding of the
+                                file contents.
+                              enum:
+                              - base64
+                              - gzip
+                              - gzip+base64
+                              type: string
+                            owner:
+                              description: Owner specifies the ownership of the file,
+                                e.g. "root:root".
+                              type: string
+                            path:
+                              description: Path specifies the full path on disk where
+                                to store the file.
+                              type: string
+                            permissions:
+                              description: Permissions specifies the permissions to
+                                assign to the file, e.g. "0640".
+                              type: string
+                          required:
+                          - path
+                          type: object
+                        type: array
+                      httpProxy:
+                        description: HTTPProxy is optional http proxy configuration
+                        type: string
+                      httpsProxy:
+                        description: HTTPSProxy is optional https proxy configuration
+                        type: string
+                      initConfig:
+                        description: CK8sInitConfig is configuration for the initializing
+                          the cluster features.
+                        properties:
+                          annotations:
+                            additionalProperties:
+                              type: string
+                            description: Annotations are used to configure the behaviour
+                              of the built-in features.
+                            type: object
+                          enableDefaultDNS:
+                            description: EnableDefaultDNS specifies whether to enable
+                              the default DNS configuration.
+                            type: boolean
+                          enableDefaultGateway:
+                            description: EnableDefaultGateway specifies whether to
+                              enable the default Gateway configuration.
+                            type: boolean
+                          enableDefaultIngress:
+                            description: EnableDefaultIngress specifies whether to
+                              enable the default Ingress configuration.
+                            type: boolean
+                          enableDefaultLoadBalancer:
+                            description: EnableDefaultLoadBalancer specifies whether
+                              to enable the default LoadBalancer configuration.
+                            type: boolean
+                          enableDefaultLocalStorage:
+                            description: EnableDefaultLocalStorage specifies whether
+                              to enable the default local storage.
+                            type: boolean
+                          enableDefaultMetricsServer:
+                            description: EnableDefaultMetricsServer specifies whether
+                              to enable the default metrics server.
+                            type: boolean
+                          enableDefaultNetwork:
+                            description: EnableDefaultNetwork specifies whether to
+                              enable the default CNI.
+                            type: boolean
+                        type: object
+                      localPath:
+                        description: |-
+                          LocalPath is the path of a local snap file (or a folder containing local snap files) in the workload cluster to use for the snap install.
+                          If Channel or Revision are set, this will be ignored.
+                        type: string
+                      noProxy:
+                        description: NoProxy is optional no proxy configuration
+                        type: string
+                      nodeName:
+                        description: |-
+                          NodeName is the name to use for the kubelet of this node. It is needed for clouds
+                          where the cloud-provider has specific pre-requisites about the node names. It is
+                          typically set in Jinja template form, e.g."{{ ds.meta_data.local_hostname }}".
+                        type: string
+                      postRunCommands:
+                        description: PostRunCommands specifies extra commands to run
+                          in cloud-init after k8s-snap setup runs.
+                        items:
+                          type: string
+                        type: array
+                      preRunCommands:
+                        description: PreRunCommands specifies extra commands to run
+                          in cloud-init before k8s-snap setup runs.
+                        items:
+                          type: string
+                        type: array
+                      revision:
+                        description: |-
+                          Revision is the revision to use for the snap install.
+                          If Channel is set, this will be ignored.
+                        type: string
+                      snapstoreProxyDomain:
+                        description: The snap store proxy domain
+                        type: string
+                      snapstoreProxyId:
+                        description: The snap store proxy ID
+                        type: string
+                      snapstoreProxyScheme:
+                        default: http
+                        description: |-
+                          The snap store proxy domain's scheme, e.g. "http" or "https" without "://"
+                          Defaults to "http".
+                        enum:
+                        - http
+                        - https
+                        type: string
+                      version:
+                        description: Version specifies the Kubernetes version.
+                        type: string
+                    type: object
+                type: object
+            required:
+            - template
+            type: object
+        type: object
+    served: true
+    storage: false
+  - name: v1beta3
     schema:
       openAPIV3Schema:
         description: CK8sConfigTemplate is the Schema for the ck8sconfigtemplates

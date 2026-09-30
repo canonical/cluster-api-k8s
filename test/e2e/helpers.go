@@ -32,17 +32,17 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/klog/v2"
-	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
+	clusterv1 "sigs.k8s.io/cluster-api/api/core/v1beta2"
+	expv1 "sigs.k8s.io/cluster-api/api/core/v1beta2"
 	"sigs.k8s.io/cluster-api/controllers/noderefutil"
-	expv1 "sigs.k8s.io/cluster-api/exp/api/v1beta1"
 	"sigs.k8s.io/cluster-api/test/framework"
 	"sigs.k8s.io/cluster-api/test/framework/clusterctl"
 	"sigs.k8s.io/cluster-api/util/conditions"
 	"sigs.k8s.io/cluster-api/util/patch"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	bootstrapv1 "github.com/canonical/cluster-api-k8s/bootstrap/api/v1beta2"
-	controlplanev1 "github.com/canonical/cluster-api-k8s/controlplane/api/v1beta2"
+	bootstrapv1 "github.com/canonical/cluster-api-k8s/bootstrap/api/v1beta3"
+	controlplanev1 "github.com/canonical/cluster-api-k8s/controlplane/api/v1beta3"
 )
 
 // NOTE: the code in this file is largely copied from the cluster-api test framework.
@@ -129,8 +129,8 @@ func ApplyClusterTemplateAndWait(ctx context.Context, input ApplyClusterTemplate
 	Expect(input.ConfigCluster.ControlPlaneMachineCount).ToNot(BeNil())
 	Expect(input.ConfigCluster.WorkerMachineCount).ToNot(BeNil())
 
-	Byf("Creating the workload cluster with name %q using the %q template (Kubernetes %s, %d control-plane machines, %d worker machines)",
-		input.ConfigCluster.ClusterName, input.ConfigCluster.Flavor, input.ConfigCluster.KubernetesVersion, *input.ConfigCluster.ControlPlaneMachineCount, *input.ConfigCluster.WorkerMachineCount)
+	By(fmt.Sprintf("Creating the workload cluster with name %q using the %q template (Kubernetes %s, %d control-plane machines, %d worker machines)",
+		input.ConfigCluster.ClusterName, input.ConfigCluster.Flavor, input.ConfigCluster.KubernetesVersion, *input.ConfigCluster.ControlPlaneMachineCount, *input.ConfigCluster.WorkerMachineCount))
 
 	// Ensure we have a Cluster for dump and cleanup steps in AfterEach even if ApplyClusterTemplateAndWait fails.
 	result.Cluster = &clusterv1.Cluster{
@@ -215,7 +215,7 @@ func ApplyCustomClusterTemplateAndWait(ctx context.Context, input ApplyCustomClu
 	Expect(input.Namespace).NotTo(BeEmpty(), "Invalid argument. input.Namespace can't be empty when calling ApplyCustomClusterTemplateAndWait")
 	Expect(result).ToNot(BeNil(), "Invalid argument. result can't be nil when calling ApplyClusterTemplateAndWait")
 
-	Byf("Creating the workload cluster with name %q from the provided yaml", input.ClusterName)
+	By(fmt.Sprintf("Creating the workload cluster with name %q from the provided yaml", input.ClusterName))
 
 	// Ensure we have a Cluster for dump and cleanup steps in AfterEach even if ApplyClusterTemplateAndWait fails.
 	result.Cluster = &clusterv1.Cluster{
@@ -225,7 +225,7 @@ func ApplyCustomClusterTemplateAndWait(ctx context.Context, input ApplyCustomClu
 		},
 	}
 
-	Byf("Applying the cluster template yaml of cluster %s", klog.KRef(input.Namespace, input.ClusterName))
+	By(fmt.Sprintf("Applying the cluster template yaml of cluster %s", klog.KRef(input.Namespace, input.ClusterName)))
 	Eventually(func() error {
 		return input.ClusterProxy.CreateOrUpdate(ctx, input.CustomTemplateYAML, input.CreateOrUpdateOpts...)
 	}, 1*time.Minute).Should(Succeed(), "Failed to apply the cluster template")
@@ -234,30 +234,30 @@ func ApplyCustomClusterTemplateAndWait(ctx context.Context, input ApplyCustomClu
 	// Note: This can e.g. be used to verify the BeforeClusterCreate lifecycle hook is executed
 	// and blocking correctly.
 	if input.PreWaitForCluster != nil {
-		Byf("Calling PreWaitForCluster for cluster %s", klog.KRef(input.Namespace, input.ClusterName))
+		By(fmt.Sprintf("Calling PreWaitForCluster for cluster %s", klog.KRef(input.Namespace, input.ClusterName)))
 		input.PreWaitForCluster()
 	}
 
-	Byf("Waiting for the cluster infrastructure of cluster %s to be provisioned", klog.KRef(input.Namespace, input.ClusterName))
+	By(fmt.Sprintf("Waiting for the cluster infrastructure of cluster %s to be provisioned", klog.KRef(input.Namespace, input.ClusterName)))
 	result.Cluster = framework.DiscoveryAndWaitForCluster(ctx, framework.DiscoveryAndWaitForClusterInput{
 		Getter:    input.ClusterProxy.GetClient(),
 		Namespace: input.Namespace,
 		Name:      input.ClusterName,
 	}, input.WaitForClusterIntervals...)
 
-	if result.Cluster.Spec.Topology != nil {
+	if result.Cluster.Spec.Topology.ClassRef.Name != "" {
 		result.ClusterClass = framework.GetClusterClassByName(ctx, framework.GetClusterClassByNameInput{
 			Getter:    input.ClusterProxy.GetClient(),
 			Namespace: input.Namespace,
-			Name:      result.Cluster.Spec.Topology.Class,
+			Name:      result.Cluster.Spec.Topology.ClassRef.Name,
 		})
 	}
 
-	Byf("Waiting for control plane of cluster %s to be initialized", klog.KRef(input.Namespace, input.ClusterName))
+	By(fmt.Sprintf("Waiting for control plane of cluster %s to be initialized", klog.KRef(input.Namespace, input.ClusterName)))
 	input.WaitForControlPlaneInitialized(ctx, input, result)
 
 	if input.CNIManifestPath != "" {
-		Byf("Installing a CNI plugin to the workload cluster %s", klog.KRef(input.Namespace, input.ClusterName))
+		By(fmt.Sprintf("Installing a CNI plugin to the workload cluster %s", klog.KRef(input.Namespace, input.ClusterName)))
 		workloadCluster := input.ClusterProxy.GetWorkloadCluster(ctx, result.Cluster.Namespace, result.Cluster.Name)
 
 		cniYaml, err := os.ReadFile(input.CNIManifestPath)
@@ -266,16 +266,16 @@ func ApplyCustomClusterTemplateAndWait(ctx context.Context, input ApplyCustomClu
 		Expect(workloadCluster.CreateOrUpdate(ctx, cniYaml)).ShouldNot(HaveOccurred())
 	}
 
-	Byf("Waiting for control plane of cluster %s to be ready", klog.KRef(input.Namespace, input.ClusterName))
+	By(fmt.Sprintf("Waiting for control plane of cluster %s to be ready", klog.KRef(input.Namespace, input.ClusterName)))
 	input.WaitForControlPlaneMachinesReady(ctx, input, result)
 
-	Byf("Waiting for the machine deployments of cluster %s to be provisioned", klog.KRef(input.Namespace, input.ClusterName))
+	By(fmt.Sprintf("Waiting for the machine deployments of cluster %s to be provisioned", klog.KRef(input.Namespace, input.ClusterName)))
 	result.MachineDeployments = framework.DiscoveryAndWaitForMachineDeployments(ctx, framework.DiscoveryAndWaitForMachineDeploymentsInput{
 		Lister:  input.ClusterProxy.GetClient(),
 		Cluster: result.Cluster,
 	}, input.WaitForMachineDeployments...)
 
-	Byf("Waiting for the machine pools of cluster %s to be provisioned", klog.KRef(input.Namespace, input.ClusterName))
+	By(fmt.Sprintf("Waiting for the machine pools of cluster %s to be provisioned", klog.KRef(input.Namespace, input.ClusterName)))
 	result.MachinePools = framework.DiscoveryAndWaitForMachinePools(ctx, framework.DiscoveryAndWaitForMachinePoolsInput{
 		Getter:  input.ClusterProxy.GetClient(),
 		Lister:  input.ClusterProxy.GetClient(),
@@ -283,7 +283,7 @@ func ApplyCustomClusterTemplateAndWait(ctx context.Context, input ApplyCustomClu
 	}, input.WaitForMachinePools...)
 
 	if input.PostMachinesProvisioned != nil {
-		Byf("Calling PostMachinesProvisioned for cluster %s", klog.KRef(input.Namespace, input.ClusterName))
+		By(fmt.Sprintf("Calling PostMachinesProvisioned for cluster %s", klog.KRef(input.Namespace, input.ClusterName)))
 		input.PostMachinesProvisioned()
 	}
 }
@@ -353,12 +353,12 @@ func WaitForCK8sControlPlaneMachinesToExist(ctx context.Context, input WaitForCK
 	Eventually(func() (int, error) {
 		machineList := &clusterv1.MachineList{}
 		if err := input.Lister.List(ctx, machineList, inClustersNamespaceListOption, matchClusterListOption); err != nil {
-			Byf("Failed to list the machines: %+v", err)
+			By(fmt.Sprintf("Failed to list the machines: %+v", err))
 			return 0, err
 		}
 		count := 0
 		for _, machine := range machineList.Items {
-			if machine.Status.NodeRef != nil {
+			if machine.Status.NodeRef.Name != "" {
 				count++
 			}
 		}
@@ -390,12 +390,12 @@ func WaitForOneCK8sControlPlaneMachineToExist(ctx context.Context, input WaitFor
 	Eventually(func() (bool, error) {
 		machineList := &clusterv1.MachineList{}
 		if err := input.Lister.List(ctx, machineList, inClustersNamespaceListOption, matchClusterListOption); err != nil {
-			Byf("Failed to list the machines: %+v", err)
+			By(fmt.Sprintf("Failed to list the machines: %+v", err))
 			return false, err
 		}
 		count := 0
 		for _, machine := range machineList.Items {
-			if machine.Status.NodeRef != nil {
+			if machine.Status.NodeRef.Name != "" {
 				count++
 			}
 		}
@@ -418,26 +418,22 @@ func WaitForControlPlaneToBeReady(ctx context.Context, input WaitForControlPlane
 			Namespace: input.ControlPlane.GetNamespace(),
 			Name:      input.ControlPlane.GetName(),
 		}
-		Byf("Getting the control plane %s", klog.KObj(input.ControlPlane))
+		By(fmt.Sprintf("Getting the control plane %s", klog.KObj(input.ControlPlane)))
 		if err := input.Getter.Get(ctx, key, controlplane); err != nil {
 			return false, fmt.Errorf("failed to get KCP: %w", err)
 		}
 
 		desiredReplicas := controlplane.Spec.Replicas
 		statusReplicas := controlplane.Status.Replicas
-		updatedReplicas := controlplane.Status.UpdatedReplicas
-		readyReplicas := controlplane.Status.ReadyReplicas
-		unavailableReplicas := controlplane.Status.UnavailableReplicas
+		upToDateReplicas := *controlplane.Status.UpToDateReplicas
+		readyReplicas := *controlplane.Status.ReadyReplicas
 
 		// Control plane is still rolling out (and thus not ready) if:
-		// * .spec.replicas, .status.replicas, .status.updatedReplicas,
+		// * .spec.replicas, .status.replicas, .status.upToDateReplicas,
 		//   .status.readyReplicas are not equal and
 		// * unavailableReplicas > 0
-		Byf("Control plane %s: desired=%d, status=%d, updated=%d, ready=%d, unavailable=%d", klog.KObj(controlplane), *desiredReplicas, statusReplicas, updatedReplicas, readyReplicas, unavailableReplicas)
-		if statusReplicas != *desiredReplicas ||
-			updatedReplicas != *desiredReplicas ||
-			readyReplicas != *desiredReplicas ||
-			unavailableReplicas > 0 {
+		By(fmt.Sprintf("Control plane %s: desired=%d, status=%d, upToDate=%d, ready=%d", klog.KObj(controlplane), *desiredReplicas, statusReplicas, upToDateReplicas, readyReplicas))
+		if readyReplicas != *desiredReplicas {
 			return false, nil
 		}
 
@@ -461,8 +457,8 @@ func AssertControlPlaneFailureDomains(ctx context.Context, input AssertControlPl
 	By("Checking all the control plane machines are in the expected failure domains")
 	controlPlaneFailureDomains := sets.Set[string]{}
 	for fd, fdSettings := range input.Cluster.Status.FailureDomains {
-		if fdSettings.ControlPlane {
-			controlPlaneFailureDomains.Insert(fd)
+		if fdSettings.ControlPlane != nil && *fdSettings.ControlPlane {
+			controlPlaneFailureDomains.Insert(fmt.Sprint(fd))
 		}
 	}
 
@@ -479,8 +475,8 @@ func AssertControlPlaneFailureDomains(ctx context.Context, input AssertControlPl
 	}, retryableOperationTimeout, retryableOperationInterval).Should(Succeed(), "Couldn't list control-plane machines for the cluster %q", input.Cluster.Name)
 
 	for _, machine := range machineList.Items {
-		if machine.Spec.FailureDomain != nil {
-			machineFD := *machine.Spec.FailureDomain
+		if machine.Spec.FailureDomain != "" {
+			machineFD := machine.Spec.FailureDomain
 			if !controlPlaneFailureDomains.Has(machineFD) {
 				Fail(fmt.Sprintf("Machine %s is in the %q failure domain, expecting one of the failure domain defined at cluster level", machine.Name, machineFD))
 			}
@@ -510,7 +506,7 @@ func DiscoveryAndWaitForCK8sControlPlaneInitialized(ctx context.Context, input D
 		g.Expect(controlPlane).ToNot(BeNil())
 	}, "10s", "1s").Should(Succeed(), "Couldn't get the control plane for the cluster %s", klog.KObj(input.Cluster))
 
-	Byf("Waiting for the first control plane machine managed by %s to be provisioned", klog.KObj(controlPlane))
+	By(fmt.Sprintf("Waiting for the first control plane machine managed by %s to be provisioned", klog.KObj(controlPlane)))
 	WaitForOneCK8sControlPlaneMachineToExist(ctx, WaitForOneCK8sControlPlaneMachineToExistInput{
 		Lister:       input.Lister,
 		Cluster:      input.Cluster,
@@ -535,7 +531,7 @@ func WaitForControlPlaneAndMachinesReady(ctx context.Context, input WaitForContr
 	Expect(input.ControlPlane).ToNot(BeNil(), "Invalid argument. input.ControlPlane can't be nil when calling WaitForControlPlaneReady")
 
 	if input.ControlPlane.Spec.Replicas != nil && int(*input.ControlPlane.Spec.Replicas) > 1 {
-		Byf("Waiting for the remaining control plane machines managed by %s to be provisioned", klog.KObj(input.ControlPlane))
+		By(fmt.Sprintf("Waiting for the remaining control plane machines managed by %s to be provisioned", klog.KObj(input.ControlPlane)))
 		WaitForCK8sControlPlaneMachinesToExist(ctx, WaitForCK8sControlPlaneMachinesToExistInput{
 			Lister:       input.GetLister,
 			Cluster:      input.Cluster,
@@ -543,7 +539,7 @@ func WaitForControlPlaneAndMachinesReady(ctx context.Context, input WaitForContr
 		}, intervals...)
 	}
 
-	Byf("Waiting for control plane %s to be ready (implies underlying nodes to be ready as well)", klog.KObj(input.ControlPlane))
+	By(fmt.Sprintf("Waiting for control plane %s to be ready (implies underlying nodes to be ready as well)", klog.KObj(input.ControlPlane)))
 	waitForControlPlaneToBeReadyInput := WaitForControlPlaneToBeReadyInput{
 		Getter:       input.GetLister,
 		ControlPlane: input.ControlPlane,
@@ -738,7 +734,7 @@ func ApplyInPlaceUpgradeAndWait(ctx context.Context, input ApplyInPlaceUpgradeAn
 
 	Eventually(func() (bool, error) {
 		if err := input.Getter.Get(ctx, client.ObjectKeyFromObject(input.Obj), input.DestinationObj); err != nil {
-			Byf("Failed to get the object: %+v", err)
+			By(fmt.Sprintf("Failed to get the object: %+v", err))
 			return false, err
 		}
 
@@ -995,7 +991,7 @@ func UpgradeControlPlaneAndWaitForUpgrade(ctx context.Context, input UpgradeCont
 
 	mgmtClient := input.ClusterProxy.GetClient()
 
-	Byf("Patching the new kubernetes version to KCP")
+	By(fmt.Sprintf("Patching the new kubernetes version to KCP"))
 	patchHelper, err := patch.NewHelper(input.ControlPlane, mgmtClient)
 	Expect(err).ToNot(HaveOccurred())
 
@@ -1005,7 +1001,7 @@ func UpgradeControlPlaneAndWaitForUpgrade(ctx context.Context, input UpgradeCont
 		return patchHelper.Patch(ctx, input.ControlPlane)
 	}, retryableOperationTimeout, retryableOperationInterval).Should(Succeed(), "Failed to patch the new kubernetes version to KCP %s", klog.KObj(input.ControlPlane))
 
-	Byf("Waiting for control-plane machines to have the upgraded kubernetes version")
+	By(fmt.Sprintf("Waiting for control-plane machines to have the upgraded kubernetes version"))
 	WaitForControlPlaneMachinesToBeUpgraded(ctx, WaitForControlPlaneMachinesToBeUpgradedInput{
 		Lister:                   mgmtClient,
 		Cluster:                  input.Cluster,
@@ -1036,7 +1032,7 @@ func WaitForControlPlaneMachinesToBeUpgraded(ctx context.Context, input WaitForC
 	Expect(input.MachineCount).To(BeNumerically(">", 0), "Invalid argument. input.MachineCount can't be smaller than 1 when calling WaitForControlPlaneMachinesToBeUpgraded")
 	Expect(input.MaxMachineCount).To(BeNumerically(">", 0), "Invalid argument. input.MaxMachineCount can't be smaller than 1 when calling WaitForControlPlaneMachinesToBeUpgraded")
 
-	Byf("Ensuring all control-plane machines have upgraded kubernetes version %s", input.KubernetesUpgradeVersion)
+	By(fmt.Sprintf("Ensuring all control-plane machines have upgraded kubernetes version %s", input.KubernetesUpgradeVersion))
 
 	Eventually(func() (int, error) {
 		machines := framework.GetControlPlaneMachinesByCluster(ctx, framework.GetControlPlaneMachinesByClusterInput{
@@ -1052,7 +1048,7 @@ func WaitForControlPlaneMachinesToBeUpgraded(ctx context.Context, input WaitForC
 		upgraded := 0
 		for _, machine := range machines {
 			m := machine
-			if *m.Spec.Version == input.KubernetesUpgradeVersion && conditions.IsTrue(&m, clusterv1.MachineNodeHealthyCondition) {
+			if m.Spec.Version == input.KubernetesUpgradeVersion && conditions.IsTrue(&m, clusterv1.MachineNodeHealthyCondition) {
 				upgraded++
 			}
 		}
@@ -1078,14 +1074,11 @@ func UpgradeMachineDeploymentsAndWait(ctx context.Context, input framework.Upgra
 		Expect(err).ToNot(HaveOccurred())
 
 		oldVersion := deployment.Spec.Template.Spec.Version
-		deployment.Spec.Template.Spec.Version = &input.UpgradeVersion
-		// Create a new ObjectReference for the infrastructure provider
-		newInfrastructureRef := corev1.ObjectReference{
-			APIVersion: "infrastructure.cluster.x-k8s.io/v1beta1",
-			Kind:       "DockerMachineTemplate",
-			Name:       fmt.Sprintf("%s-md-new-0", input.Cluster.Name),
-			Namespace:  deployment.Spec.Template.Spec.InfrastructureRef.Namespace,
-		}
+		deployment.Spec.Template.Spec.Version = input.UpgradeVersion
+		// Create a new infrastructure reference
+		newInfrastructureRef := deployment.Spec.Template.Spec.InfrastructureRef
+		newInfrastructureRef.Kind = "DockerMachineTemplate"
+		newInfrastructureRef.Name = fmt.Sprintf("%s-md-new-0", input.Cluster.Name)
 
 		// Update the infrastructureRef
 		deployment.Spec.Template.Spec.InfrastructureRef = newInfrastructureRef
@@ -1093,8 +1086,8 @@ func UpgradeMachineDeploymentsAndWait(ctx context.Context, input framework.Upgra
 			return patchHelper.Patch(ctx, deployment)
 		}, retryableOperationTimeout, retryableOperationInterval).Should(Succeed(), "Failed to patch Kubernetes version on MachineDeployment %s", klog.KObj(deployment))
 
-		Byf("Waiting for Kubernetes versions of machines in MachineDeployment %s to be upgraded from %s to %s",
-			klog.KObj(deployment), *oldVersion, input.UpgradeVersion)
+		By(fmt.Sprintf("Waiting for Kubernetes versions of machines in MachineDeployment %s to be upgraded from %s to %s",
+			klog.KObj(deployment), oldVersion, input.UpgradeVersion))
 		framework.WaitForMachineDeploymentMachinesToBeUpgraded(ctx, framework.WaitForMachineDeploymentMachinesToBeUpgradedInput{
 			Lister:                   mgmtClient,
 			Cluster:                  input.Cluster,

@@ -25,8 +25,7 @@ import (
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
 	"k8s.io/utils/ptr"
-	clusterv1beta1 "sigs.k8s.io/cluster-api/api/v1beta1"
-	expv1beta1 "sigs.k8s.io/cluster-api/exp/api/v1beta1"
+	clusterv1 "sigs.k8s.io/cluster-api/api/core/v1beta2"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/cache"
 	"sigs.k8s.io/controller-runtime/pkg/config"
@@ -34,8 +33,9 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/metrics/server"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
 
-	bootstrapv1 "github.com/canonical/cluster-api-k8s/bootstrap/api/v1beta2"
-	controlplanev1 "github.com/canonical/cluster-api-k8s/controlplane/api/v1beta2"
+	bootstrapv1 "github.com/canonical/cluster-api-k8s/bootstrap/api/v1beta3"
+	controlplanev1beta2 "github.com/canonical/cluster-api-k8s/controlplane/api/v1beta2"
+	controlplanev1 "github.com/canonical/cluster-api-k8s/controlplane/api/v1beta3"
 	"github.com/canonical/cluster-api-k8s/controlplane/controllers"
 )
 
@@ -46,10 +46,9 @@ var (
 
 func init() {
 	_ = clientgoscheme.AddToScheme(scheme)
-	_ = clusterv1beta1.AddToScheme(scheme)
-	_ = expv1beta1.AddToScheme(scheme)
+	_ = clusterv1.AddToScheme(scheme)
 	_ = bootstrapv1.AddToScheme(scheme)
-
+	_ = controlplanev1beta2.AddToScheme(scheme)
 	_ = controlplanev1.AddToScheme(scheme)
 	// +kubebuilder:scaffold:scheme
 }
@@ -131,6 +130,11 @@ func main() {
 	}
 
 	if os.Getenv("ENABLE_WEBHOOKS") != "false" {
+		if err = (&controlplanev1beta2.CK8sControlPlane{}).SetupWebhookWithManager(mgr); err != nil {
+			setupLog.Error(err, "unable to create webhook", "webhook", "CK8sControlPlane v1beta2")
+			os.Exit(1)
+		}
+
 		if err = (&controlplanev1.CK8sControlPlane{}).SetupWebhookWithManager(mgr); err != nil {
 			setupLog.Error(err, "unable to create webhook", "webhook", "CK8sControlPlane")
 			os.Exit(1)

@@ -66,12 +66,12 @@ var _ = Describe("Workload cluster creation", func() {
 			SpecName:             specName,
 			Cluster:              result.Cluster,
 			ClusterProxy:         bootstrapClusterProxy,
+			ClusterctlConfigPath: clusterctlConfigPath,
 			Namespace:            namespace,
 			CancelWatches:        cancelWatches,
 			IntervalsGetter:      e2eConfig.GetIntervals,
 			SkipCleanup:          skipCleanup,
 			ArtifactFolder:       artifactFolder,
-			ClusterctlConfigPath: clusterctlConfigPath,
 		}
 
 		dumpSpecResourcesAndCleanup(ctx, cleanInput)

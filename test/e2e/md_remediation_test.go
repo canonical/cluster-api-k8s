@@ -103,7 +103,7 @@ var _ = Describe("When testing MachineDeployment remediation", func() {
 				},
 				WaitForClusterIntervals:      e2eConfig.GetIntervals(specName, "wait-cluster"),
 				WaitForControlPlaneIntervals: e2eConfig.GetIntervals(specName, "wait-control-plane"),
-				WaitForMachineDeployments:    e2eConfig.GetIntervals(specName, "wait-worker-nodes"),
+				WaitForMachineDeployments:    e2eConfig.GetIntervals(specName, "wait-cluster"),
 			}, result)
 
 			// TODO: this should be re-written like the KCP remediation test, because the current implementation

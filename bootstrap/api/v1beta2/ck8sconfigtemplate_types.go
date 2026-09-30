@@ -33,7 +33,6 @@ type CK8sConfigTemplateResource struct {
 }
 
 // +kubebuilder:object:root=true
-// +kubebuilder:storageversion
 
 // CK8sConfigTemplate is the Schema for the ck8sconfigtemplates API.
 type CK8sConfigTemplate struct {
