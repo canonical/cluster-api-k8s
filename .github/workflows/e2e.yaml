@@ -106,8 +106,10 @@ jobs:
         with:
           detached: true
       - name: Run e2e tests
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          sudo env "PATH=$PATH" GINKGO_FOCUS="${{ matrix.ginkgo_focus }}" \
+          sudo env PATH="$PATH" GITHUB_TOKEN="$GITHUB_TOKEN" GINKGO_FOCUS="${{ matrix.ginkgo_focus }}" \
            SKIP_RESOURCE_CLEANUP=true \
            USE_EXISTING_CLUSTER=true \
            make test-e2e
