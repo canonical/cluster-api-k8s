@@ -67,11 +67,28 @@ provider_images_path=${3:-}
 echo "==> Launching LXD container '$bootstrap_cluster_name' with Ubuntu 24.04..."
 sudo lxc -p default -p k8s-integration launch ubuntu:24.04 $bootstrap_cluster_name
 
+delegate_file="[Service]
+Delegate=yes"
+temp_delegate_file=$(mktemp)
+echo "$delegate_file" > "$temp_delegate_file"
+retry 5 5 sudo lxc exec $bootstrap_cluster_name -- mkdir -p /etc/systemd/system/snap.k8s.kubelet.service.d
+sudo lxc file push "$temp_delegate_file" "$bootstrap_cluster_name/etc/systemd/system/snap.k8s.kubelet.service.d/delegate.conf"
+
 echo "==> Installing k8s snap (version $bootstrap_cluster_version)..."
 retry 5 5 sudo lxc exec $bootstrap_cluster_name -- snap install k8s --classic --channel=$bootstrap_cluster_version-classic/stable
 
 echo "==> Bootstrapping k8s cluster..."
 retry 5 5 sudo lxc exec $bootstrap_cluster_name -- k8s bootstrap
+
+sleep 30
+
+retry 25 5 sudo lxc exec $bootstrap_cluster_name -- k8s kubectl get pods -A
+
+sudo lxc exec $bootstrap_cluster_name -- reboot
+
+sleep 30
+
+retry 25 5 sudo lxc exec $bootstrap_cluster_name -- k8s kubectl get pods -A
 
 if [ -n "$provider_images_path" ]; then
   echo "==> Pushing provider images to container..."
