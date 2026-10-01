@@ -64,6 +64,7 @@ jobs:
           - "Workload cluster upgrade"
           - "Certificate Refresh"
           - "Orchestrated In place upgrades"
+          - "Version upgrade v1beta2 to v1beta3"
       # TODO(ben): Remove once all tests are running stable.
       fail-fast: false
     steps:

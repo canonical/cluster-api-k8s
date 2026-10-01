@@ -43,6 +43,7 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 
 	bootstrapv1 "github.com/canonical/cluster-api-k8s/bootstrap/api/v1beta3"
+	controlplanev1beta2 "github.com/canonical/cluster-api-k8s/controlplane/api/v1beta2"
 	controlplanev1 "github.com/canonical/cluster-api-k8s/controlplane/api/v1beta3"
 )
 
@@ -70,6 +71,9 @@ var (
 
 	// skipBootstrapClusterInitialization skips the bootstrap cluster initialization step.
 	skipBootstrapClusterInitialization bool
+
+	// the bootstrap cluster will start with v1beta2 ck8s provider version
+	useV1Beta2 bool
 )
 
 // Test suite global vars.
@@ -102,6 +106,7 @@ func init() {
 	flag.StringVar(&clusterctlConfig, "e2e.clusterctl-config", "", "file which tests will use as a clusterctl config. If it is not set, a local clusterctl repository (including a clusterctl config) will be created automatically.")
 	flag.BoolVar(&useExistingCluster, "e2e.use-existing-cluster", false, "if true, the test uses the current cluster instead of creating a new one (default discovery rules apply)")
 	flag.BoolVar(&skipBootstrapClusterInitialization, "e2e.skip-bootstrap-cluster-initialization", false, "if true, the test will skip the bootstrap cluster initialization step")
+	flag.BoolVar(&useV1Beta2, "e2e.use-v1beta2", false, "if true, the test will use v1beta2 for bootstrap cluster")
 }
 
 func TestE2E(t *testing.T) {
@@ -155,7 +160,11 @@ var _ = SynchronizedBeforeSuite(func() []byte {
 
 	if !skipBootstrapClusterInitialization {
 		By("Initializing the bootstrap cluster")
-		initBootstrapCluster(bootstrapClusterProxy, e2eConfig, clusterctlConfigPath, artifactFolder)
+		bootstrapVersion := "ck8s:v0.6.99"
+		if useV1Beta2 || os.Getenv("GINKGO_FOCUS") == "Version upgrade v1beta2 to v1beta3" {
+			bootstrapVersion = "ck8s:v0.6.2"
+		}
+		initBootstrapCluster(bootstrapClusterProxy, e2eConfig, clusterctlConfigPath, artifactFolder, bootstrapVersion)
 	} else {
 		By("Skipping bootstrap cluster initialization")
 	}
@@ -204,6 +213,7 @@ func initScheme() *runtime.Scheme {
 	sc := runtime.NewScheme()
 	framework.TryAddDefaultSchemes(sc)
 	Expect(controlplanev1.AddToScheme(sc)).To(Succeed())
+	Expect(controlplanev1beta2.AddToScheme(sc)).To(Succeed())
 	Expect(bootstrapv1.AddToScheme(sc)).To(Succeed())
 	Expect(dockerinfrav1.AddToScheme(sc)).To(Succeed())
 	return sc
@@ -264,7 +274,7 @@ func setupBootstrapCluster(config *clusterctl.E2EConfig, scheme *runtime.Scheme,
 	return clusterProvider, clusterProxy
 }
 
-func initBootstrapCluster(bootstrapClusterProxy framework.ClusterProxy, config *clusterctl.E2EConfig, clusterctlConfig, artifactFolder string) {
+func initBootstrapCluster(bootstrapClusterProxy framework.ClusterProxy, config *clusterctl.E2EConfig, clusterctlConfig, artifactFolder string, bootstrapVersion string) {
 	clusterctl.InitManagementClusterAndWatchControllerLogs(watchesCtx, clusterctl.InitManagementClusterAndWatchControllerLogsInput{
 		ClusterProxy:              bootstrapClusterProxy,
 		ClusterctlConfigPath:      clusterctlConfig,
@@ -272,8 +282,8 @@ func initBootstrapCluster(bootstrapClusterProxy framework.ClusterProxy, config *
 		IPAMProviders:             config.IPAMProviders(),
 		RuntimeExtensionProviders: config.RuntimeExtensionProviders(),
 		AddonProviders:            config.AddonProviders(),
-		BootstrapProviders:        []string{"ck8s"},
-		ControlPlaneProviders:     []string{"ck8s"},
+		BootstrapProviders:        []string{bootstrapVersion},
+		ControlPlaneProviders:     []string{bootstrapVersion},
 		LogFolder:                 filepath.Join(artifactFolder, "clusters", bootstrapClusterProxy.GetName()),
 	}, config.GetIntervals(bootstrapClusterProxy.GetName(), "wait-controllers")...)
 }

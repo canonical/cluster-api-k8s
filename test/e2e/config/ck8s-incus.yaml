@@ -41,6 +41,7 @@ providers:
       - sourcePath: "../data/infrastructure-incus/cluster-template-upgrades.yaml"
       - sourcePath: "../data/infrastructure-incus/cluster-template-upgrades-max-surge-0.yaml"
       - sourcePath: "../data/infrastructure-incus/cluster-template.yaml"
+      - sourcePath: "../data/infrastructure-incus/cluster-template-version-upgrade.yaml"
   - name: ck8s
     type: BootstrapProvider
     versions:
@@ -54,9 +55,16 @@ providers:
         replacements:
           - old: "ghcr.io/canonical/cluster-api-k8s/bootstrap-controller:latest"
             new: "ghcr.io/canonical/cluster-api-k8s/bootstrap-controller:dev"
-    files:
-      - sourcePath: "../../../metadata.yaml"
-        targetName: "metadata.yaml"
+        files:
+          - sourcePath: "../../../metadata.yaml"
+            targetName: "metadata.yaml"
+      - name: "v0.6.2"
+        value: "https://github.com/canonical/cluster-api-k8s/releases/download/v0.6.2/bootstrap-components.yaml"
+        type: "url"
+        contract: v1beta2
+        files:
+          - sourcePath: "../data/shared/v1beta2/metadata.yaml"
+            targetName: "metadata.yaml"
   - name: ck8s
     type: ControlPlaneProvider
     versions:
@@ -65,9 +73,16 @@ providers:
         replacements:
           - old: "ghcr.io/canonical/cluster-api-k8s/controlplane-controller:latest"
             new: "ghcr.io/canonical/cluster-api-k8s/controlplane-controller:dev"
-    files:
-      - sourcePath: "../../../metadata.yaml"
-        targetName: "metadata.yaml"
+        files:
+          - sourcePath: "../../../metadata.yaml"
+            targetName: "metadata.yaml"
+      - name: "v0.6.2"
+        value: "https://github.com/canonical/cluster-api-k8s/releases/download/v0.6.2/control-plane-components.yaml"
+        type: "url"
+        contract: v1beta2
+        files:
+          - sourcePath: "../data/shared/v1beta2/metadata.yaml"
+            targetName: "metadata.yaml"
 
 variables:
   KUBERNETES_VERSION_MANAGEMENT: "v1.34.11"
