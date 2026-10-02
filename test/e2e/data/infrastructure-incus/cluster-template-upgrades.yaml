@@ -47,6 +47,8 @@ spec:
     metadata:
       labels:
         key: value
+      annotations:
+        pre-terminate.delete.hook.machine.cluster.x-k8s.io/ck8s: "ck8s"
   replicas: ${CONTROL_PLANE_MACHINE_COUNT}
   version: ${KUBERNETES_VERSION}
   spec:
@@ -88,6 +90,8 @@ spec:
     metadata:
       labels:
         cluster.x-k8s.io/deployment-name: ${CLUSTER_NAME}-md-0
+      annotations:
+        pre-terminate.delete.hook.machine.cluster.x-k8s.io/ck8s: "ck8s"
     spec:
       version: ${KUBERNETES_VERSION}
       clusterName: ${CLUSTER_NAME}
