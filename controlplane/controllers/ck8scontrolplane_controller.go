@@ -254,8 +254,6 @@ func (r *CK8sControlPlaneReconciler) reconcileDelete(ctx context.Context, cluste
 }
 
 func patchCK8sControlPlane(ctx context.Context, patchHelper *patch.Helper, kcp *controlplanev1.CK8sControlPlane) error {
-	normalizeCK8sControlPlaneConditionReasons(kcp)
-
 	// Patch the object, ignoring conflicts on the conditions owned by this controller.
 	return patchHelper.Patch(
 		ctx,
@@ -271,83 +269,6 @@ func patchCK8sControlPlane(ctx context.Context, patchHelper *patch.Helper, kcp *
 		}},
 		patch.WithStatusObservedGeneration{},
 	)
-}
-
-func normalizeCK8sControlPlaneConditionReasons(kcp *controlplanev1.CK8sControlPlane) {
-	for i := range kcp.Status.Conditions {
-		if strings.TrimSpace(kcp.Status.Conditions[i].Reason) != "" {
-			continue
-		}
-
-		kcp.Status.Conditions[i].Reason = fallbackConditionReason(kcp.Status.Conditions[i])
-	}
-}
-
-func fallbackConditionReason(condition metav1.Condition) string {
-	switch condition.Type {
-	case string(controlplanev1.MachinesReadyCondition):
-		switch condition.Status {
-		case metav1.ConditionTrue:
-			return controlplanev1.MachinesReadyReason
-		case metav1.ConditionFalse:
-			return controlplanev1.MachinesNotReadyReason
-		default:
-			return controlplanev1.MachinesReadyUnknownReason
-		}
-	case string(controlplanev1.MachinesSpecUpToDateCondition):
-		switch condition.Status {
-		case metav1.ConditionTrue:
-			return "RollingUpdateCompleted"
-		default:
-			return controlplanev1.RollingUpdateInProgressReason
-		}
-	case string(controlplanev1.ResizedCondition):
-		switch condition.Status {
-		case metav1.ConditionTrue:
-			return "ScalingCompleted"
-		case metav1.ConditionFalse:
-			return controlplanev1.ScalingUpReason
-		default:
-			return "ScalingUnknown"
-		}
-	case string(controlplanev1.AvailableCondition):
-		switch condition.Status {
-		case metav1.ConditionTrue:
-			return "Available"
-		default:
-			return controlplanev1.WaitingForCK8sServerReason
-		}
-	case string(controlplanev1.CertificatesAvailableCondition):
-		switch condition.Status {
-		case metav1.ConditionTrue:
-			return "CertificatesGenerated"
-		default:
-			return controlplanev1.CertificatesGenerationFailedReason
-		}
-	case string(controlplanev1.TokenAvailableCondition):
-		switch condition.Status {
-		case metav1.ConditionTrue:
-			return "TokenGenerated"
-		default:
-			return controlplanev1.TokenGenerationFailedReason
-		}
-	case clusterv1.ClusterControlPlaneInitializedCondition:
-		switch condition.Status {
-		case metav1.ConditionTrue:
-			return clusterv1.ClusterControlPlaneInitializedReason
-		default:
-			return clusterv1.ClusterControlPlaneNotInitializedReason
-		}
-	default:
-		switch condition.Status {
-		case metav1.ConditionTrue:
-			return "StatusTrue"
-		case metav1.ConditionFalse:
-			return "StatusFalse"
-		default:
-			return "StatusUnknown"
-		}
-	}
 }
 
 func (r *CK8sControlPlaneReconciler) SetupWithManager(ctx context.Context, mgr ctrl.Manager, log *logr.Logger) error {
