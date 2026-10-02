@@ -78,7 +78,7 @@ var _ = Describe("Version upgrade v1beta2 to v1beta3", func() {
 	})
 
 	Context("Creating a cluster", func() {
-		It("Should create a workload cluster with 1 control plane and 3 worker nodes [PR-Blocking]", func() {
+		It("Should upgrade the cluster version and then scale [PR-Blocking]", func() {
 			By("Creating a workload cluster")
 			ApplyClusterTemplateAndWait(ctx, ApplyClusterTemplateAndWaitInput{
 				ClusterProxy: bootstrapClusterProxy,
@@ -107,6 +107,25 @@ var _ = Describe("Version upgrade v1beta2 to v1beta3", func() {
 				ControlPlaneProviders: []string{"ck8s:v0.6.99"},
 				LogFolder:             clusterctlLogFolder,
 			})
+			By("Scaling up control planes to 3 and worker nodes to 1")
+
+			ApplyClusterTemplateAndWait(ctx, ApplyClusterTemplateAndWaitInput{
+				ClusterProxy: bootstrapClusterProxy,
+				ConfigCluster: clusterctl.ConfigClusterInput{
+					LogFolder:                clusterctlLogFolder,
+					ClusterctlConfigPath:     clusterctlConfigPath,
+					KubeconfigPath:           bootstrapClusterProxy.GetKubeconfigPath(),
+					InfrastructureProvider:   infrastructureProvider,
+					Namespace:                namespace.Name,
+					ClusterName:              clusterName,
+					KubernetesVersion:        e2eConfig.GetVariableOrEmpty(KubernetesVersion),
+					ControlPlaneMachineCount: pointer.Int64Ptr(3),
+					WorkerMachineCount:       pointer.Int64Ptr(1),
+				},
+				WaitForClusterIntervals:      e2eConfig.GetIntervals(specName, "wait-cluster"),
+				WaitForControlPlaneIntervals: e2eConfig.GetIntervals(specName, "wait-control-plane"),
+				WaitForMachineDeployments:    e2eConfig.GetIntervals(specName, "wait-worker-nodes"),
+			}, result)
 		})
 	})
 })
