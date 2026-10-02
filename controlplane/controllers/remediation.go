@@ -27,7 +27,6 @@ import (
 	kerrors "k8s.io/apimachinery/pkg/util/errors"
 	"k8s.io/klog/v2"
 	clusterv1 "sigs.k8s.io/cluster-api/api/core/v1beta2"
-	"sigs.k8s.io/cluster-api/util"
 	"sigs.k8s.io/cluster-api/util/annotations"
 	"sigs.k8s.io/cluster-api/util/collections"
 	"sigs.k8s.io/cluster-api/util/conditions"
@@ -161,23 +160,6 @@ func (r *CK8sControlPlaneReconciler) reconcileUnhealthyMachines(ctx context.Cont
 			log.Info("A control plane machine needs remediation, but there are other control-plane machines being deleted. Skipping remediation")
 			v1beta1conditions.MarkFalse(machineToBeRemediated, clusterv1.MachineOwnerRemediatedCondition, clusterv1.RemediationInProgressV1Beta1Reason, clusterv1.ConditionSeverityWarning, "KCP waiting for control plane machine deletion to complete before triggering remediation")
 			return ctrl.Result{}, nil
-		}
-	}
-
-	microclusterPort := controlPlane.KCP.Spec.CK8sConfigSpec.ControlPlaneConfig.GetMicroclusterPort()
-	clusterObjectKey := util.ObjectKey(controlPlane.Cluster)
-	workloadCluster, err := r.managementCluster.GetWorkloadCluster(ctx, clusterObjectKey, microclusterPort)
-	if err != nil {
-		log.Error(err, "failed to create client to workload cluster")
-		return ctrl.Result{}, fmt.Errorf("failed to create client to workload cluster: %w", err)
-	}
-
-	if machineToBeRemediated.Status.NodeRef.Name != "" {
-		// TODO: If the node is not part of the microcluster, this may still return an error. We should catch that case,
-		// and proceed with the machine removal.
-		if err := workloadCluster.RemoveMachineFromCluster(ctx, machineToBeRemediated); err != nil {
-			log.Error(err, "failed to remove machine from microcluster")
-			return ctrl.Result{}, fmt.Errorf("failed to remove machine from microcluster: %w", err)
 		}
 	}
 

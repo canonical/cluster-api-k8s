@@ -1,4 +1,4 @@
-apiVersion: cluster.x-k8s.io/v1beta2
+apiVersion: cluster.x-k8s.io/v1beta1
 kind: Cluster
 metadata:
   name: ${CLUSTER_NAME}
@@ -10,11 +10,11 @@ spec:
       cidrBlocks: ${SERVICE_CIDR:=[10.152.0.0/16]}
     serviceDomain: cluster.local
   controlPlaneRef:
-    apiGroup: controlplane.cluster.x-k8s.io
+    apiVersion: controlplane.cluster.x-k8s.io/v1beta2
     kind: CK8sControlPlane
     name: ${CLUSTER_NAME}-control-plane
   infrastructureRef:
-    apiGroup: infrastructure.cluster.x-k8s.io
+    apiVersion: infrastructure.cluster.x-k8s.io/v1alpha2
     kind: LXCCluster
     name: ${CLUSTER_NAME}
 ---
@@ -38,17 +38,12 @@ metadata:
 spec:
   machineTemplate:
     infrastructureTemplate:
+      apiVersion: infrastructure.cluster.x-k8s.io/v1alpha2
       kind: LXCMachineTemplate
       name: ${CLUSTER_NAME}-control-plane
-      apiVersion: infrastructure.cluster.x-k8s.io/v1alpha2
-    nodeDrainTimeout: 300s
-    nodeVolumeDetachTimeout: 300s
-    nodeDeletionTimeout: 300s
-    metadata:
-      labels:
-        key: value
-      annotations:
-        pre-terminate.delete.hook.machine.cluster.x-k8s.io/ck8s: "ck8s"
+    nodeDrainTimeout: 30s
+    nodeVolumeDetachTimeout: 30s
+    nodeDeletionTimeout: 30s
   replicas: ${CONTROL_PLANE_MACHINE_COUNT}
   version: ${KUBERNETES_VERSION}
   spec:
@@ -57,36 +52,6 @@ spec:
         --anonymous-auth: "true"
     extraKubeletArgs:
       --provider-id: "lxc:///{{ v1.local_hostname }}"
-    files:
-    - path: /wait-signal.sh
-      content: |
-        #!/bin/bash
-
-        set -o errexit
-        set -o pipefail
-
-        echo "Waiting for signal..."
-
-        TOKEN=$1
-        SERVER=$2
-        NAMESPACE=$3
-
-        while true;
-        do
-          sleep 1s
-
-          signal=$(curl -k -s --header "Authorization: Bearer $TOKEN" $SERVER/api/v1/namespaces/$NAMESPACE/configmaps/mhc-test | jq -r .data.signal?)
-          echo "signal $signal"
-
-          if [ "$signal" == "pass" ]; then
-            curl -k -s --header "Authorization: Bearer $TOKEN" -XPATCH -H "Content-Type: application/strategic-merge-patch+json" --data '{"data": {"signal": "ack-pass"}}' $SERVER/api/v1/namespaces/$NAMESPACE/configmaps/mhc-test
-            exit 0
-          fi
-        done
-      permissions: "0777"
-      owner: root:root
-    preRunCommands:
-    - ./wait-signal.sh "${TOKEN}" "${SERVER}" "${NAMESPACE}"
 ---
 apiVersion: infrastructure.cluster.x-k8s.io/v1alpha2
 kind: LXCMachineTemplate
@@ -102,7 +67,7 @@ spec:
       image:
         name: ${LXC_IMAGE_NAME}
 ---
-apiVersion: cluster.x-k8s.io/v1beta2
+apiVersion: cluster.x-k8s.io/v1beta1
 kind: MachineDeployment
 metadata:
   name: ${CLUSTER_NAME}-md-0
@@ -120,24 +85,18 @@ spec:
     metadata:
       labels:
         cluster.x-k8s.io/deployment-name: ${CLUSTER_NAME}-md-0
-      annotations:
-        pre-terminate.delete.hook.machine.cluster.x-k8s.io/ck8s: "ck8s"
     spec:
       version: ${KUBERNETES_VERSION}
       clusterName: ${CLUSTER_NAME}
       bootstrap:
         configRef:
-          apiGroup: bootstrap.cluster.x-k8s.io
+          apiVersion: bootstrap.cluster.x-k8s.io/v1beta2
           kind: CK8sConfigTemplate
           name: ${CLUSTER_NAME}-md-0
       infrastructureRef:
-        apiGroup: infrastructure.cluster.x-k8s.io
+        apiVersion: infrastructure.cluster.x-k8s.io/v1alpha2
         kind: LXCMachineTemplate
         name: ${CLUSTER_NAME}-md-0
-      deletion:
-        nodeDrainTimeoutSeconds: 300
-        nodeVolumeDetachTimeoutSeconds: 300
-        nodeDeletionTimeoutSeconds: 300
 ---
 apiVersion: infrastructure.cluster.x-k8s.io/v1alpha2
 kind: LXCMachineTemplate
@@ -162,24 +121,3 @@ spec:
     spec:
       extraKubeletArgs:
         --provider-id: "lxc:///{{ v1.local_hostname }}"
----
-apiVersion: cluster.x-k8s.io/v1beta2
-kind: MachineHealthCheck
-metadata:
-  name: ${CLUSTER_NAME}-mhc-0
-  namespace: ${NAMESPACE}
-spec:
-  clusterName: ${CLUSTER_NAME}
-  remediation:
-    triggerIf:
-      unhealthyLessThanOrEqualTo: 100%
-  selector:
-    matchLabels:
-      cluster.x-k8s.io/control-plane: ""
-      mhc-test: fail
-  checks:
-    nodeStartupTimeoutSeconds: 120
-    unhealthyNodeConditions:
-      - status: "False"
-        timeoutSeconds: 10
-        type: e2e.remediation.condition
