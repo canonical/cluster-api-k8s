@@ -49,6 +49,11 @@ func (src *CK8sConfig) ConvertTo(dstRaw conversion.Hub) error {
 		if err := roundTripConvert(src.Status.Conditions, &convertedConditions); err != nil {
 			return fmt.Errorf("failed to convert conditions to v1beta3: %w", err)
 		}
+		for i := range convertedConditions {
+			if convertedConditions[i].Reason == "" {
+				convertedConditions[i].Reason = "NoReasonReported"
+			}
+		}
 		dst.Status.Conditions = convertedConditions
 	}
 
