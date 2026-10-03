@@ -52,7 +52,7 @@ jobs:
 
   run-e2e-tests:
     name: Run E2E Tests
-    runs-on: [self-hosted, linux, X64, noble, large]
+    runs-on: [self-hosted, linux, X64, noble, xlarge]
     needs: build-e2e-images
     strategy:
       matrix:
