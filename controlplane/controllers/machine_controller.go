@@ -136,6 +136,11 @@ func (r *MachineReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 		node, err := workloadCluster.GetNode(ctx, m)
 		if err != nil {
 			logger.Info("node-remove-error: failed to get machine corresponding node")
+			if err := r.cleanDeleteHookAnnotation(ctx, logger, m); err != nil {
+				return ctrl.Result{}, fmt.Errorf("failed to patch machine: %w", err)
+			}
+
+			logger.Info("node-ready-for-annotation-removal: machine got annotations removed")
 		} else if len(node.Status.VolumesAttached) != 0 {
 			logger.Info("node-remove-wait: there are still volumes attached.")
 			return ctrl.Result{RequeueAfter: 20 * time.Second}, nil
@@ -173,14 +178,22 @@ func (r *MachineReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 			logger.Error(err, "failed to re-remove machine from microcluster")
 		}
 		logger.Info("node-ready-for-cluster-removal: re-removed from cluster")
-		delete(mAnnotations, PreTerminateHookCleanupAnnotation)
-		logger.Info("node-ready-for-annotation-removal: removing the annotation PreTerminateDeleteHookAnnotationPrefix")
-		m.SetAnnotations(mAnnotations)
-		if err := patchHelper.Patch(ctx, m); err != nil {
-			return ctrl.Result{}, fmt.Errorf("failed to patch machine: %w", err)
+
+		if err := r.cleanDeleteHookAnnotation(ctx, logger, m); err != nil {
+			logger.Error(err, "failed to cleanDeleteHookAnnotation")
 		}
-		logger.Info("node-ready-for-annotation-removal: machine got annotations removed")
 	}
 
 	return ctrl.Result{}, nil
+}
+
+func (r *MachineReconciler) cleanDeleteHookAnnotation(ctx context.Context, logger logr.Logger, m *clusterv1.Machine) error {
+	logger.Info("node-ready-for-annotation-removal: removing the annotation PreTerminateDeleteHookAnnotationPrefix")
+	mOriginal := m.DeepCopy()
+	delete(m.Annotations, PreTerminateHookCleanupAnnotation)
+	if err := r.Patch(ctx, m, client.MergeFrom(mOriginal)); err != nil {
+		return fmt.Errorf("failed to patch machine: %w", err)
+	}
+	logger.Info("node-ready-for-annotation-removal: machine got annotations removed")
+	return nil
 }
