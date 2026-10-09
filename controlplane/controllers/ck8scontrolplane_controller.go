@@ -508,6 +508,11 @@ func (r *CK8sControlPlaneReconciler) reconcile(ctx context.Context, cluster *clu
 	logger := r.Log.WithValues("namespace", kcp.Namespace, "CK8sControlPlane", kcp.Name, "cluster", cluster.Name)
 	logger.Info("Reconcile CK8sControlPlane")
 
+	if kcp.Spec.MachineTemplate.ObjectMeta.Annotations == nil {
+		kcp.Spec.MachineTemplate.ObjectMeta.Annotations = map[string]string{}
+	}
+	kcp.Spec.MachineTemplate.ObjectMeta.Annotations[PreTerminateHookCleanupAnnotation] = ck8sHookName
+
 	// Make sure to reconcile the external infrastructure reference.
 	if err := r.reconcileExternalReference(ctx, cluster, &kcp.Spec.MachineTemplate.InfrastructureRef); err != nil {
 		return reconcile.Result{}, err
@@ -587,9 +592,12 @@ func (r *CK8sControlPlaneReconciler) reconcile(ctx context.Context, cluster *clu
 		return reconcile.Result{}, err
 	}
 
-	if err := r.syncMachines(ctx, kcp, controlPlane); err != nil {
+	logger.Info("sync-machines: started sync machines")
+	if err := r.syncMachines(ctx, kcp, controlPlane, logger); err != nil {
 		return reconcile.Result{}, fmt.Errorf("failed to sync Machines: %w", err)
 	}
+	logger.Info("sync-machines: stopped sync machines")
+
 	if len(ownedMachines.UnsortedList()) == 0 {
 		conditions.Set(kcp, metav1.Condition{
 			Type:   string(controlplanev1.MachinesReadyCondition),
@@ -815,11 +823,13 @@ func (r *CK8sControlPlaneReconciler) reconcileControlPlaneConditions(ctx context
 	return nil
 }
 
-func (r *CK8sControlPlaneReconciler) syncMachines(ctx context.Context, kcp *controlplanev1.CK8sControlPlane, controlPlane *ck8s.ControlPlane) error {
+func (r *CK8sControlPlaneReconciler) syncMachines(ctx context.Context, kcp *controlplanev1.CK8sControlPlane, controlPlane *ck8s.ControlPlane, logger logr.Logger) error {
 	for machineName := range controlPlane.Machines {
+		logger.Info("syncing-machine", "machine", machineName)
 		m := controlPlane.Machines[machineName]
 		// If the machine is already being deleted, we don't need to update it.
 		if !m.DeletionTimestamp.IsZero() {
+			logger.Info("syncing-machine-is-deleted", "machine", machineName)
 			continue
 		}
 
@@ -838,7 +848,6 @@ func (r *CK8sControlPlaneReconciler) syncMachines(ctx context.Context, kcp *cont
 		for k, v := range kcp.Spec.MachineTemplate.ObjectMeta.Annotations {
 			m.Annotations[k] = v
 		}
-
 		if err := patchHelper.Patch(ctx, m); err != nil {
 			return fmt.Errorf("failed to patch machine annotations: %w", err)
 		}
